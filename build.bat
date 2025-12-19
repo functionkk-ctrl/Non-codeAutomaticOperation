@@ -5,15 +5,15 @@ title 🔧 Build UIA
 cd /d "%~dp0"
 
 :: === 安裝檢查 ===
-python -m pip show pyinstaller >nul 2>nul ||(
+python e. -m pip show pyinstaller >nul 2>nul ||(
     echo [!] PyInstaller 未安裝，正在自動安裝...
     python -m pip install -q --disable-pip-version-check pyinstaller pyinstaller-hooks-contrib
 )
 python -m pip install -U PySide6
 
 :: === 清除舊檔 ===
-::if exist build rmdir /s /q build
-::if exist dist rmdir /s /q dist
+if exist build rmdir /s /q build
+if exist dist rmdir /s /q dist
 
 :: === 打包 ===
 echo [*] 開始打包 UIA.exe ...
