@@ -10,6 +10,8 @@ Window {
     property int window_h: 360
     property int margin: 10
     property int text_h: 50
+    property int button_w: 90
+    property int button_h: 65
 
     width: window_w
     height: window_h
@@ -37,6 +39,8 @@ Window {
     View3D {
         id: view
         anchors.fill: parent
+        spacing: 10
+
         environment: SceneEnvironment {
             backgroundMode: SceneEnvironment.Color
             clearColor: "transparent"
@@ -95,13 +99,13 @@ Window {
         }
         Keys.onPressed: {
             // 當按下回車鍵時，執行提交操作
-            if(event.key===Qt.Key_Return||event.key===Qt.Key_Enter||event.key===Qt.Key_NumpadEnter && !event.modifiers === Qt.NoModifier){
-                animButton.clicked()
-                IC.input_line(userInput)
-                inputBox.text=""
+            if([Qt.Key_Return,Qt.Key_Enter].includes(event.key)){
                 event.accepted = true
-            }else{
-                event.accepted = false
+                if(!(event.modifiers & (Qt.ShiftModifier | Qt.ControlModifier | Qt.AltModifier))){
+                    animButton.clicked()
+                    IC.input_line(userInput) // 執行失敗時同時不執行下一行
+                    inputBox.text=""
+                }
             }
         }
     }
@@ -109,36 +113,40 @@ Window {
     // 顯示用戶輸入的文本
     Text {
         id:message
-        text: "輸入內容: " + userInput //  回報 和 回應
+        text: "輸入內容: " + userInput //  ***回報 和 回應
         anchors.top: inputBox.bottom
         anchors.left: inputBox.left
         color: "white"
         font.pixelSize: 16
     }
-
+    // ***讀取到模型，卻看不見
     Button {
         id: animButton
         text: "輸出動畫"
         onClicked: {
             // 拆字判斷動畫
-            let target = keyword_map[userInput];
+            real target = keyword_map[userInput];
             if (!target) {
                 console.log("❌ 找不到 userInput", userInput);
                 return;
             }
-            let clipName =Object.keys(target)[0];
+            real clipName =Object.keys(target)[0];
             // 搜尋 glTF 中的動畫列表
-            for (let i = 0; i < ilulu.animations.length; i++) {
-                let a = ilulu.animations[i];
+            for (real i = 0; i < ilulu.animations.length; i++) {
+                real a = ilulu.animations[i];
                 if (a.name === clipName) {
                     console.log("▶ 播放動畫:", clipName);
                     ilulu.animations[i].position = a.start;
                     ilulu.animations[i].duration = a.duration;
                     ilulu.animations[i].running = true;
                     return;
+                }else if (a.name === "Idle"){
+                    console.log("▶ 播放待機動畫:", clipName);
+                    ilulu.animations[i].position = a.start;
+                    ilulu.animations[i].duration = a.duration;
+                    ilulu.animations[i].running = true;
                 }
             }
-            console.log("❌ GLB 裡找不到動畫 clip:", clipName);
         }
     }
 
@@ -152,6 +160,140 @@ Window {
             IC.quitApp()
         }
     }
+    
+    // 新增與移除任務
+    Column  {
+        id: listErrand 
+        spacing: 6
+    }
+
+    Rectangle  {
+        id:listErrandButton
+        text: "任務欄"
+        anchors.bottom: parent.bottom
+        anchors.horizontalCenter: parent.horizontalCenter
+        z: 99
+
+        TextField {
+            id: ListNameField
+            anchors.top: parent.top
+            width: 240
+            placeholderText: "輸入名稱"
+        }
+
+        TextField {
+            id: nameField
+            anchors.top: parent.top+25
+            width: 240
+            placeholderText: "輸入名稱"
+        }
+
+        MouseArea{
+            anchors.fill: parent
+            drag.target: listErrandButton
+            property real dx =0
+            property real dy =0
+            acceptedButtons: Qt.LeftButton
+            onPressed: {
+                if (mouse.button === Qt.LeftButton) {
+                    lastMousePos = Qt.vector2d(mouse.x, mouse.y)
+                    // **重新命名
+                    listErrandButton.text=ListNameField.text
+                }
+            }
+
+            onPositionChanged: {
+                // 按鈕位移後，縮小或放大 整個任務欄
+                dx = mouse.x - lastMousePos.x
+                dy = mouse.y - lastMousePos.y
+                if ( Math.abs(dx)>20 ||  Math.abs(dy)>20 ) {
+                    if(listErrandButton.height<button_h){
+                        // ***任務欄 全部顯示
+                        listErrandButton.height=button_h
+                    }else{
+                        // ***只顯示 按鈕
+                        listErrandButton.height=50
+                    }
+                }
+                else{
+                    listErrandButton.dragging=false
+                }
+            }
+            onReleased: {
+                // **放大時，按鈕不位移後，增加任務
+                if(!listErrandButton.dragging && listErrandButton.height>=button_h){
+                    
+                    Qt.createQmlObject('
+                        Item {
+                            id: errandItem
+                            width: parent.width
+                            height: parent.height-2.5
+
+                            Rectangle {
+                                anchors.fill: parent
+                                color: "#333"
+                                radius: 6
+                                
+                                TextArea { 
+                                    property bool posD: false
+                                    id: errand
+                                    width: 300
+                                    height: 80
+                                    text: nameField.text
+                                    anchors.fill: parent
+                                    anchors.margins: 6
+                                    wrapMode: TextArea.Wrap
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    drag.target: errand
+                                    acceptedButtons: Qt.LeftButton
+                                    onPressed: {
+                                        if (mouse.button === Qt.LeftButton) {
+                                            lastMousePos = Qt.vector2d(mouse.x, mouse.y)
+                                        }
+                                    }
+                                    
+                                    onReleased: {
+                                        Item indexObj=listErrand.children[listErrand.children.indexOf(errandItem)]
+                                        bool objOk=false
+                                        if ( Math.abs(mouse.x - lastMousePos.x)>20 && indexObj!==-1 ) {
+                                            // **任務左右位移時移除 ，GPT 寫錯 GPT已死
+                                            indexObj.destroy(); 
+                                        }else if ( Math.abs( mouse.y - lastMousePos.y)>20 ) {
+                                            // ***任務上下位移時變更順序，放開在哪一個子物件上面，該順序以後的全部子物件都後移一位
+                                            for (real child of listErrand.children) {
+                                                if(listErrand.children.indexOf(child)==1)
+                                                    objOk=false
+                                                if (mouse.y >= child.y && mouse.y < child.y + child.height){
+                                                    child.parent = null;
+                                                    child.parent = listErrand;
+                                                    listErrand.stackBefore(child);
+                                                    objOk=true
+                                                }
+                                                if(objOk){
+                                                    child.parent = null;
+                                                    child.parent = listErrand;
+                                                }
+                                            }
+                                        }else{
+                                            // **無位移時重新命名
+                                            errandItem.errand.text= nameField.text 
+                                            nameField.text=""
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        ', listErrand
+                    )
+                    nameField.text = ""
+                }
+            }
+        }
+    }
+    // end 新增與移除任務
+
 
     // == = 視窗拖曳 == =
     MouseArea {
@@ -212,9 +354,9 @@ Window {
                     root.width = 50; // 最小化寬度
                     root.x = 0; 
                     root.height = Math.max(50, window_h*(root.width/window_w)); 
-                } else if (root.x + root.width >= Screen.width) {
+                } else if (root.x+(window_w/2) >= Screen.width) {
                     root.width = 50;
-                    root.x = Screen.width - root.width; 
+                    root.x = Screen.width-50; 
                     root.height = Math.max(50, window_h*(root.width/window_w)); 
                 } else {
                     root.width = window_w;
