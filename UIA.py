@@ -1,3 +1,8 @@
+import firebase_admin
+from firebase_admin import credentials, firestore
+from firebase_admin import credentials, db
+from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtWidgets import QApplication
 from pathlib import Path
 import sys
 from datetime import datetime
@@ -18,7 +23,8 @@ from OpenGL.GLU import *
 from OpenGL.GL import *
 import psutil
 from PySide6.QtGui import QSurfaceFormat
-
+from PySide6.QtCore import QObject, Slot
+from geopy.geocoders import Nominatim
 
 # --- 基礎設定 --- python "D:\Python\Non-codeAutomaticOperation\UIA.py"
 pytesseract.pytesseract.tesseract_cmd = r"C:\Users\USER\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
@@ -31,6 +37,10 @@ DEBUG = True
 
 # --- 共用工具 ---
 alive_event = threading.Event()
+cred = credentials.Certificate("serviceAccountKey.json")
+firebase_admin.initialize_app(cred, {
+    "databaseURL": "https://你的專案-id.firebaseio.com/"
+})
 
 
 def resource_path(relative_path):
@@ -78,7 +88,8 @@ def locate_template_orb(name, sort=1, num=1, extractor=False):
     if not pts:
         if extractor:
             print("#開關 找不到目標後自動確認目標")
-            TargetExtractor().select_polygon_roi()
+            ext = TargetExtractor()
+            ext.select_polygon_roi()
         else:
             print("找不到目標且自動確認未開啟，跳過選取點。 調整ORB_create>=500")
             return None
@@ -123,7 +134,7 @@ def validate_cache(name, pos, tolerance=10):
     return max_val > 0.8
 
 
-def locate_text(keyword, sort=1, num=1):
+def locate_text(keyword, sort=1, num=1, classA=None):
     """找字"""
     # OCR識別文字
     data = pytesseract.image_to_data(cv2.cvtColor(screenshot(
@@ -133,7 +144,8 @@ def locate_text(keyword, sort=1, num=1):
         (data['left'][i] + data['width'][i] // 2,
          data['top'][i] + data['height'][i] // 2)
         for i, t in enumerate(data['text'])
-        if t.strip() and SequenceMatcher(None, t.lower(), keyword.lower()).ratio() >= 0.6
+        # SequenceMatcher 相符比例
+        if t.strip() and SequenceMatcher(None, t.lower(), keyword.lower()).ratio() >= 0.7
     ]
     if not pts:
         if DEBUG:
@@ -152,19 +164,82 @@ def locate_text(keyword, sort=1, num=1):
     # 處理 num（正數取前 num，負數取倒數 abs(num)）
     if num != 1:
         pts = pts[:num] if num > 0 else pts[num:]
-    return pts
+    if classA is None:
+        return pts
+    else:
+        # 找classA
+        readText = [
+            t
+            for t in data['text']
+            if t.strip() and SequenceMatcher(None, t.lower(), keyword.lower()).ratio() >= 0.7
+        ]
+        # 找 classA 的這一行 classA後面
 
+        # *** classA 似乎在這一行開始不通用了，使用到 Geocoding
+        # *** firebase 用戶儲存的起點地址 addrStart
+        geolocator = Nominatim(user_agent="geo_example")
+        locationStart = geolocator.geocode(firestore.client().reference("addrStart").get())
+        start_lat = locationStart.latitude
+        start_lon = locationStart.longitude
+        for ress in readText:
+            line_key = (
+                data['block_num'][ress],
+                data['par_num'][ress],
+                data['line_num'][ress]
+            )
+            addresses = []
+            for j, t in enumerate(data['text']):
+                if not t.strip():
+                    continue
+                if j < ress:
+                    continue
+                if (data['block_num'][j], data['par_num'][j], data['line_num'][j]) != line_key:
+                    continue
+
+                location = geolocator.geocode(t)
+                # 避免被geocode 封鎖
+                time.sleep(0.6)
+                if location is None:
+                    continue
+                distance =((start_lat - location.latitude)**2 + (start_lon - location.longitude)**2) ** 0.5
+
+                addresses.append({
+                    "address": t,
+                    "distance": distance
+                })
+            addresses.sort(key=lambda x: x["distance"])
+            # 3️⃣ 建立 manifest 分支（近 / 遠） # 用戶說分支，也有可能是說其他東西
+            # ***間距太近(firestore.client().reference(太近的地址)，起點和太近地址的距離為 間距)的一些地址為一分支 manifest[分支]，離起點太遠(firestore 太遠地址)額外安排 manifest2
+            firestore.client().reference("near").get()
+            firestore.client().reference("far").get()
+            NEAR_THRESHOLD = 200
+            FAR_THRESHOLD = 5000
+            # *** 排了分支，但沒排難度。各分支計算難度 排序
+            manifest_near = [info for info in addresses if info["distance"] <= NEAR_THRESHOLD]
+            manifest_far = [info for info in addresses if info["distance"] >= FAR_THRESHOLD]
+            manifest = [manifest_near, manifest_far]
+            # 4️⃣ 上傳 Firebase
+            # manifest 上傳給firebase，manifest中最難的給最早請求的用戶 # *** firebase 分發給用戶，用戶如何獲取 manifest
+            firestore.client().reference("manifest").push(manifest)
+
+            
+                # *** 繪製路線圖並記錄指南針方向，旋轉地圖時路線圖與地圖的指南針向量 矯正
+                # *** 指南針計算(一維)
+                # Routing API給最佳真實路線
+
+from geographiclib.geodesic import Geodesic
 
 def click(pos): pyautogui.moveTo(
     *pos, duration=0.2); pyautogui.click(); time.sleep(0.3)
 
 
-class InputCommand:
+class InputCommand(QObject):
     def __init__(self):
+        super().__init__()
         self.vars = {}
         self.current_window = None
         self.cache = {}
-        self.extractor = False
+        self.extractor = True
         self.app = None
 
     def focus_window(self, title):
@@ -177,12 +252,13 @@ class InputCommand:
         except Exception as e:
             print(f"❌ 無法聚焦 [{title}]: {e}")
 
-    def selected(self, str, sort=1, num=1):
+    def selected(self, str, sort=1, num=1, classA=None):
         if "<img>" in str:
             return locate_template_orb_cached(str, sort, num)
         else:
-            return locate_text(str, sort, num)
+            return locate_text(str, sort, num, classA)
 
+    @Slot(str)
     def input_line(self, user_input):
         m = re.match(r"<\s*(.+)\s*>", user_input)
         if m:
@@ -200,12 +276,25 @@ class InputCommand:
                     old_name = input("原變數名: ").strip()
                     new_name = input("新變數名: ").strip()
                     rec.rename(old_name, new_name)
-                case "自動確認目標":
-                    ic.extractor = True
-                    print("✅ 已開啟自動確認目標模式")
+                case "取消自動確認目標":
+                    ic.extractor = False
+                    print("✅ 已關閉自動確認目標模式")
                 case "移除":
                     var = input("移除哪個錄製變數: ").strip() or None
                     rec.remove(ic, var)
+                case "整理路線":  # ***整理路線
+                    var = input("已開啟 整理路線 ").strip() or None
+                    self.selected("地址", 1, 1, "地址")
+
+                case "距離多少":  # ***和下一個地址 距離多少
+                    var = input("已繪製地圖 ").strip() or None
+                    def real_dist(p, q):
+                        return Geodesic.WGS84.Inverse(
+                            p.lat, p.lon, q.lat, q.lon
+                        )['s12']
+                case "繪圖":  # ***繪圖
+                    var = input("已繪製地圖 ").strip() or None
+
                 case _:
                     print(f"⚠️ 未知指令: {cmd_type}")
         else:
@@ -276,6 +365,11 @@ class InputCommand:
                                             m = re.fullmatch(r"奇數(\d+)個", act)
                                             self.selected(
                                                 pa, "奇數", int(m.group(1)))
+                                        case act if re.fullmatch(r"排序儲存的(\s+)", act):
+                                            m = re.fullmatch(
+                                                r"排序儲存的(\s+)", act)  # ***(對象)排序
+                                            a = []+m.group(1)
+                                            a.sort()
                                         case act if re.fullmatch(r"輸入\s*(.+)", act):
                                             s = re.fullmatch(r"輸入\s*(.+)", act)
                                             keyboard.write(
@@ -327,7 +421,17 @@ class InputCommand:
                                                 r"移除\s*(.+)的邏輯對\s*(.+)性能\s*(.+)", act)
                                             monitor.remove_subscription(
                                                 m.group(1), m.group(2), m.group(3))
-                                        # *補充 全部會用到的 Unity十大種類操作
+                                        case "排序":
+                                            pass
+                                        case "顯示何物":
+                                            pass
+                                        case "排定任務":
+
+                                            pass
+                                        case "畫面生成模型":
+
+                                            pass
+                                        # ***補充
                                     i += 1  # 預設每次往下一個
                         # else:找下一個路徑
                     else:
@@ -353,6 +457,8 @@ class InputCommand:
                                 prev_img = curr_img.copy()
             except ValueError:
                 print("⚠️ Invalid format. Please enter: WindowTitle, Path, Action")
+
+    @Slot(str)
     def quitApp(self):
         print("退出應用程式")
         self.app.quit()
@@ -408,6 +514,7 @@ class TargetExtractor:
         self.image = image
         self.base = image.copy()
         self.pts = []
+        self.readText = []
         self.done = False
         self.cancelled = False
         self.roi_mask = None
@@ -425,6 +532,7 @@ class TargetExtractor:
         print("🖱️ 請用滑鼠左鍵圈選多邊形；右鍵結束；ESC 取消；R 重來")
         display = self.image.copy()
         done = False
+        # ***可能未監聽
 
         def on_click(x, y, button, pressed):
             if not pressed:
@@ -924,15 +1032,13 @@ class EventMonitor:
 視窗標題,目標的多重路徑,多重操作，:多重路徑、<>錄製。
 視窗標題,GPT:食指,全選:按下::視窗標題,GPT:肛門,位置深處:放開
 """
-from PySide6.QtWidgets import QApplication
-from PySide6.QtQml import QQmlApplicationEngine
 if __name__ == "__main__":
     ic = InputCommand()
     rec = Recorder()
     monitor = EventMonitor()
 
     app = QApplication(sys.argv)
-    ic.app=app
+    ic.app = app
     fmt = QSurfaceFormat()
     fmt.setAlphaBufferSize(8)
     fmt.setRenderableType(QSurfaceFormat.OpenGL)
@@ -948,7 +1054,7 @@ if __name__ == "__main__":
     import PySide6.QtQml as Qml
     for p in Qml.QQmlEngine().importPathList():
         print("IMPORT PATH:", p)
-        
+
     if getattr(sys, 'frozen', False):
         engine.addImportPath(sys._MEIPASS)
     engine.load(str(qml_file))
@@ -961,11 +1067,8 @@ if __name__ == "__main__":
 
     # 將 Python 對象暴露給 QML
     engine.rootContext().setContextProperty("IC", ic)
-    
+
     sys.exit(app.exec())
-    
-
-
 
     # ✅ 在背景啟動 watchdog 執行緒 # ***app關閉時， watchdog沒有跟著關閉
     threading.Thread(target=watchdog, daemon=True).start()
