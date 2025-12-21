@@ -86,13 +86,8 @@ def locate_template_orb(name, sort=1, num=1, extractor=False):
            for m in matches[:10]]
     pts.sort(key=lambda p: (p[0], p[1]))  # 左上排序
     if not pts:
-        if extractor:
-            print("#開關 找不到目標後自動確認目標")
-            ext = TargetExtractor()
-            ext.select_polygon_roi()
-        else:
-            print("找不到目標且自動確認未開啟，跳過選取點。 調整ORB_create>=500")
-            return None
+        TargetExtractor().select_polygon_roi()
+        
     # 選取點
     if sort == "奇數":
         pts = pts[::2]
@@ -178,9 +173,33 @@ def locate_text(keyword, sort=1, num=1, classA=None):
         # *** classA 似乎在這一行開始不通用了，使用到 Geocoding
         # *** firebase 用戶儲存的起點地址 addrStart
         geolocator = Nominatim(user_agent="geo_example")
-        locationStart = geolocator.geocode(firestore.client().reference("addrStart").get())
-        start_lat = locationStart.latitude
-        start_lon = locationStart.longitude
+        startP=firestore.client("用戶").reference("addrStart").get()
+        nearP = firestore.client("用戶").document("near").get().to_dict()
+        farP = firestore.client("用戶").document("far").get().to_dict()
+        locationStart = geolocator.geocode(startP)
+        locationNear = geolocator.geocode(startP)
+        locationFar = geolocator.geocode(startP)
+        # 間距太近(firestore.client().reference(太近的地址)，起點和太近地址的距離為 間距)的一些地址為一分支 manifest[分支]，離起點太遠(firestore 太遠地址)額外安排 manifest2
+        NEAR_DISTANCE =dist(nearP,startP)
+        FAR_DISTANCE =dist(farP,startP)
+        def dist(a,b):
+            aLocation=geolocator.geocode(a) 
+            # 避免被geocode 封鎖
+            time.sleep(0.5)
+            if b==startP:
+                bLocation=locationStart
+            elif b==nearP:
+                bLocation=locationNear
+            elif b==farP:
+                bLocation=locationFar
+            else:
+                bLocation=geolocator.geocode(b)
+            if aLocation or bLocation is None:
+                print("無效地址")
+            distance =(aLocation.latitude - bLocation.latitude)**2 + (aLocation.longitude - bLocation.longitude)**2
+            time.sleep(0.5)
+            return distance
+        
         for ress in readText:
             line_key = (
                 data['block_num'][ress],
@@ -195,32 +214,35 @@ def locate_text(keyword, sort=1, num=1, classA=None):
                     continue
                 if (data['block_num'][j], data['par_num'][j], data['line_num'][j]) != line_key:
                     continue
-
-                location = geolocator.geocode(t)
-                # 避免被geocode 封鎖
-                time.sleep(0.6)
-                if location is None:
-                    continue
-                distance =((start_lat - location.latitude)**2 + (start_lon - location.longitude)**2) ** 0.5
-
+                # *** 抓取模式
+                keyword.selected(f"{obj_name=strip()}_W{w}_H{h}_Z{real_h}")
+                # *** 計算模式，需要OCR計算物體容積
+                TargetExtractor().load_img_whz()
                 addresses.append({
                     "address": t,
-                    "distance": distance
+                    "distance": dist(t,startP),
+                    # *** 找地址 接 找貨物 # *** 計算有限空間的難度
+                    "goods":locate_text(str, sort, num, "goods")
                 })
             addresses.sort(key=lambda x: x["distance"])
-            # 3️⃣ 建立 manifest 分支（近 / 遠） # 用戶說分支，也有可能是說其他東西
-            # ***間距太近(firestore.client().reference(太近的地址)，起點和太近地址的距離為 間距)的一些地址為一分支 manifest[分支]，離起點太遠(firestore 太遠地址)額外安排 manifest2
-            firestore.client().reference("near").get()
-            firestore.client().reference("far").get()
-            NEAR_THRESHOLD = 200
-            FAR_THRESHOLD = 5000
-            # *** 排了分支，但沒排難度。各分支計算難度 排序
-            manifest_near = [info for info in addresses if info["distance"] <= NEAR_THRESHOLD]
-            manifest_far = [info for info in addresses if info["distance"] >= FAR_THRESHOLD]
+            # 建立 manifest 分支（近 / 遠） # 用戶說分支，也有可能是說其他東西
+            manifest_near = [
+                {"address": addresses[i]["address"], "goods": addresses[i]["goods"]}
+                for i in range(len(addresses)-1)  # 用 index 才能拿下一筆
+                if addresses[i]["distance"] <= NEAR_DISTANCE
+                and abs(addresses[i]["distance"] - addresses[i+1]["distance"]) <= NEAR_DISTANCE
+            ]
+            manifest_far = [
+                {"address": info["address"], "goods": info["goods"]}
+                for info in addresses
+                if info["distance"] >= FAR_DISTANCE
+            ]
             manifest = [manifest_near, manifest_far]
+            # *** goods 排列在有限空間，計算manifest難度 排序
             # 4️⃣ 上傳 Firebase
             # manifest 上傳給firebase，manifest中最難的給最早請求的用戶 # *** firebase 分發給用戶，用戶如何獲取 manifest
-            firestore.client().reference("manifest").push(manifest)
+            
+            firestore.client().document("manifest").add(manifest)
 
             
                 # *** 繪製路線圖並記錄指南針方向，旋轉地圖時路線圖與地圖的指南針向量 矯正
@@ -511,6 +533,11 @@ class Recorder:
 
 class TargetExtractor:
     def __init__(self, image=None):
+        if self.extractor is False:
+            print("找不到目標且自動確認未開啟，跳過選取點。 調整ORB_create>=500")
+            return  
+        else:
+            print("#已開啟 找不到目標後自動確認目標")
         self.image = image
         self.base = image.copy()
         self.pts = []
@@ -520,6 +547,7 @@ class TargetExtractor:
         self.roi_mask = None
         self.orb = cv2.ORB_create(800)
         self.bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+        
 
     def select_polygon_roi(self):
         """
@@ -631,6 +659,27 @@ class TargetExtractor:
         cv2.imwrite(save_path, self.extracted)
         print(f"✅ 已儲存 {save_path}")
 
+    # 計算錨定物的 附著之物的 實際大小
+    def load_img_whz(self):
+        # *** 限制大小
+        whz=[]
+        for file in os.listdir(TEMPLATE_DIR):
+            match = re.match( r"(.*)_W(\d+)_H(\d+)_Z([\d\.]+)\.png", file)
+            if not match:
+                continue
+            if self.selected(file):
+                # 錨定物 file
+                # *** 找附著之物
+                # *** 並計算實際大小，利用
+                "obj_name": match.group(1),
+                "w": int(match.group(2)),
+                "h": int(match.group(3)),
+                "real_h": float(match.group(4))
+        return # 疊加實際大小
+
+    # *** python OCR找到該目標時計算該目標附在其物之上，利用目標的物件名稱紀錄的，計算其物的實際大小
+    # *** save_path圖片 重新命名(固定格式有長寬高)，在判斷物體實際大小模式時，在TEMPLATE_DIR中找到(固定格式有長寬高)save_path圖片，全部找一次，找到則分析附在何物、計算該物實際大小
+    # *** 進入 計算物體實際大小的 計算模式 *** 讀取存檔的圖片
     def compute_logic(self):
         frame = screenshot()
         # 全部物件
