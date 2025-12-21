@@ -94,8 +94,10 @@ Window {
 
         // 監聽文本變化
         onTextChanged: {
+            if() // *** 進入 計算物體實際大小的 抓取模式
+                if (!/^(.*)_W(\d+)_H(\d+)_Z([\d.]+)\.png$/.test(text)) Pass
             // 當用戶輸入時更新 `userInput`
-            userInput = inputBox.text
+            userInput = text
         }
         Keys.onPressed: {
             // 當按下回車鍵時，執行提交操作
@@ -104,7 +106,7 @@ Window {
                 if(!(event.modifiers & (Qt.ShiftModifier | Qt.ControlModifier | Qt.AltModifier))){
                     animButton.clicked()
                     IC.input_line(userInput) // 執行失敗時同時不執行下一行
-                    inputBox.text=""
+                    text=""
                 }
             }
         }
