@@ -25,6 +25,32 @@ import psutil
 from PySide6.QtGui import QSurfaceFormat
 from PySide6.QtCore import QObject, Slot
 from geopy.geocoders import Nominatim
+# Android
+from plyer import gps
+from kivy.clock import Clock
+from kivy.utils import platform
+def on_location(**kwargs):
+    print(
+        kwargs['lat'],
+        kwargs['lon'],
+        kwargs.get('altitude'),
+        kwargs.get('speed')
+    )
+
+gps.configure(on_location=on_location)
+gps.start(minTime=1000, minDistance=0)
+
+if platform == 'android':
+    from plyer import accelerometer
+    accelerometer.enable()
+
+def read_imu(dt):
+    val = accelerometer.acceleration
+    if val:
+        ax, ay, az = val
+        print(ax, ay, az)
+
+Clock.schedule_interval(read_imu, 1/50)
 
 # --- 基礎設定 --- python "D:\Python\Non-codeAutomaticOperation\UIA.py"
 pytesseract.pytesseract.tesseract_cmd = r"C:\Users\USER\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
@@ -162,13 +188,12 @@ def locate_text(keyword, sort=1, num=1, classA=None):
     if classA is None:
         return pts
     else:
-        # 找classA
+        # * 找classA 的內容，預設是 # 找 classA 的這一行 classA後面
         readText = [
             t
             for t in data['text']
             if t.strip() and SequenceMatcher(None, t.lower(), keyword.lower()).ratio() >= 0.7
         ]
-        # 找 classA 的這一行 classA後面
 
         # *** classA 似乎在這一行開始不通用了，使用到 Geocoding
         # *** firebase 用戶儲存的起點地址 addrStart
@@ -214,15 +239,13 @@ def locate_text(keyword, sort=1, num=1, classA=None):
                     continue
                 if (data['block_num'][j], data['par_num'][j], data['line_num'][j]) != line_key:
                     continue
-                # *** 抓取模式
-                keyword.selected(f"{obj_name=strip()}_W{w}_H{h}_Z{real_h}")
-                # *** 計算模式，需要OCR計算物體容積
-                TargetExtractor().load_img_whz()
+
                 addresses.append({
                     "address": t,
                     "distance": dist(t,startP),
-                    # *** 找地址 接 找貨物 # *** 計算有限空間的難度
-                    "goods":locate_text(str, sort, num, "goods")
+                    # ***使用 找地址時，順便 找貨品
+                    # *** 搜尋相符文字的貨品乘上數量，並計算疊加的空間大小，以疊加大小來排序
+                    "goods":""
                 })
             addresses.sort(key=lambda x: x["distance"])
             # 建立 manifest 分支（近 / 遠） # 用戶說分支，也有可能是說其他東西
@@ -450,6 +473,19 @@ class InputCommand(QObject):
                                         case "排定任務":
 
                                             pass
+                                        case "設定 即時計算物體大小的 錨定物大小":
+                                            # ** 抓取模式，設定錨定物
+                                            m=re.match( r"(.*)_W(\d+)_H(\d+)_Z([\d\.]+)", act[i+1])
+                                            if not m:
+                                                print("請依照圖片_W0_H0_Z0格式")
+                                                return
+                                            self.selected(act[i+1])
+                                            i+=2
+                                            continue
+                                        case "即時計算物體大小":
+                                            # *** 計算模式，需要OCR計算物體容積
+                                            TargetExtractor().load_img_whz()
+                                            pass
                                         case "畫面生成模型":
 
                                             pass
@@ -659,23 +695,29 @@ class TargetExtractor:
         cv2.imwrite(save_path, self.extracted)
         print(f"✅ 已儲存 {save_path}")
 
-    # 計算錨定物的 附著之物的 實際大小
+    # *** Img+IMU+GPS 列出 圖像中占比大的一些相似物體 和長寬高，等待QML輸入要儲存的圖片名稱，進TEMPLATE_DIR資料夾。計算相似物品的 單一數量的 實際大小
+    def Img_IMU_GPS():
+        # 讀取設備
+
+
+    # ***讀取貨品欄的 已記錄的 物品，無紀錄的列出
     def load_img_whz(self):
         # *** 限制大小
         whz=[]
         for file in os.listdir(TEMPLATE_DIR):
             match = re.match( r"(.*)_W(\d+)_H(\d+)_Z([\d\.]+)\.png", file)
-            if not match:
+            if not match or not self.selected(file):
                 continue
-            if self.selected(file):
-                # 錨定物 file
-                # *** 找附著之物
-                # *** 並計算實際大小，利用
+            # ****讀取貨品欄的 已記錄的 物品，無紀錄的列出
+
+            whz.append({
                 "obj_name": match.group(1),
                 "w": int(match.group(2)),
                 "h": int(match.group(3)),
-                "real_h": float(match.group(4))
-        return # 疊加實際大小
+                "z": float(match.group(4))
+            })
+            # whz.w*whz.h*whz.z
+        return whz # 疊加實際大小
 
     # *** python OCR找到該目標時計算該目標附在其物之上，利用目標的物件名稱紀錄的，計算其物的實際大小
     # *** save_path圖片 重新命名(固定格式有長寬高)，在判斷物體實際大小模式時，在TEMPLATE_DIR中找到(固定格式有長寬高)save_path圖片，全部找一次，找到則分析附在何物、計算該物實際大小
