@@ -695,12 +695,16 @@ class TargetExtractor:
         cv2.imwrite(save_path, self.extracted)
         print(f"✅ 已儲存 {save_path}")
 
+    # *** 等待QML設定
     # *** Img+IMU+GPS 列出 圖像中占比大的一些相似物體 和長寬高，等待QML輸入要儲存的圖片名稱，進TEMPLATE_DIR資料夾。計算相似物品的 單一數量的 實際大小
     def Img_IMU_GPS():
         # 讀取設備
 
 
-    # ***讀取貨品欄的 已記錄的 物品，無紀錄的列出
+    # *** 讀取畫面中的 已記錄的 物品(圖像)，全部列出或列出指定物品，無紀錄的列出
+
+
+    # ***讀取貨品欄的 已記錄的 物品(文字)，無紀錄的列出
     def load_img_whz(self):
         # *** 限制大小
         whz=[]
