@@ -696,9 +696,74 @@ class TargetExtractor:
         print(f"✅ 已儲存 {save_path}")
 
     # *** 等待QML設定
-    # *** Img+IMU+GPS 列出 圖像中占比大的一些相似物體 和長寬高，等待QML輸入要儲存的圖片名稱，進TEMPLATE_DIR資料夾。計算相似物品的 單一數量的 實際大小
+    # *** Img+GPS 列出 圖像中占比大的一些相似物體 和長寬高，等待QML輸入要儲存的圖片名稱，進TEMPLATE_DIR資料夾。計算相似物品的 單一數量的 實際大小
     def Img_IMU_GPS():
-        # 讀取設備
+        # 讀取設備，GPS得高度尺可以和地面參照，GPS平移得橫向尺在空中至少要移動20m，才可以參照
+        # 1️⃣ 讀相機內參
+        val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        val cameraId = cameraManager.cameraIdList[0]
+        val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+
+        val focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
+        val sensorSize = characteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE)
+
+        val fx = focalLengths[0] / sensorSize!!.width * imageWidth
+        val fy = focalLengths[0] / sensorSize.height * imageHeight
+        val cx = imageWidth / 2f
+        val cy = imageHeight / 2f
+        val K = arrayOf(arrayOf(fx,0,cx), arrayOf(0,fy,cy), arrayOf(0,0,1))
+
+        # 2️⃣ 讀 GPS
+        val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val location1 = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+        val C1 = doubleArrayOf(location1.latitude, location1.longitude, location1.altitude)
+
+        val location2 = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+        val C2 = doubleArrayOf(location2.latitude, location2.longitude, location2.altitude)
+
+        # 3️⃣ 拍兩張照片，取得影像點 (ORB)
+        val orb = ORB.create(3000)
+        val kp1 = MatOfKeyPoint()
+        val kp2 = MatOfKeyPoint()
+        val des1 = Mat()
+        val des2 = Mat()
+        orb.detectAndCompute(img1, Mat(), kp1, des1)
+        orb.detectAndCompute(img2, Mat(), kp2, des2)
+
+        val bf = BFMatcher(NORM_HAMMING, true)
+        val matches = bf.match(des1, des2)
+
+        val pts1 = matches.map { kp1.toArray()[it.queryIdx].pt }
+        val pts2 = matches.map { kp2.toArray()[it.trainIdx].pt }
+
+        # 4️⃣ Essential Matrix + recoverPose (旋轉不用管)
+        val E = Calib3d.findEssentialMat(pts1, pts2, K, RANSAC, 0.999, 1.0)
+        val R = Mat()
+        val t = Mat()
+        Calib3d.recoverPose(E, pts1, pts2, K, R, t)
+
+        # 5️⃣ GPS 當尺
+        val baseline = doubleArrayOf(C2[0]-C1[0], C2[1]-C1[1], C2[2]-C1[2])
+
+        # 6️⃣ Triangulate
+        val P1 = Mat.eye(3,4,CV_64F)
+        val P2 = Mat(3,4,CV_64F)
+        # P2 = [R | -R*t]
+        Core.hconcat(listOf(R, -R * Mat(baseline)), P2)
+
+        val pts4D = Mat()
+        Calib3d.triangulatePoints(P1, P2, pts1, pts2, pts4D)
+        val pts3D = pts4D.rowRange(0,3) / pts4D.row(3)
+
+        # 7️⃣ 計算物體長寬高
+        val objPts = pts3D.submat(objIndices)
+        val sizeX = Core.minMaxLoc(objPts.col(0)).maxVal - Core.minMaxLoc(objPts.col(0)).minVal
+        val sizeY = Core.minMaxLoc(objPts.col(1)).maxVal - Core.minMaxLoc(objPts.col(1)).minVal
+        val sizeZ = Core.minMaxLoc(objPts.col(2)).maxVal - Core.minMaxLoc(objPts.col(2)).minVal
+        println("L,W,H (m): $sizeX, $sizeY, $sizeZ")
+
+
+        # *** 儲存3D模型
 
 
     # *** 讀取畫面中的 已記錄的 物品(圖像)，全部列出或列出指定物品，無紀錄的列出
@@ -1116,6 +1181,7 @@ class EventMonitor:
 
 
 # ***真AI談話
+# *** 延續話題
 # 引導對話更深層發展
 # ，分享經歷
 # ，關注對方的興趣或重點
@@ -1127,7 +1193,11 @@ class EventMonitor:
 # ，開放式提問
 # ，暗示下次相遇
 
+# *** 找到話題
 # 關鍵詞頻率、情緒前後詞、關聯性詞、NER 命名實體技術
+
+# * 被理解(有趣不是外在，而是內在被打開)、被挑動(有趣不是結果，是過程中的心動)、被延伸(有趣不是熱鬧，是有回應感)
+# ====
 
 # *** 光子發射時序以分段、電場以能階變色，光子測距和計算誤差矯正量
 # 
