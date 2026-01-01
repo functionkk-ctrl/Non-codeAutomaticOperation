@@ -127,6 +127,7 @@ def locate_template_orb(name, sort=1, num=1, extractor=False):
         pts = pts[:num] if num > 0 else pts[num:]
     return pts
 
+# *** 多張圖像中偵測目標圖像
 
 def locate_template_orb_cached(obj, name, sort=1, num=1):
     if name in obj.cache:
@@ -698,7 +699,8 @@ class TargetExtractor:
     # *** 等待QML設定
     # *** Img+GPS 列出 圖像中占比大的一些相似物體 和長寬高，等待QML輸入要儲存的圖片名稱，進TEMPLATE_DIR資料夾。計算相似物品的 單一數量的 實際大小
     def Img_IMU_GPS():
-        # 讀取設備，GPS得高度尺可以和地面參照，GPS平移得橫向尺在空中至少要移動20m，才可以參照
+        # 使用手則:GPS得高度尺可以和地面參照不需要移動，GPS平移得橫向尺在空中至少要移動20m，才可以正確參照
+        # 讀取設備資訊有圖像、GPS，分析出圖像中的大占比物體，判斷使用者是否在空中，這些物體計算出單一數量的長寬高
         # 1️⃣ 讀相機內參
         val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
         val cameraId = cameraManager.cameraIdList[0]
@@ -761,6 +763,72 @@ class TargetExtractor:
         val sizeY = Core.minMaxLoc(objPts.col(1)).maxVal - Core.minMaxLoc(objPts.col(1)).minVal
         val sizeZ = Core.minMaxLoc(objPts.col(2)).maxVal - Core.minMaxLoc(objPts.col(2)).minVal
         println("L,W,H (m): $sizeX, $sizeY, $sizeZ")
+
+        # V2 
+        // ===== 1️⃣ 讀取 GPS =====
+        val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val loc: Location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+            ?: return
+
+        val lat = loc.latitude
+        val lon = loc.longitude
+        val alt = loc.altitude        // 高度尺（Z）
+        val speed = loc.speed         // m/s
+
+        // ===== 2️⃣ 判斷是否在空中 =====
+        // 工程判斷：高度 + 速度（不搞 AI）
+        val isAirborne = alt > 20.0 && speed > 5.0
+
+        // ===== 3️⃣ 讀取影像 =====
+        // img: OpenCV Mat（CameraX / Camera2 轉過來）
+        val img: Mat = currentFrameMat
+
+        // ===== 4️⃣ 找「大占比物體」 =====
+        // 不分類、不追蹤，只找最大輪廓
+        val gray = Mat()
+        val bin = Mat()
+        Imgproc.cvtColor(img, gray, Imgproc.COLOR_BGR2GRAY)
+        Imgproc.threshold(gray, bin, 0.0, 255.0,
+            Imgproc.THRESH_BINARY + Imgproc.THRESH_OTSU)
+
+        val contours = ArrayList<MatOfPoint>()
+        Imgproc.findContours(
+            bin, contours, Mat(),
+            Imgproc.RETR_EXTERNAL,
+            Imgproc.CHAIN_APPROX_SIMPLE
+        )
+
+        if (contours.isEmpty()) return
+
+        val mainContour = contours.maxBy {
+            Imgproc.contourArea(it)
+        } ?: return
+
+        val rect = Imgproc.boundingRect(mainContour)
+
+        // ===== 5️⃣ 僅在「空中」才使用橫向尺 =====
+        if (!isAirborne) return
+
+        // ===== 6️⃣ 尺度換算 =====
+        // 高度直接當 Z 尺
+        val Z = alt    // meters
+
+        // 相機視角（來自設備，實際可從 CameraCharacteristics 讀）
+        val hfov = Math.toRadians(60.0)   // 水平視角（例）
+        val vfov = Math.toRadians(45.0)
+
+        val imgW = img.cols().toDouble()
+        val imgH = img.rows().toDouble()
+
+        // 像素 → 實際尺寸（幾何，不是 SLAM）
+        val W = 2 * Z * Math.tan(hfov / 2) * (rect.width / imgW)
+        val H = 2 * Z * Math.tan(vfov / 2) * (rect.height / imgH)
+
+        // 長度：取寬高中較大者（工程定義）
+        val L = maxOf(W, H)
+
+        // ===== 7️⃣ 輸出唯一結果 =====
+        Log.i("SIZE", "L,W,H (m) = $L, $W, $H")
 
 
         # *** 儲存3D模型
@@ -1197,6 +1265,10 @@ class EventMonitor:
 # 關鍵詞頻率、情緒前後詞、關聯性詞、NER 命名實體技術
 
 # * 被理解(有趣不是外在，而是內在被打開)、被挑動(有趣不是結果，是過程中的心動)、被延伸(有趣不是熱鬧，是有回應感)
+    # 打開內在
+    # 過程中的心動
+    # 回應感不是熱鬧
+
 # ====
 
 # *** 光子發射時序以分段、電場以能階變色，光子測距和計算誤差矯正量
