@@ -128,7 +128,6 @@ def locate_template_orb(name, sort=1, num=1, extractor=False):
     return pts
 
 # *** 多張圖像中偵測目標圖像
-
 def locate_template_orb_cached(obj, name, sort=1, num=1):
     if name in obj.cache:
         pos = obj.cache[name]
@@ -699,8 +698,8 @@ class TargetExtractor:
     # *** 等待QML設定
     # *** Img+GPS 列出 圖像中占比大的一些相似物體 和長寬高，等待QML輸入要儲存的圖片名稱，進TEMPLATE_DIR資料夾。計算相似物品的 單一數量的 實際大小
     def Img_IMU_GPS():
-        # 使用手則:GPS得高度尺可以和地面參照不需要移動，GPS平移得橫向尺在空中至少要移動20m，才可以正確參照
-        # 讀取設備資訊有圖像、GPS，分析出圖像中的大占比物體，判斷使用者是否在空中，這些物體計算出單一數量的長寬高
+        # *** 先拓樸後幾何，穩定拓樸結構
+
         # 1️⃣ 讀相機內參
         val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
         val cameraId = cameraManager.cameraIdList[0]
@@ -829,7 +828,7 @@ class TargetExtractor:
 
         // ===== 7️⃣ 輸出唯一結果 =====
         Log.i("SIZE", "L,W,H (m) = $L, $W, $H")
-
+        
 
         # *** 儲存3D模型
 
@@ -1268,6 +1267,34 @@ class EventMonitor:
     # 打開內在
     # 過程中的心動
     # 回應感不是熱鬧
+
+# ====
+# *** 自習
+# ORB + 資料夾上層、資料(同層)
+#  *** 同層融合的拓樸結構和orb 給ORB 找到上層為何
+# *** 同層個別的圖 迴圈遍歷ORB 其餘全部同層的圖 得到同層之間的關係
+
+# *.txt
+# F.absorb_count      # 成功吸收新圖的次數
+# F.reject_count      # 被比較但從未勝出的次數
+# F.last_hit_time     # 上次被選為最高匹配的時間
+
+# 三大算法
+# 滅世
+    # reject_count /absorb_count<?% and last_hit_time>? 移除上層，部分同層 不在預言中時 移除
+
+# 創世
+    # 新圖像 找不到 上層時建立 上層，且不在 預言中時才 建立上層
+
+# 預言 # 不是知道未來是什麼，而是知道未來「只能」怎麼發生。
+    # 節省上層空間占用
+        # *** 攝影獲得新圖像時，計算新圖像與上一張圖像的ORB相似度，過高的刪除，不高的保留
+            # ** 定期讀取是否有新同層，若有則更快讀取，last_hit_time<上次讀取的時間差 有無更新的同層，若無才全部處理是否刪除 部分同層
+    # *** 預言 未拍攝的同層
+        # ** 同層之間關係的變化 算出規律，進而算出未拍攝的同層
+            # *** 生成未拍攝的同層
+    # *** 預言對上層命名，參照語言辭典
+        # *** 從 上層之間 避開重疊的拓樸結構命名
 
 # ====
 
