@@ -122,7 +122,7 @@ def locate_template_orb(name, sort=1, num=1, extractor=False):
     elif isinstance(sort, int):
         idx = sort - 1 if sort > 0 else sort
         return [pts[idx]] if -len(pts) <= idx < len(pts) else []
-    # 處理 num（正數取前 num，負數取倒數 abs(num)）
+    # 處理 num(正數取前 num，負數取倒數 abs(num)）
     if num != 1:
         pts = pts[:num] if num > 0 else pts[num:]
     return pts
@@ -172,7 +172,7 @@ def locate_text(keyword, sort=1, num=1, classA=None):
         if DEBUG:
             print(f"⚠️ 找不到匹配點：{keyword}。若目標在場則建議")
         return None
-    # 排序（左上優先）
+    # 排序(左上優先）
     pts.sort(key=lambda p: (p[0], p[1]))
     # sort 整數 → 指定位置；奇偶 → 篩選；否則回傳前 num 個 # 序列[start:end:step]
     if sort == "奇數":
@@ -182,7 +182,7 @@ def locate_text(keyword, sort=1, num=1, classA=None):
     elif isinstance(sort, int):
         idx = sort - 1 if sort > 0 else sort
         return pts[idx] if -len(pts) <= idx < len(pts) else None
-    # 處理 num（正數取前 num，負數取倒數 abs(num)）
+    # 處理 num(正數取前 num，負數取倒數 abs(num)）
     if num != 1:
         pts = pts[:num] if num > 0 else pts[num:]
     if classA is None:
@@ -248,7 +248,7 @@ def locate_text(keyword, sort=1, num=1, classA=None):
                     "goods":""
                 })
             addresses.sort(key=lambda x: x["distance"])
-            # 建立 manifest 分支（近 / 遠） # 用戶說分支，也有可能是說其他東西
+            # 建立 manifest 分支(近 / 遠） # 用戶說分支，也有可能是說其他東西
             manifest_near = [
                 {"address": addresses[i]["address"], "goods": addresses[i]["goods"]}
                 for i in range(len(addresses)-1)  # 用 index 才能拿下一筆
@@ -355,7 +355,7 @@ class InputCommand(QObject):
                     self.focus_window(window)
                     time.sleep(0.5)
                 # *鍵盤滑鼠
-                # -*- coding: utf-8 -*- # 滑鼠 + 鍵盤全功能示例（不含監聽） import pyautogui, keyboard, time from pynput.mouse import Button, Controller as MouseController from pynput.keyboard import Key, Controller as KeyController # pyautogui 全域設定 pyautogui.FAILSAFE = True pyautogui.PAUSE = 0.1 # ==== 滑鼠控制 ==== # 位置資訊 screen_w, screen_h = pyautogui.size() print("Screen:", screen_w, screen_h) print("Mouse position:", pyautogui.position()) # 基本移動 pyautogui.moveTo(100, 100, duration=0.3) pyautogui.moveRel(50, 0, duration=0.2) # 點擊與雙擊 pyautogui.click() pyautogui.doubleClick() pyautogui.rightClick() pyautogui.middleClick() pyautogui.click(300, 300) # 按下 / 放開（可長按） pyautogui.mouseDown(button='left') time.sleep(0.5) pyautogui.mouseUp(button='left') # 拖曳操作 pyautogui.moveTo(400, 400) pyautogui.mouseDown() pyautogui.moveTo(600, 600, duration=1.0) pyautogui.mouseUp() # 滾輪 pyautogui.scroll(300) pyautogui.scroll(-300) # ==== 鍵盤控制 ==== # 輸入文字 pyautogui.typewrite("Hello from pyautogui!", interval=0.05) # 單鍵操作 pyautogui.press("enter") pyautogui.press("tab") pyautogui.press("backspace") # 組合鍵 pyautogui.hotkey("ctrl", "s") pyautogui.hotkey("alt", "f4") # 拆解按下與放開 pyautogui.keyDown("shift") pyautogui.press("a") pyautogui.keyUp("shift") # ==== 使用 pynput 進階控制 ==== mouse = MouseController() keyboard_ctrl = KeyController() # 滑鼠精確控制 mouse.position = (200, 200) mouse.press(Button.left) time.sleep(0.3) mouse.release(Button.left) mouse.press(Button.right) mouse.release(Button.right) mouse.scroll(0, 3) # 鍵盤精確控制 keyboard_ctrl.press('a') keyboard_ctrl.release('a') keyboard_ctrl.press(Key.enter) keyboard_ctrl.release(Key.enter) # ==== 使用 keyboard 模組 ==== keyboard.press_and_release('ctrl+c') keyboard.write('Typed by keyboard module!', delay=0.05) if keyboard.is_pressed('esc'): print("ESC pressed!")
+                # -*- coding: utf-8 -*- # 滑鼠 + 鍵盤全功能示例(不含監聽） import pyautogui, keyboard, time from pynput.mouse import Button, Controller as MouseController from pynput.keyboard import Key, Controller as KeyController # pyautogui 全域設定 pyautogui.FAILSAFE = True pyautogui.PAUSE = 0.1 # ==== 滑鼠控制 ==== # 位置資訊 screen_w, screen_h = pyautogui.size() print("Screen:", screen_w, screen_h) print("Mouse position:", pyautogui.position()) # 基本移動 pyautogui.moveTo(100, 100, duration=0.3) pyautogui.moveRel(50, 0, duration=0.2) # 點擊與雙擊 pyautogui.click() pyautogui.doubleClick() pyautogui.rightClick() pyautogui.middleClick() pyautogui.click(300, 300) # 按下 / 放開(可長按） pyautogui.mouseDown(button='left') time.sleep(0.5) pyautogui.mouseUp(button='left') # 拖曳操作 pyautogui.moveTo(400, 400) pyautogui.mouseDown() pyautogui.moveTo(600, 600, duration=1.0) pyautogui.mouseUp() # 滾輪 pyautogui.scroll(300) pyautogui.scroll(-300) # ==== 鍵盤控制 ==== # 輸入文字 pyautogui.typewrite("Hello from pyautogui!", interval=0.05) # 單鍵操作 pyautogui.press("enter") pyautogui.press("tab") pyautogui.press("backspace") # 組合鍵 pyautogui.hotkey("ctrl", "s") pyautogui.hotkey("alt", "f4") # 拆解按下與放開 pyautogui.keyDown("shift") pyautogui.press("a") pyautogui.keyUp("shift") # ==== 使用 pynput 進階控制 ==== mouse = MouseController() keyboard_ctrl = KeyController() # 滑鼠精確控制 mouse.position = (200, 200) mouse.press(Button.left) time.sleep(0.3) mouse.release(Button.left) mouse.press(Button.right) mouse.release(Button.right) mouse.scroll(0, 3) # 鍵盤精確控制 keyboard_ctrl.press('a') keyboard_ctrl.release('a') keyboard_ctrl.press(Key.enter) keyboard_ctrl.release(Key.enter) # ==== 使用 keyboard 模組 ==== keyboard.press_and_release('ctrl+c') keyboard.write('Typed by keyboard module!', delay=0.05) if keyboard.is_pressed('esc'): print("ESC pressed!")
                 # *運算
                 # -*- coding: utf-8 -*- import math, random, statistics, decimal, fractions, cmath, numpy as np # === 基本四則 === a, b = 10, 3 print(a + b, a - b, a * b, a / b, a // b, a % b, a ** b) # === 比較與邏輯 === print(a > b, a < b, a == b, a != b, a >= b, a <= b) # === 內建函式 === print(abs(-5), round(3.14159, 2), pow(2, 5), divmod(17, 3), sum([1,2,3,4])) # === math 模組 === print(math.sqrt(16), math.pow(2, 10), math.factorial(5)) print(math.sin(math.pi/2), math.cos(0), math.tan(math.pi/4)) print(math.degrees(math.pi), math.radians(180)) print(math.log(100, 10), math.log2(8), math.exp(1)) print(math.ceil(2.1), math.floor(2.9), math.trunc(-3.8)) print(math.gcd(24, 36), math.isclose(0.1+0.2, 0.3)) # === 統計 === data = [2, 3, 5, 7, 11] print(statistics.mean(data), statistics.median(data), statistics.pstdev(data)) # === 隨機 === print(random.random(), random.randint(1,10), random.uniform(1.5,5.5)) print(random.choice(['A','B','C'])) items = [1,2,3,4]; random.shuffle(items); print(items) # === decimal 高精度運算 === decimal.getcontext().prec = 10 x = decimal.Decimal('1.1') + decimal.Decimal('2.2') print(x)  # 精確加法 # === fractions 分數 === f1 = fractions.Fraction(1,3); f2 = fractions.Fraction(1,6) print(f1 + f2, f1 * f2) # === 複數 === z1, z2 = 2+3j, 1-1j print(z1 + z2, z1 * z2, abs(z1), cmath.phase(z1)) # === numpy 高階運算 === arr = np.array([1,2,3,4,5]) print(arr + 2, arr * 3, np.mean(arr), np.std(arr)) print(np.sin(arr), np.dot([1,2,3],[4,5,6]))
                 for pa in path.split(":"):
@@ -510,7 +510,7 @@ class InputCommand(QObject):
                                 # 改為差異統計法，不需整張畫面比較 np.array_equal
                                 diff = np.mean(cv2.absdiff(curr_img, prev_img))
                                 if diff < 1.0:  # 可調閾值：<1 代表幾乎沒變
-                                    print(f"沒辦法找到 {pa}（畫面未變化）")
+                                    print(f"沒辦法找到 {pa}(畫面未變化）")
                                 # 避免重疊記憶體引用
                                 prev_img = curr_img.copy()
             except ValueError:
@@ -673,7 +673,7 @@ class TargetExtractor:
         mask2 = np.where((mask == cv2.GC_FGD) | (
             mask == cv2.GC_PR_FGD), 255, 0).astype('uint8')
 
-        # 形態學清理（去噪，柔邊）
+        # 形態學清理(去噪，柔邊）
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
         mask2 = cv2.morphologyEx(mask2, cv2.MORPH_OPEN, kernel)  # 去小噪點
         mask2 = cv2.morphologyEx(mask2, cv2.MORPH_CLOSE, kernel)  # 填補空洞
@@ -685,7 +685,7 @@ class TargetExtractor:
             if stats[i, cv2.CC_STAT_AREA] < 80:
                 mask2[labels == i] = 0
 
-        # 合併圖像與alpha通道（透明度）
+        # 合併圖像與alpha通道(透明度）
         b, g, r = cv2.split(self.image)
         alpha = mask2
         self.extracted = cv2.merge([b, g, r, alpha])
@@ -771,15 +771,15 @@ class TargetExtractor:
 
         val lat = loc.latitude
         val lon = loc.longitude
-        val alt = loc.altitude        // 高度尺（Z）
+        val alt = loc.altitude        // 高度尺(Z）
         val speed = loc.speed         // m/s
 
         // ===== 2️⃣ 判斷是否在空中 =====
-        // 工程判斷：高度 + 速度（不搞 AI）
+        // 工程判斷：高度 + 速度(不搞 AI）
         val isAirborne = alt > 20.0 && speed > 5.0
 
         // ===== 3️⃣ 讀取影像 =====
-        // img: OpenCV Mat（CameraX / Camera2 轉過來）
+        // img: OpenCV Mat(CameraX / Camera2 轉過來）
         val img: Mat = currentFrameMat
 
         // ===== 4️⃣ 找「大占比物體」 =====
@@ -812,18 +812,18 @@ class TargetExtractor:
         // 高度直接當 Z 尺
         val Z = alt    // meters
 
-        // 相機視角（來自設備，實際可從 CameraCharacteristics 讀）
-        val hfov = Math.toRadians(60.0)   // 水平視角（例）
+        // 相機視角(來自設備，實際可從 CameraCharacteristics 讀）
+        val hfov = Math.toRadians(60.0)   // 水平視角(例）
         val vfov = Math.toRadians(45.0)
 
         val imgW = img.cols().toDouble()
         val imgH = img.rows().toDouble()
 
-        // 像素 → 實際尺寸（幾何，不是 SLAM）
+        // 像素 → 實際尺寸(幾何，不是 SLAM）
         val W = 2 * Z * Math.tan(hfov / 2) * (rect.width / imgW)
         val H = 2 * Z * Math.tan(vfov / 2) * (rect.height / imgH)
 
-        // 長度：取寬高中較大者（工程定義）
+        // 長度：取寬高中較大者(工程定義）
         val L = maxOf(W, H)
 
         // ===== 7️⃣ 輸出唯一結果 =====
@@ -1246,10 +1246,20 @@ class EventMonitor:
                     evt["Cost"] = input(
                         f"{img}{stage}成本太高 時的應對作法：").strip() or evt.get("Cost")
 
-# Noēsis（諾埃西斯）希臘文 νόησις。Perceptive Structural Language（PSL）。自己用 World-Formation Language（WFL）
+# Noēsis(諾埃西斯）希臘文 νόησις。Perceptive Structural Language(PSL）。自己用 World-Formation Language(WFL）
 
 # 我正在創建 新社交，因為聊天機器人好像很賺錢。
-    # ******三大算法的協作，交流時以有趣為主、自習為參照、16核為輔；觀察時以自習為主、16核為人著想、以有趣為輔。以屬性資料夾 組織全部上層 怎麼交流
+    # ******三元(自習、有趣、16核)的協作，交流時以 有趣 為主、 自習 為參照、 16核 為輔；觀察時以 自習 為主、有趣 為參照、 16核 為輔。以屬性資料夾 組織全部上層 怎麼交流
+    # 主導
+        # 支配全部協作對象，要不要執行或更改行為，儲存進 交流
+    # 參照
+        # 此行為在 主導的目標 和 參照的目標 的偏移量，給主導
+    # 輔助
+        # 此行為缺則補；不缺則優化
+    # 交流資料夾
+        # 依照 屬性 命名，可覆寫、可回朔 版本
+        # 我的交流 和 Noēsis(諾埃西斯)的三大(自習、有趣、16核)的交流 放在一起且有關係
+
 # *** 延續話題
 # 引導對話更深層發展
 # ，分享經歷
@@ -1291,7 +1301,7 @@ class EventMonitor:
     # 疆域:同層聚攏
         # *** 同層各自的圖像 迴圈遍歷ORB 其餘全部同層的圖 得到同層之間的關係，關係近的代表同一個疆域
     # 開天:屬性資料夾(語言辭典)不可變
-        # 確立最高層屬性空間（語言辭典）
+        # 確立最高層屬性空間(語言辭典）
         # 屬性僅作為索引維度，不承載實例
         # 維度一經確立，不增、不刪、不漂移
         # *** 同層融合的拓樸結構和orb 給ORB 找到上層為何。這是上層的 結構級命名
@@ -1314,12 +1324,12 @@ class EventMonitor:
             # *** 夢境，多組屬性交叉 生成虛擬的 未拍攝的同層
                 # 寫回:一般新圖像 創世
                 # 刪除:預設為全部。一般新圖像 滅式
-                # 運用(託夢):用戶創建一組上層和同層為目標，作夢時就會生成虛擬同層，完善目標
+                # 運用(託夢):用戶創建一組上層和同層為目標，作夢時就會生成虛擬同層，逐漸完善目標
     # *** 預言對 上層命名，參照屬性資料夾(語言辭典)
         # *** 從 上層之間 以互相不重疊的拓樸結構 來命名
 
 # =====
-# 真正乾淨的 16 核（每核獨立可運作）
+# 真正乾淨的 16 核(每核獨立可運作）
     # 主流程決策核 – 決定當下執行哪個任務
     # 數量控制核 – 判斷目前物件數量與目標差距
     # 節奏維持核 – 控制動作頻率與節拍
