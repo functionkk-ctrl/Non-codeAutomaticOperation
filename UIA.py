@@ -61,6 +61,7 @@ TEMPLATE_DIRS = {
     "world": os.path.join(base_path, "world"),
     "communication": os.path.join(base_path, "communication"),
     "dark_matter": os.path.join(base_path, "dark_matter"),
+    "thinking": os.path.join(base_path, "thinking"), # 中轉站
 }
 MATCH_THRESHOLD = 0.85
 LANGS = "eng+chi_sim"
@@ -75,31 +76,35 @@ firebase_admin.initialize_app(cred, {
 
 
 def resource_info(key):
-    files = [os.path.join(TEMPLATE_DIRS[key], f)
-        for f in os.listdir(TEMPLATE_DIRS[key])
-        if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+    files = [os.path.join(TEMPLATE_DIRS[key], f) # 資料夾
+        for f in os.listdir(TEMPLATE_DIRS[key]) # 資料
+        if f.lower().endswith(('.png', '.jpg', '.jpeg'))] # 檔案格式
     kp_desc = []
     for file in files:
         img = cv2.imread(file, cv2.IMREAD_GRAYSCALE)
         kp, des = orb.detectAndCompute(img, None)
-        kp_desc.append((file, kp, des))
+        kp_desc.append((file, kp, des))  # 資料原圖,像數點位址,強度
     return kp_desc
 
-def orb_matches(a,b, th=50):
+def orb_matches_write(a,b, th=50):
     scores =[]
-    for a_file, a_kp, a_des in resource_info(a):
+    for a_file, a_kp, a_des in resource_info(a): # 資料
         matches_all=[]
-        for b_file, b_kp, b_des in resource_info(b):
+        for b_file, b_kp, b_des in resource_info(b): # 資料
             if b_des is None:
                 continue
             matches = bf.match(a_des, b_des)
-            matches = sorted(matches, key=lambda x: x.distance)
+            matches = sorted(matches, key=lambda x: x.distance) # ***改變排序和數值?
             matches_all.extend(matches)  # 收集所有比對結果
-        good_matches = [m for m in matches_all if m.distance < th]  # 距離小於 threshold
-        score = len(good_matches) / len(a_kp) if a_kp else 0
-        scores.append(score)
-    # 回傳 a 對 b 的整體相似度
-    return sum(scores) / len(scores) if scores else 0
+        good_matches = [m for m in matches_all if m.distance < th]  # 粒子
+        # 直接把篩選後的匹配點畫在圖上
+        img_matches = cv2.drawMatches(a_file, a_kp, b_file, b_kp, good_matches, None, flags=2)
+        score = len(good_matches) / len(a_kp) if a_kp else 0 # 波
+        if score>th:
+            cv2.imwrite(TEMPLATE_DIRS["thinking"], img_matches)
+        
+        # scores.append(score)
+    # a 對 b 的整體相似度:print(sum(scores) / len(scores) if scores else 0)
 
 
 def watchdog():
@@ -1452,13 +1457,15 @@ class Noēsis:
             # c=上層(全部，提醒不含獨立資料夾)，代表畫布
             # ac= c(NER 用戶a交流)，代表a在畫布上畫畫 
             # bc= c(NER Noēsis交流)，代表Noēsis在畫布上畫畫
-            # ** 和python一樣用法
+            # *keyword 和python一樣用法
         # NER 命名實體技術(預設 c(全部)):讀取 屬性 資料夾 ORB比對 攝影中的全部圖像(用戶手動儲存完整文本)，拓樸結構 相似度最高
         # 關鍵詞頻率:NER 出現次數/文本總字數>?%
         # 情緒前後詞:NER情緒 前後多少詞內 出現的詞
         # 關聯性詞: NER 的關係近的詞
         # p.s.NER就像粒子、關聯就像波
         def NER:
+            orb_matches_write(用戶 communication,"attributes")
+            orb_matches_write("live_capture","attributes")  
             pass
         def 關聯性詞:
             pass
@@ -1467,13 +1474,19 @@ class Noēsis:
         def 情緒前後詞:
             pass
         def ac:
-            orb_matches(用戶 communication,"world")
+            if os.path.isfile(TEMPLATE_DIRS["thinking"]) or os.path.islink(TEMPLATE_DIRS["thinking"]):
+                os.unlink(TEMPLATE_DIRS["thinking"]) 
+            orb_matches_write(用戶 communication,"attributes")
+            orb_matches_write("live_capture","attributes")
+            orb_matches_write("thinking","world")
         def bc:
-            orb_matches(Noēsis communication,"world")
-
+            orb_matches_write(Noēsis communication,"world")
+            orb_matches_write("live_capture","attributes")
+            orb_matches_write("thinking","world")
         def 暫定:
             # 讀 live_capture (ORB比對 讀 attributes 再ORB比對 讀world)****
-            orb_matches(orb_matches("live_capture","attributes"),"world")
+            orb_matches_write("live_capture","attributes")
+            orb_matches_write("thinking","world")
         def 引導對話更深層發展:
             # Noēsis 交流回去時， +bc(關聯 關鍵詞頻率(低))+ac
             pass
