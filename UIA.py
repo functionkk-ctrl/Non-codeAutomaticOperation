@@ -54,9 +54,14 @@ Clock.schedule_interval(read_imu, 1/50)
 
 # --- 基礎設定 --- python "D:\Python\Non-codeAutomaticOperation\UIA.py"
 pytesseract.pytesseract.tesseract_cmd = r"C:\Users\USER\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
-base_path = getattr(sys, '_MEIPASS', os.path.dirname(
-    os.path.abspath(__file__)))
-TEMPLATE_DIR = os.path.join(base_path, 'templates')
+base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+TEMPLATE_DIRS = {
+    "live_capture" : os.path.join(base_path, 'live_capture'),
+    "attributes": os.path.join(base_path, "attributes"),
+    "world": os.path.join(base_path, "world"),
+    "communication": os.path.join(base_path, "communication"),
+    "dark_matter": os.path.join(base_path, "dark_matter"),
+}
 MATCH_THRESHOLD = 0.85
 LANGS = "eng+chi_sim"
 DEBUG = True
@@ -69,11 +74,32 @@ firebase_admin.initialize_app(cred, {
 })
 
 
-def resource_path(relative_path):
-    # 在 EXE 時讀取 sys._MEIPASS，否則讀原路徑
-    if hasattr(sys, '_MEIPASS'):
-        return os.path.join(sys._MEIPASS, relative_path)
-    return os.path.join(os.path.abspath("."), relative_path)
+def resource_info(key):
+    files = [os.path.join(TEMPLATE_DIRS[key], f)
+        for f in os.listdir(TEMPLATE_DIRS[key])
+        if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+    kp_desc = []
+    for file in files:
+        img = cv2.imread(file, cv2.IMREAD_GRAYSCALE)
+        kp, des = orb.detectAndCompute(img, None)
+        kp_desc.append((file, kp, des))
+    return kp_desc
+
+def orb_matches(a,b, th=50):
+    scores =[]
+    for a_file, a_kp, a_des in resource_info(a):
+        matches_all=[]
+        for b_file, b_kp, b_des in resource_info(b):
+            if b_des is None:
+                continue
+            matches = bf.match(a_des, b_des)
+            matches = sorted(matches, key=lambda x: x.distance)
+            matches_all.extend(matches)  # 收集所有比對結果
+        good_matches = [m for m in matches_all if m.distance < th]  # 距離小於 threshold
+        score = len(good_matches) / len(a_kp) if a_kp else 0
+        scores.append(score)
+    # 回傳 a 對 b 的整體相似度
+    return sum(scores) / len(scores) if scores else 0
 
 
 def watchdog():
@@ -89,10 +115,10 @@ def screenshot():
     return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
 
-def locate_template_orb(name, sort=1, num=1, extractor=False):
+def locate_template_orb(name, sort=1, num=1, extractor=False,dir=TEMPLATE_DIRS["img"]):
     """ORB 特徵匹配找圖像 screenshot() → 灰階 """
     name = name.split("<img>")[1]
-    path = os.path.join(TEMPLATE_DIR, f"{name}.png")
+    path = os.path.join(dir, f"{name}.png")
     if not os.path.exists(path):
         return None
     tpl = cv2.imread(path, 0)
@@ -139,7 +165,7 @@ def locate_template_orb_cached(obj, name, sort=1, num=1):
     return pos
 
 
-def validate_cache(name, pos, tolerance=10):
+def validate_cache(name, pos, tolerance=10,dir=TEMPLATE_DIRS["img"]):
     screen_gray = cv2.cvtColor(screenshot(), cv2.COLOR_BGR2GRAY)
     h, w = screen_gray.shape[:2]
     x, y = pos
@@ -147,7 +173,7 @@ def validate_cache(name, pos, tolerance=10):
     x1, y1 = max(x - tolerance, 0), max(y - tolerance, 0)
     x2, y2 = min(x + tolerance, w), min(y + tolerance, h)
     region = screen_gray[y1:y2, x1:x2]
-    tpl = cv2.imread(os.path.join(TEMPLATE_DIR, f"{name}.png"), 0)
+    tpl = cv2.imread(os.path.join(dir, f"{name}.png"), 0)
     if tpl is None or region.size == 0:
         return False
     res = cv2.matchTemplate(region, tpl, cv2.TM_CCOEFF_NORMED)
@@ -645,11 +671,11 @@ class TargetExtractor:
             if cv2.waitKey(20) & 0xFF == 27:
                 break
 
-    def filter_target(self):
+    def filter_target(self,dir=TEMPLATE_DIRS["img"]):
         """
         從 ROI 中提取目標，做 GrabCut 去背景，生成透明圖
         """
-        save_path = os.path.join(TEMPLATE_DIR, f"s{time.time():.0f}.png")
+        save_path = os.path.join(dir, f"s{time.time():.0f}.png")
         if self.roi_mask is None:
             return None
         # 提取ROI圖像並處理亮度對比
@@ -691,12 +717,12 @@ class TargetExtractor:
         self.extracted = cv2.merge([b, g, r, alpha])
 
         # 儲存為透明PNG
-        os.makedirs(TEMPLATE_DIR, exist_ok=True)  # 沒有就自動建立
+        os.makedirs(dir, exist_ok=True)  # 沒有就自動建立
         cv2.imwrite(save_path, self.extracted)
         print(f"✅ 已儲存 {save_path}")
 
     # *** 等待QML設定
-    # *** Img+GPS 列出 圖像中占比大的一些相似物體 和長寬高，等待QML輸入要儲存的圖片名稱，進TEMPLATE_DIR資料夾。計算相似物品的 單一數量的 實際大小
+    # *** Img+GPS 列出 圖像中占比大的一些相似物體 和長寬高，等待QML輸入要儲存的圖片名稱，進TEMPLATE_DIRS["img"]資料夾。計算相似物品的 單一數量的 實際大小
     def Img_IMU_GPS():
         # *** 先拓樸後幾何，穩定拓樸結構
 
@@ -840,7 +866,7 @@ class TargetExtractor:
     def load_img_whz(self):
         # *** 限制大小
         whz=[]
-        for file in os.listdir(TEMPLATE_DIR):
+        for file in os.listdir(TEMPLATE_DIRS["world"]):
             match = re.match( r"(.*)_W(\d+)_H(\d+)_Z([\d\.]+)\.png", file)
             if not match or not self.selected(file):
                 continue
@@ -856,7 +882,7 @@ class TargetExtractor:
         return whz # 疊加實際大小
 
     # *** python OCR找到該目標時計算該目標附在其物之上，利用目標的物件名稱紀錄的，計算其物的實際大小
-    # *** save_path圖片 重新命名(固定格式有長寬高)，在判斷物體實際大小模式時，在TEMPLATE_DIR中找到(固定格式有長寬高)save_path圖片，全部找一次，找到則分析附在何物、計算該物實際大小
+    # *** save_path圖片 重新命名(固定格式有長寬高)，在判斷物體實際大小模式時，在TEMPLATE_DIRS["img"]中找到(固定格式有長寬高)save_path圖片，全部找一次，找到則分析附在何物、計算該物實際大小
     # *** 進入 計算物體實際大小的 計算模式 *** 讀取存檔的圖片
     def compute_logic(self):
         frame = screenshot()
@@ -866,10 +892,10 @@ class TargetExtractor:
         kp_frame, des_frame = self.orb.detectAndCompute(gray, None)
         if des_frame is None:
             return logic_state
-        for f in os.listdir(TEMPLATE_DIR):
+        for f in os.listdir(TEMPLATE_DIRS["communication"]):
             if not f.endswith(".png"):
                 continue
-            tpl = cv2.imread(os.path.join(TEMPLATE_DIR, f), 0)
+            tpl = cv2.imread(os.path.join(TEMPLATE_DIRS["communication"], f), 0)
             kp_tpl, des_tpl = self.orb.detectAndCompute(tpl, None)
             if des_tpl is None:
                 continue
@@ -1432,7 +1458,22 @@ class Noēsis:
         # 情緒前後詞:NER情緒 前後多少詞內 出現的詞
         # 關聯性詞: NER 的關係近的詞
         # p.s.NER就像粒子、關聯就像波
-        
+        def NER:
+            pass
+        def 關聯性詞:
+            pass
+        def 關鍵詞頻率:
+            return "高低"
+        def 情緒前後詞:
+            pass
+        def ac:
+            orb_matches(用戶 communication,"world")
+        def bc:
+            orb_matches(Noēsis communication,"world")
+
+        def 暫定:
+            # 讀 live_capture (ORB比對 讀 attributes 再ORB比對 讀world)****
+            orb_matches(orb_matches("live_capture","attributes"),"world")
         def 引導對話更深層發展:
             # Noēsis 交流回去時， +bc(關聯 關鍵詞頻率(低))+ac
             pass
@@ -1443,7 +1484,7 @@ class Noēsis:
             # Noēsis 交流回去時， bc(關聯 興趣和重點)
             pass
         def 接力式回應讓對方說更多:
-            # Noēsis 交流回去時，+bc(NER 轉折詞or代詞+提問用詞-陳述用詞)****中斷
+            # Noēsis 交流回去時，+bc(NER 轉折詞or代詞+提問用詞-陳述用詞-上層)
             pass
         def 引入相關故事增加對話深度:
             # Noēsis 交流回去時， bc(關聯 **相關故事)-ac(NER **敘事元素)
