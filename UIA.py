@@ -1,3 +1,4 @@
+from geographiclib.geodesic import Geodesic
 import firebase_admin
 from firebase_admin import credentials, firestore
 from firebase_admin import credentials, db
@@ -29,6 +30,8 @@ from geopy.geocoders import Nominatim
 from plyer import gps
 from kivy.clock import Clock
 from kivy.utils import platform
+
+
 def on_location(**kwargs):
     print(
         kwargs['lat'],
@@ -37,6 +40,7 @@ def on_location(**kwargs):
         kwargs.get('speed')
     )
 
+
 gps.configure(on_location=on_location)
 gps.start(minTime=1000, minDistance=0)
 
@@ -44,25 +48,28 @@ if platform == 'android':
     from plyer import accelerometer
     accelerometer.enable()
 
+
 def read_imu(dt):
     val = accelerometer.acceleration
     if val:
         ax, ay, az = val
         print(ax, ay, az)
 
+
 Clock.schedule_interval(read_imu, 1/50)
 
 # --- 基礎設定 --- python "D:\Python\Non-codeAutomaticOperation\UIA.py"
 pytesseract.pytesseract.tesseract_cmd = r"C:\Users\USER\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
-base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+base_path = getattr(sys, '_MEIPASS', os.path.dirname(
+    os.path.abspath(__file__)))
 TEMPLATE_DIRS = {
-    "live_capture" : os.path.join(base_path, 'live_capture'),
+    "live_capture": os.path.join(base_path, 'live_capture'),
     "attributes": os.path.join(base_path, "attributes"),
     "world": os.path.join(base_path, "world"),
     "communication": os.path.join(base_path, "communication"),
     "dark_matter": os.path.join(base_path, "dark_matter"),
-    "thinking": os.path.join(base_path, "thinking"), # 中轉站
-    "thinking2": os.path.join(base_path, "thinking2"), # 中轉站
+    "thinking": os.path.join(base_path, "thinking"),  # 中轉站
+    "thinking2": os.path.join(base_path, "thinking2"),  # 中轉站
 }
 MATCH_THRESHOLD = 0.85
 LANGS = "eng+chi_sim"
@@ -89,7 +96,7 @@ def screenshot():
     return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
 
-def locate_template_orb(name, sort=1, num=1, extractor=False,dir=TEMPLATE_DIRS["img"]):
+def locate_template_orb(name, sort=1, num=1, extractor=False, dir=TEMPLATE_DIRS["img"]):
     """ORB 特徵匹配找圖像 screenshot() → 灰階 """
     name = name.split("<img>")[1]
     path = os.path.join(dir, f"{name}.png")
@@ -113,7 +120,7 @@ def locate_template_orb(name, sort=1, num=1, extractor=False,dir=TEMPLATE_DIRS["
     pts.sort(key=lambda p: (p[0], p[1]))  # 左上排序
     if not pts:
         TargetExtractor().select_polygon_roi()
-        
+
     # 選取點
     if sort == "奇數":
         pts = pts[::2]
@@ -128,6 +135,8 @@ def locate_template_orb(name, sort=1, num=1, extractor=False,dir=TEMPLATE_DIRS["
     return pts
 
 # *** 多張圖像中偵測目標圖像
+
+
 def locate_template_orb_cached(obj, name, sort=1, num=1):
     if name in obj.cache:
         pos = obj.cache[name]
@@ -139,7 +148,7 @@ def locate_template_orb_cached(obj, name, sort=1, num=1):
     return pos
 
 
-def validate_cache(name, pos, tolerance=10,dir=TEMPLATE_DIRS["img"]):
+def validate_cache(name, pos, tolerance=10, dir=TEMPLATE_DIRS["img"]):
     screen_gray = cv2.cvtColor(screenshot(), cv2.COLOR_BGR2GRAY)
     h, w = screen_gray.shape[:2]
     x, y = pos
@@ -198,33 +207,35 @@ def locate_text(keyword, sort=1, num=1, classA=None):
         # *** classA 似乎在這一行開始不通用了，使用到 Geocoding
         # *** firebase 用戶儲存的起點地址 addrStart
         geolocator = Nominatim(user_agent="geo_example")
-        startP=firestore.client("用戶").reference("addrStart").get()
+        startP = firestore.client("用戶").reference("addrStart").get()
         nearP = firestore.client("用戶").document("near").get().to_dict()
         farP = firestore.client("用戶").document("far").get().to_dict()
         locationStart = geolocator.geocode(startP)
         locationNear = geolocator.geocode(startP)
         locationFar = geolocator.geocode(startP)
         # 間距太近(firestore.client().reference(太近的地址)，起點和太近地址的距離為 間距)的一些地址為一分支 manifest[分支]，離起點太遠(firestore 太遠地址)額外安排 manifest2
-        NEAR_DISTANCE =dist(nearP,startP)
-        FAR_DISTANCE =dist(farP,startP)
-        def dist(a,b):
-            aLocation=geolocator.geocode(a) 
+        NEAR_DISTANCE = dist(nearP, startP)
+        FAR_DISTANCE = dist(farP, startP)
+
+        def dist(a, b):
+            aLocation = geolocator.geocode(a)
             # 避免被geocode 封鎖
             time.sleep(0.5)
-            if b==startP:
-                bLocation=locationStart
-            elif b==nearP:
-                bLocation=locationNear
-            elif b==farP:
-                bLocation=locationFar
+            if b == startP:
+                bLocation = locationStart
+            elif b == nearP:
+                bLocation = locationNear
+            elif b == farP:
+                bLocation = locationFar
             else:
-                bLocation=geolocator.geocode(b)
+                bLocation = geolocator.geocode(b)
             if aLocation or bLocation is None:
                 print("無效地址")
-            distance =(aLocation.latitude - bLocation.latitude)**2 + (aLocation.longitude - bLocation.longitude)**2
+            distance = (aLocation.latitude - bLocation.latitude)**2 + \
+                        (aLocation.longitude - bLocation.longitude)**2
             time.sleep(0.5)
             return distance
-        
+
         for ress in readText:
             line_key = (
                 data['block_num'][ress],
@@ -242,15 +253,16 @@ def locate_text(keyword, sort=1, num=1, classA=None):
 
                 addresses.append({
                     "address": t,
-                    "distance": dist(t,startP),
+                    "distance": dist(t, startP),
                     # ***使用 找地址時，順便 找貨品
                     # *** 搜尋相符文字的貨品乘上數量，並計算疊加的空間大小，以疊加大小來排序
-                    "goods":""
+                    "goods": ""
                 })
             addresses.sort(key=lambda x: x["distance"])
             # 建立 manifest 分支(近 / 遠） # 用戶說分支，也有可能是說其他東西
             manifest_near = [
-                {"address": addresses[i]["address"], "goods": addresses[i]["goods"]}
+                {"address": addresses[i]["address"],
+                    "goods": addresses[i]["goods"]}
                 for i in range(len(addresses)-1)  # 用 index 才能拿下一筆
                 if addresses[i]["distance"] <= NEAR_DISTANCE
                 and abs(addresses[i]["distance"] - addresses[i+1]["distance"]) <= NEAR_DISTANCE
@@ -264,15 +276,13 @@ def locate_text(keyword, sort=1, num=1, classA=None):
             # *** goods 排列在有限空間，計算manifest難度 排序
             # 4️⃣ 上傳 Firebase
             # manifest 上傳給firebase，manifest中最難的給最早請求的用戶 # *** firebase 分發給用戶，用戶如何獲取 manifest
-            
+
             firestore.client().document("manifest").add(manifest)
 
-            
                 # *** 繪製路線圖並記錄指南針方向，旋轉地圖時路線圖與地圖的指南針向量 矯正
                 # *** 指南針計算(一維)
                 # Routing API給最佳真實路線
 
-from geographiclib.geodesic import Geodesic
 
 def click(pos): pyautogui.moveTo(
     *pos, duration=0.2); pyautogui.click(); time.sleep(0.3)
@@ -333,6 +343,7 @@ class InputCommand(QObject):
 
                 case "距離多少":  # ***和下一個地址 距離多少
                     var = input("已繪製地圖 ").strip() or None
+
                     def real_dist(p, q):
                         return Geodesic.WGS84.Inverse(
                             p.lat, p.lon, q.lat, q.lon
@@ -475,12 +486,13 @@ class InputCommand(QObject):
                                             pass
                                         case "設定 即時計算物體大小的 錨定物大小":
                                             # ** 抓取模式，設定錨定物
-                                            m=re.match( r"(.*)_W(\d+)_H(\d+)_Z([\d\.]+)", act[i+1])
+                                            m = re.match(
+                                                r"(.*)_W(\d+)_H(\d+)_Z([\d\.]+)", act[i+1])
                                             if not m:
                                                 print("請依照圖片_W0_H0_Z0格式")
                                                 return
                                             self.selected(act[i+1])
-                                            i+=2
+                                            i += 2
                                             continue
                                         case "即時計算物體大小":
                                             # *** 計算模式，需要OCR計算物體容積
@@ -571,7 +583,7 @@ class TargetExtractor:
     def __init__(self, image=None):
         if self.extractor is False:
             print("找不到目標且自動確認未開啟，跳過選取點。 調整ORB_create>=500")
-            return  
+            return
         else:
             print("#已開啟 找不到目標後自動確認目標")
         self.image = image
@@ -583,7 +595,6 @@ class TargetExtractor:
         self.roi_mask = None
         self.orb = cv2.ORB_create(800)
         self.bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-        
 
     def select_polygon_roi(self):
         """
@@ -645,7 +656,7 @@ class TargetExtractor:
             if cv2.waitKey(20) & 0xFF == 27:
                 break
 
-    def filter_target(self,dir=TEMPLATE_DIRS["img"]):
+    def filter_target(self, dir=TEMPLATE_DIRS["img"]):
         """
         從 ROI 中提取目標，做 GrabCut 去背景，生成透明圖
         """
@@ -713,7 +724,7 @@ class TargetExtractor:
         val fy = focalLengths[0] / sensorSize.height * imageHeight
         val cx = imageWidth / 2f
         val cy = imageHeight / 2f
-        val K = arrayOf(arrayOf(fx,0,cx), arrayOf(0,fy,cy), arrayOf(0,0,1))
+        val K = arrayOf(arrayOf(fx, 0, cx), arrayOf(0, fy, cy), arrayOf(0, 0, 1))
 
         # 2️⃣ 讀 GPS
         val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
@@ -735,8 +746,8 @@ class TargetExtractor:
         val bf = BFMatcher(NORM_HAMMING, true)
         val matches = bf.match(des1, des2)
 
-        val pts1 = matches.map { kp1.toArray()[it.queryIdx].pt }
-        val pts2 = matches.map { kp2.toArray()[it.trainIdx].pt }
+        val pts1 = matches.map {kp1.toArray()[it.queryIdx].pt}
+        val pts2 = matches.map {kp2.toArray()[it.trainIdx].pt}
 
         # 4️⃣ Essential Matrix + recoverPose (旋轉不用管)
         val E = Calib3d.findEssentialMat(pts1, pts2, K, RANSAC, 0.999, 1.0)
@@ -748,14 +759,14 @@ class TargetExtractor:
         val baseline = doubleArrayOf(C2[0]-C1[0], C2[1]-C1[1], C2[2]-C1[2])
 
         # 6️⃣ Triangulate
-        val P1 = Mat.eye(3,4,CV_64F)
-        val P2 = Mat(3,4,CV_64F)
+        val P1 = Mat.eye(3, 4, CV_64F)
+        val P2 = Mat(3, 4, CV_64F)
         # P2 = [R | -R*t]
         Core.hconcat(listOf(R, -R * Mat(baseline)), P2)
 
         val pts4D = Mat()
         Calib3d.triangulatePoints(P1, P2, pts1, pts2, pts4D)
-        val pts3D = pts4D.rowRange(0,3) / pts4D.row(3)
+        val pts3D = pts4D.rowRange(0, 3) / pts4D.row(3)
 
         # 7️⃣ 計算物體長寬高
         val objPts = pts3D.submat(objIndices)
@@ -764,34 +775,34 @@ class TargetExtractor:
         val sizeZ = Core.minMaxLoc(objPts.col(2)).maxVal - Core.minMaxLoc(objPts.col(2)).minVal
         println("L,W,H (m): $sizeX, $sizeY, $sizeZ")
 
-        # V2 
-        // ===== 1️⃣ 讀取 GPS =====
+        # V2
+        // == == = 1️⃣ 讀取 GPS == == =
         val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val loc: Location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
             ?: return
 
         val lat = loc.latitude
         val lon = loc.longitude
-        val alt = loc.altitude        // 高度尺(Z）
-        val speed = loc.speed         // m/s
+        val alt = loc.altitude // 高度尺(Z）
+        val speed=loc.speed // m/s
 
-        // ===== 2️⃣ 判斷是否在空中 =====
+        // == === 2️⃣ 判斷是否在空中 == ===
         // 工程判斷：高度 + 速度(不搞 AI）
-        val isAirborne = alt > 20.0 && speed > 5.0
+        val isAirborne=alt > 20.0 & & speed > 5.0
 
-        // ===== 3️⃣ 讀取影像 =====
+        // == === 3️⃣ 讀取影像 == ===
         // img: OpenCV Mat(CameraX / Camera2 轉過來）
-        val img: Mat = currentFrameMat
+        val img: Mat=currentFrameMat
 
-        // ===== 4️⃣ 找「大占比物體」 =====
+        // == === 4️⃣ 找「大占比物體」 == ===
         // 不分類、不追蹤，只找最大輪廓
-        val gray = Mat()
-        val bin = Mat()
+        val gray=Mat()
+        val bin=Mat()
         Imgproc.cvtColor(img, gray, Imgproc.COLOR_BGR2GRAY)
         Imgproc.threshold(gray, bin, 0.0, 255.0,
             Imgproc.THRESH_BINARY + Imgproc.THRESH_OTSU)
 
-        val contours = ArrayList<MatOfPoint>()
+        val contours=ArrayList < MatOfPoint > ()
         Imgproc.findContours(
             bin, contours, Mat(),
             Imgproc.RETR_EXTERNAL,
@@ -800,36 +811,36 @@ class TargetExtractor:
 
         if (contours.isEmpty()) return
 
-        val mainContour = contours.maxBy {
+        val mainContour=contours.maxBy {
             Imgproc.contourArea(it)
         } ?: return
 
-        val rect = Imgproc.boundingRect(mainContour)
+        val rect=Imgproc.boundingRect(mainContour)
 
-        // ===== 5️⃣ 僅在「空中」才使用橫向尺 =====
+        // == === 5️⃣ 僅在「空中」才使用橫向尺 == ===
         if (!isAirborne) return
 
-        // ===== 6️⃣ 尺度換算 =====
+        // == === 6️⃣ 尺度換算 == ===
         // 高度直接當 Z 尺
-        val Z = alt    // meters
+        val Z=alt // meters
 
         // 相機視角(來自設備，實際可從 CameraCharacteristics 讀）
-        val hfov = Math.toRadians(60.0)   // 水平視角(例）
-        val vfov = Math.toRadians(45.0)
+        val hfov=Math.toRadians(60.0) // 水平視角(例）
+        val vfov=Math.toRadians(45.0)
 
-        val imgW = img.cols().toDouble()
-        val imgH = img.rows().toDouble()
+        val imgW=img.cols().toDouble()
+        val imgH=img.rows().toDouble()
 
         // 像素 → 實際尺寸(幾何，不是 SLAM）
-        val W = 2 * Z * Math.tan(hfov / 2) * (rect.width / imgW)
-        val H = 2 * Z * Math.tan(vfov / 2) * (rect.height / imgH)
+        val W=2 * Z * Math.tan(hfov / 2) * (rect.width / imgW)
+        val H=2 * Z * Math.tan(vfov / 2) * (rect.height / imgH)
 
         // 長度：取寬高中較大者(工程定義）
-        val L = maxOf(W, H)
+        val L=maxOf(W, H)
 
-        // ===== 7️⃣ 輸出唯一結果 =====
+        // == === 7️⃣ 輸出唯一結果 == ===
         Log.i("SIZE", "L,W,H (m) = $L, $W, $H")
-        
+
 
         # *** 儲存3D模型
 
@@ -842,7 +853,7 @@ class TargetExtractor:
         # *** 限制大小
         whz=[]
         for file in os.listdir(TEMPLATE_DIRS["world"]):
-            match = re.match( r"(.*)_W(\d+)_H(\d+)_Z([\d\.]+)\.png", file)
+            match=re.match(r"(.*)_W(\d+)_H(\d+)_Z([\d\.]+)\.png", file)
             if not match or not self.selected(file):
                 continue
             # ****讀取貨品欄的 已記錄的 物品，無紀錄的列出
@@ -854,42 +865,42 @@ class TargetExtractor:
                 "z": float(match.group(4))
             })
             # whz.w*whz.h*whz.z
-        return whz # 疊加實際大小
+        return whz  # 疊加實際大小
 
     # *** python OCR找到該目標時計算該目標附在其物之上，利用目標的物件名稱紀錄的，計算其物的實際大小
     # *** save_path圖片 重新命名(固定格式有長寬高)，在判斷物體實際大小模式時，在TEMPLATE_DIRS["img"]中找到(固定格式有長寬高)save_path圖片，全部找一次，找到則分析附在何物、計算該物實際大小
     # *** 進入 計算物體實際大小的 計算模式 *** 讀取存檔的圖片
     def compute_logic(self):
-        frame = screenshot()
+        frame=screenshot()
         # 全部物件
-        logic_state = {"objects": [], "relations": [], "scene": None}
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        kp_frame, des_frame = self.orb.detectAndCompute(gray, None)
+        logic_state={"objects": [], "relations": [], "scene": None}
+        gray=cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        kp_frame, des_frame=self.orb.detectAndCompute(gray, None)
         if des_frame is None:
             return logic_state
         for f in os.listdir(TEMPLATE_DIRS["communication"]):
             if not f.endswith(".png"):
                 continue
-            tpl = cv2.imread(os.path.join(TEMPLATE_DIRS["communication"], f), 0)
-            kp_tpl, des_tpl = self.orb.detectAndCompute(tpl, None)
+            tpl=cv2.imread(os.path.join(TEMPLATE_DIRS["communication"], f), 0)
+            kp_tpl, des_tpl=self.orb.detectAndCompute(tpl, None)
             if des_tpl is None:
                 continue
-            matches = self.bf.match(des_tpl, des_frame)
+            matches=self.bf.match(des_tpl, des_frame)
             if len(matches) < 5:
                 continue
-            pts_frame = np.float32(
+            pts_frame=np.float32(
                 [kp_frame[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
-            pts_tpl = np.float32(
+            pts_tpl=np.float32(
                 [kp_tpl[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
-            M, _ = cv2.findHomography(pts_tpl, pts_frame, cv2.RANSAC, 5.0)
+            M, _=cv2.findHomography(pts_tpl, pts_frame, cv2.RANSAC, 5.0)
             if M is None:
                 continue
-            h, w = tpl.shape
-            corners = cv2.perspectiveTransform(np.float32(
+            h, w=tpl.shape
+            corners=cv2.perspectiveTransform(np.float32(
                 [[0, 0], [0, h], [w, h], [w, 0]]).reshape(-1, 1, 2), M)
-            x, y, w, h = cv2.boundingRect(corners)
-            patch = frame[y:y+h, x:x+w]
-            color = cv2.mean(patch)[:3] if patch.size > 0 else (0, 0, 0)
+            x, y, w, h=cv2.boundingRect(corners)
+            patch=frame[y:y+h, x:x+w]
+            color=cv2.mean(patch)[:3] if patch.size > 0 else (0, 0, 0)
             logic_state["objects"].append({
                 "name": f.replace(".png", ""),
                 "pos": {"x": x, "y": y, "w": w, "h": h},
@@ -897,30 +908,30 @@ class TargetExtractor:
                 "area": w*h
             })
         # 指定對象
-        goal_objects = []
+        goal_objects=[]
         for f in os.listdir(self.multiple_img_goal):
             if not f.endswith(".png"):
                 continue
-            tpl = cv2.imread(os.path.join(self.multiple_img_goal, f), 0)
-            kp_tpl, des_tpl = self.orb.detectAndCompute(tpl, None)
+            tpl=cv2.imread(os.path.join(self.multiple_img_goal, f), 0)
+            kp_tpl, des_tpl=self.orb.detectAndCompute(tpl, None)
             if des_tpl is None:
                 continue
-            matches = self.bf.match(des_tpl, des_frame)
+            matches=self.bf.match(des_tpl, des_frame)
             if len(matches) < 5:
                 continue
-            pts_frame = np.float32(
+            pts_frame=np.float32(
                 [kp_frame[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
-            pts_tpl = np.float32(
+            pts_tpl=np.float32(
                 [kp_tpl[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
-            M, _ = cv2.findHomography(pts_tpl, pts_frame, cv2.RANSAC, 5.0)
+            M, _=cv2.findHomography(pts_tpl, pts_frame, cv2.RANSAC, 5.0)
             if M is None:
                 continue
-            h, w = tpl.shape
-            corners = cv2.perspectiveTransform(np.float32(
+            h, w=tpl.shape
+            corners=cv2.perspectiveTransform(np.float32(
                 [[0, 0], [0, h], [w, h], [w, 0]]).reshape(-1, 1, 2), M)
-            x, y, w, h = cv2.boundingRect(corners)
-            patch = frame[y:y+h, x:x+w]
-            color = cv2.mean(patch)[:3] if patch.size > 0 else (0, 0, 0)
+            x, y, w, h=cv2.boundingRect(corners)
+            patch=frame[y:y+h, x:x+w]
+            color=cv2.mean(patch)[:3] if patch.size > 0 else (0, 0, 0)
             goal_objects.append({
                 "name": f.replace(".png", ""),
                 "pos": {"x": x, "y": y, "w": w, "h": h},
@@ -929,60 +940,60 @@ class TargetExtractor:
                 # 動作、變化、互動
             })
         for i, obj in enumerate(goal_objects):
-            obj["relations"] = []
+            obj["relations"]=[]
             for j, other in enumerate(logic_state["objects"]):
                 if obj["name"] == other["name"]:
                     continue
                 # 計算簡單相對位置
-                dx = other["pos"]["x"] - obj["pos"]["x"]
-                dy = other["pos"]["y"] - obj["pos"]["y"]
+                dx=other["pos"]["x"] - obj["pos"]["x"]
+                dy=other["pos"]["y"] - obj["pos"]["y"]
                 if abs(dx) > abs(dy):
-                    direction = "右" if dx > 0 else "左"
+                    direction="右" if dx > 0 else "左"
                 else:
-                    direction = "下" if dy > 0 else "上"
+                    direction="下" if dy > 0 else "上"
                 obj["relations"].append({
                     "object": other["name"],
                     "direction": direction,
                     "distance": (dx**2 + dy**2)**0.5
                 })
         # logic_state["scene"] = {"brightness": np.mean(cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)[...,2])}
-        logic_state["goal_objects"] = goal_objects
+        logic_state["goal_objects"]=goal_objects
         return logic_state
 
     def compute_performance(self):
         if len(self.multiple_img_implementation) < 2:
             return None  # 至少要兩幀才能比
-        prev_frame = cv2.cvtColor(
+        prev_frame=cv2.cvtColor(
             self.multiple_img_implementation[-2], cv2.COLOR_BGR2GRAY)
-        curr_frame = cv2.cvtColor(
+        curr_frame=cv2.cvtColor(
             self.multiple_img_implementation[-1], cv2.COLOR_BGR2GRAY)
         # --- ORB 特徵 ---
-        kp_prev, des_prev = self.orb.detectAndCompute(prev_frame, None)
-        kp_curr, des_curr = self.orb.detectAndCompute(curr_frame, None)
+        kp_prev, des_prev=self.orb.detectAndCompute(prev_frame, None)
+        kp_curr, des_curr=self.orb.detectAndCompute(curr_frame, None)
         # --- 空保護 ---
         if des_prev is None or des_curr is None or len(kp_prev) == 0:
             return None
 
         # === 速度(特徵變化率 + 更新頻率)
-        start = time.time()
-        matches = self.bf.match(des_prev, des_curr)  # ORB 特徵匹配
-        end = time.time()
-        speed = 1 / (end - start)  # 時間越短 → 速度越高
+        start=time.time()
+        matches=self.bf.match(des_prev, des_curr)  # ORB 特徵匹配
+        end=time.time()
+        speed=1 / (end - start)  # 時間越短 → 速度越高
         # === 穩定性(多幀一致 + 特徵方差)。多幀圖。反比，越小越穩，所以要被-1
-        stability = 1-(1 / (np.var(self.multiple_img_implementation) + 1e-6))
+        stability=1-(1 / (np.var(self.multiple_img_implementation) + 1e-6))
         # === 容量(激活覆蓋率 + 同時辨識數)
-        mask = np.zeros(curr_frame.shape[:2], np.uint8)
-        capacity = np.sum(mask > 0) / mask.size
+        mask=np.zeros(curr_frame.shape[:2], np.uint8)
+        capacity=np.sum(mask > 0) / mask.size
         # coverage = len(matches)
         # === 準確性(Softmax機率 + 誤差)。false_matches 可以用前後 frame 無對應特徵數量計算。
-        total_matches = len(matches)
-        false_matches = abs(len(kp_prev) - total_matches)
+        total_matches=len(matches)
+        false_matches=abs(len(kp_prev) - total_matches)
         # 更合理的公式 → 匹配成功比例，而非錯誤比例
-        accuracy = total_matches / (len(kp_prev) + 1e-6)
+        accuracy=total_matches / (len(kp_prev) + 1e-6)
         # === 成本( **GPT白癡亂掰:資源下降率 / 目標完成率 )。例如越快打死GPT，成本越低
-        cpu = psutil.cpu_percent()
-        mem = psutil.virtual_memory().percent
-        cost = 1 / (1 + cpu + mem)
+        cpu=psutil.cpu_percent()
+        mem=psutil.virtual_memory().percent
+        cost=1 / (1 + cpu + mem)
 
         return dict(speed=speed, stability=stability, capacity=capacity, accuracy=accuracy, cost=cost)
 
@@ -990,15 +1001,15 @@ class TargetExtractor:
 class EventMonitor:
     # {落實}邏輯{應用}性能{目標}結束。機器:Semantic Parse>goal Mapping>Strategy Retrieval>Execution Logic>Output Composition。
     def __init__(self,  poll_interval=0.3):
-        self.events = {}  # key -> {type, implementation, application, active}
-        self.poll_interval = poll_interval
-        self.running = False
-        self.lock = threading.Lock()
-        self.multiple_img_implementation = []  # perf
-        self.multiple_img_implementation_target = None
-        self.multiple_img_goal = []  # logic
-        self.multiple_img_goal_target = None
-        self.ic_em = None
+        self.events={}  # key -> {type, implementation, application, active}
+        self.poll_interval=poll_interval
+        self.running=False
+        self.lock=threading.Lock()
+        self.multiple_img_implementation=[]  # perf
+        self.multiple_img_implementation_target=None
+        self.multiple_img_goal=[]  # logic
+        self.multiple_img_goal_target=None
+        self.ic_em=None
 
     def add_frame(self):
         print("建議開啟extractor自動確認")
@@ -1023,11 +1034,11 @@ class EventMonitor:
     # 訂閱事件
 
     def subscribe_event(self, m1, m2, m3):
-        self.multiple_img_logic_target = m2
-        self.multiple_img_implementation_target = m3
-        key = f"{m1}->{m2}->{m3}"
+        self.multiple_img_logic_target=m2
+        self.multiple_img_implementation_target=m3
+        key=f"{m1}->{m2}->{m3}"
         with self.lock:
-            self.events[key] = {
+            self.events[key]={
                 # [目標圖像,目標圖像的狀態 合格的]
                 "implementation": [m1, None],
                 "application": [m2, None],
@@ -1059,10 +1070,10 @@ class EventMonitor:
 
     # 終止監聽事件
     def remove_subscription(self, implementation, application, goal):
-        key = f"{implementation}->{application}->{goal}"
+        key=f"{implementation}->{application}->{goal}"
         with self.lock:
             if key in self.events:
-                sk = self.events.pop(key)
+                sk=self.events.pop(key)
                 # sk["active"] = False  # 終止監聽
                 print(f"[x] 已終止監聽事件: {key}")
             else:
@@ -1070,11 +1081,11 @@ class EventMonitor:
 
     # 啟動/停止監聽
     def start_monitor(self):
-        self.running = True
+        self.running=True
         threading.Thread(target=self._monitor_loop, daemon=True).start()
 
     def stop_monitor(self):
-        self.running = False
+        self.running=False
 
     # 監聽循環
     def _monitor_loop(self):
@@ -1096,10 +1107,10 @@ class EventMonitor:
     # *數據／性能分析m2的m3 → 重點在「遊戲運行數值與效能是否正常」# 效率(計算、資源、性能瓶頸) > 測量、統計、Profile
 
     def _check_subscription(self, evt):
-        targetExt = TargetExtractor()
-        logic_ok, perf_ok = True  # 判斷 邏輯除錯 和 數據／性能分析 合格且超標為True，不訂閱
-        skip_all_perf, skip_all_logic = False  # 🔹 用來記錄是否跳過問卷
-        semantic_map = {
+        targetExt=TargetExtractor()
+        logic_ok, perf_ok=True  # 判斷 邏輯除錯 和 數據／性能分析 合格且超標為True，不訂閱
+        skip_all_perf, skip_all_logic=False  # 🔹 用來記錄是否跳過問卷
+        semantic_map={
             "速度": "更快",
             "穩定": "很穩",
             "數量": {"更多", "更全面"},
@@ -1107,18 +1118,18 @@ class EventMonitor:
             "成本": "省"
         }
         # [目標,目標的狀態]
-        e1, e2, e3 = evt["implementation"], evt["application"], evt["goal"]
+        e1, e2, e3=evt["implementation"], evt["application"], evt["goal"]
         for ev in e1, e2, e3:
             for img, stage in ev:
                 # ORB分析目標圖片的狀態和在整個螢幕的關係。self.selected找到目標。 Semantic Algebra 語意代數
                 # 取得螢幕 ORB 狀態
-                logic_state = targetExt.compute_logic()
+                logic_state=targetExt.compute_logic()
                 # 將 goal_objects 對象名稱對應到邏輯狀態
-                goal_objects = {
+                goal_objects={
                     obj["name"]: obj for obj in logic_state.get("goal_objects", [])}
-                predicted = goal_objects.get(img, None)
+                predicted=goal_objects.get(img, None)
                 # 現在邏輯的狀態 = ORB分析成真實標籤
-                logic_predicted = {
+                logic_predicted={
                     "pos": predicted["pos"],
                     "color": predicted["color"],
                     "area": predicted["area"],
@@ -1127,75 +1138,75 @@ class EventMonitor:
 
                 # 現在邏輯的狀態!=條件邏輯的狀態 時回報應對作法
                 if stage is None:
-                    stage = input(
+                    stage=input(
                         f"設定{img}達成條件邏輯的狀態：圖像邏輯結構or行為狀態or環境位置or幾何關係").strip() or None
                 # 狀態不在期望範圍 → 邏輯錯誤
                 # Condition Error: 簡單比對顏色或區域
                 if stage not in str(logic_predicted.values()):
-                    logic_ok = False
+                    logic_ok=False
                     if not evt.get("Condition Error"):
-                        evt["Condition Error"] = input(
+                        evt["Condition Error"]=input(
                             f"{img} 條件錯誤: {logic_predicted} vs {stage}, 請輸入應對作法：").strip() or None
                     print(evt["Condition Error"])
                 # 分析順序錯誤 (示意：這裡可以用更精細的序列判斷)
                 if img == e3[0] and e2[0] not in stage:
-                    logic_ok = False
+                    logic_ok=False
                     if not evt.get("Sequence Error"):
-                        evt["Sequence Error"] = input(
+                        evt["Sequence Error"]=input(
                             f"{img} 順序錯誤: e3 出現前 e2 還沒準備好，請輸入應對作法：").strip() or None
                 # 分析邏輯衝突 (差集不為空)
                 # Logic Conflict: 比對關聯物件位置
-                conflict = []
+                conflict=[]
                 for rel in logic_predicted.get("relations", []):
                     if rel["object"] in stage and rel["direction"] not in stage:
                         conflict.append(rel)
                 if conflict:
-                    logic_ok = False
+                    logic_ok=False
                     if not evt.get("Logic Conflict"):
-                        evt["Logic Conflict"] = input(
+                        evt["Logic Conflict"]=input(
                             f"{img} 邏輯衝突: {conflict}, 請輸入應對作法：").strip() or None
                     print(evt["Logic Conflict"])
                 # 邊界錯誤 (索引或對象不存在)
                 if predicted is None:
-                    logic_ok = False
+                    logic_ok=False
                     if not evt.get("Boundary Error"):
-                        evt["Boundary Error"] = input(
+                        evt["Boundary Error"]=input(
                             f"{img}不存在於螢幕中 時的應對作法：").strip() or None
                     print(evt["Boundary Error"])
                     continue
                 # 狀態漏判 (CNN 沒返回任何預測)
                 if not predicted.get("pos") and not predicted.get("area"):
-                    logic_ok = False
+                    logic_ok=False
                     if not evt.get("Unhandled State"):
-                        evt["Unhandled State"] = input(
+                        evt["Unhandled State"]=input(
                             f"{img}找到，但沒有有效狀態 時的應對作法：").strip() or None
                     print(evt["Unhandled State"])
                     continue
 
                 # 現在性能的狀態!=條件性能的狀態 時回報應對作法。
                 # === 性能對照 ===
-                perf_dict = targetExt.compute_performance()
+                perf_dict=targetExt.compute_performance()
                 # === 性能比對條件 === # *甚麼外掛判斷前後圖非文字變化得到真實標籤，繞一大圈結果竟然是ORB!
                 for key, words in semantic_map.items():
                     if isinstance(words, set):
-                        matched = any(w in stage for w in words)
+                        matched=any(w in stage for w in words)
                     else:
-                        matched = words in stage
+                        matched=words in stage
                     if not matched:
                         continue
                     # 支援條件格式，如「速度>0.8」或「穩定<0.6」
-                    cond = re.search(fr"{key}([<>]=?|=)\s*(\d*\.?\d+)", stage)
-                    score = perf_dict[key.lower()]
+                    cond=re.search(fr"{key}([<>]=?|=)\s*(\d*\.?\d+)", stage)
+                    score=perf_dict[key.lower()]
                     if cond:
-                        op, val = cond.group(1), float(cond.group(2))
+                        op, val=cond.group(1), float(cond.group(2))
                         if not eval(f"{score}{op}{val}"):
-                            perf_ok = False
+                            perf_ok=False
                     elif score < 0.7:  # 無明確數值條件 → 用預設閾值
-                        perf_ok = False
+                        perf_ok=False
                     if not perf_ok:
-                        tag = key.capitalize()
+                        tag=key.capitalize()
                         if not evt.get(tag):
-                            evt[tag] = input(
+                            evt[tag]=input(
                                 f"{img}{stage}{key}未達標 ({score:.3f})，應對作法：").strip() or None
                         print(f"⚠️ {key}不達標 → {evt[tag]}")
             if logic_ok and perf_ok:
@@ -1206,45 +1217,45 @@ class EventMonitor:
             if ev == e3:
                 # 問卷的引導性感覺太低，因為GPT智障
                 # nonlocal skip_all_perf, skip_all_logic, stage # 修改外部
-                choice = input(
+                choice=input(
                     "(條件邏輯問卷(修改 設定過的狀態), [錯誤時的 應對作法])，是否要修改設定過的狀態與應對作法？(Enter=跳過全部 / y=填寫一次)："
                 ).strip().lower()
-                choice2 = input(
+                choice2=input(
                     "(條件邏輯問卷(修改 設定過的狀態), [錯誤時的 應對作法])，是否要修改設定過的狀態與應對作法？(Enter=跳過全部 / y=填寫一次)："
                 ).strip().lower()
                 if choice == "":
                     print("👉 已設定：跳過全部問卷。")
-                    skip_all_logic = True
+                    skip_all_logic=True
                 elif choice != "y":
                     return  # 任何非 y 也視為略過當前
                 if skip_all_logic:
                     stage == input(f"設定{img}達成條件邏輯的狀態：").strip() or stage
-                    evt["Condition Error"] = input(
+                    evt["Condition Error"]=input(
                         f"{img}{stage}條件錯誤 時的應對作法：").strip() or evt.get("Condition Error")
-                    evt["Sequence Error"] = input(
+                    evt["Sequence Error"]=input(
                         f"{img}{stage}順序錯誤 時的應對作法：").strip() or evt.get("Sequence Error")
-                    evt["Logic Conflict"] = input(
+                    evt["Logic Conflict"]=input(
                         f"{img}{stage}邏輯衝突 時的應對作法：").strip() or evt.get("Logic Conflict")
-                    evt["Boundary Error"] = input(
+                    evt["Boundary Error"]=input(
                         f"{img}{stage}邊界錯誤 時的應對作法：").strip() or evt.get("Boundary Error")
-                    evt["Unhandled State"] = input(
+                    evt["Unhandled State"]=input(
                         f"{img}{stage}狀態漏判 時的應對作法：").strip() or evt.get("Unhandled State")
                 if choice2 == "":
                     print("👉 已設定：跳過全部問卷。")
-                    skip_all_perf = True
+                    skip_all_perf=True
                 elif choice2 != "y":
                     return  # 任何非 y f"也視為略過(/m.*)".ground(1)當前
                 if skip_all_perf:
                     stage == input(f"設定{img}達成條件邏輯的狀態：").strip() or stage
-                    evt["Speed"] = input(
+                    evt["Speed"]=input(
                         f"{img}{stage}速度不夠 時的應對作法：").strip() or None
-                    evt["Stability"] = input(
+                    evt["Stability"]=input(
                         f"{img}{stage}不穩定 時的應對作法：").strip() or evt.get("Stability")
-                    evt["Capacity"] = input(
+                    evt["Capacity"]=input(
                         f"{img}{stage}數量不合 時的應對作法：").strip() or evt.get("Capacity")
-                    evt["Accuracy"] = input(
+                    evt["Accuracy"]=input(
                         f"{img}{stage}不精準 時的應對作法：").strip() or evt.get("Accuracy")
-                    evt["Cost"] = input(
+                    evt["Cost"]=input(
                         f"{img}{stage}成本太高 時的應對作法：").strip() or evt.get("Cost")
 
 class Noēsis:
@@ -1291,9 +1302,9 @@ class Noēsis:
                 # 參照元c 和 主導元c 的不相似 得到交流主參量
             # 輔助
                 # 此行為缺則補；不缺則優化
-                    # 交流c不合輔助元c，即多次嘗試行為，讓交流c 越近則近 輔助元c 
+                    # 交流c不合輔助元c，即多次嘗試行為，讓交流c 越近則近 輔助元c
             # 交流 資料夾，依照 屬性 命名
-                    # 
+                    #
                         # 版本:每次交流或意外被覆寫時 都儲存現實世界的時間戳
                         # 可回朔:交流中提出回朔，即回朔到該版本
                         # 可能多維的運用還能提前處理用戶遇到的問題?
@@ -1313,7 +1324,7 @@ class Noēsis:
     # ，引入相關故事增加對話深度
     # ，用過渡語句讓對話轉向
     # ，讚美或認可
-**# ，觀察環境讚美或認可，再鍵位補充 讚美或認可
+**  # ，觀察環境讚美或認可，再鍵位補充 讚美或認可
     # ，開放式提問
     # ，暗示下次相遇
     # 屬性 場景、時間、地點、狀態
@@ -1325,7 +1336,7 @@ class Noēsis:
     # 回應感不是熱鬧
 
 # ===== 自習 =====
-# 找目標時，此迴圈找到同層或上層為false時移除 
+# 找目標時，此迴圈找到同層或上層為false時移除
 # ORB(相似度比較、結構級命名) + 資料夾上層、資料(同層)、屬性資料夾
 
 # *.txt
@@ -1412,76 +1423,68 @@ class Noēsis:
     # [灰] 批次進度核 → [淺藍] 趨勢分析核 → [深綠] 策略調整核
     # [棕] 環境配置核
 
-    #高階
+    # 高階
     # [淺紫] 長期目標核 → [深紫] 優化學習核 → [淺橙] 溝通/協作核 → [紅棕] 危機處理核
 
 # =====
 def img_orb(key):
     # 一般資料夾，是不在TEMPLATE_DIRS
-    files = [os.path.join(TEMPLATE_DIRS[key], f) # 資料夾
-        for f in os.listdir(TEMPLATE_DIRS[key]) # 資料
-        if f.lower().endswith(('.png', '.jpg', '.jpeg'))] # 檔案格式
-    kp_desc = []
+    files=[os.path.join(TEMPLATE_DIRS[key], f)  # 資料夾
+        for f in os.listdir(TEMPLATE_DIRS[key])  # 資料
+        if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式
+    kp_desc=[]
     for file in files:
-        img = cv2.imread(file, cv2.IMREAD_GRAYSCALE)
-        kp, des = orb.detectAndCompute(img, None)
+        img=cv2.imread(file, cv2.IMREAD_GRAYSCALE)
+        kp, des=orb.detectAndCompute(img, None)
         kp_desc.append((file, kp, des))  # 圖片檔案路徑,關鍵點 list,描述子 array
     return kp_desc
 
 
-def orb_matches_imwrite(a,b="attributes", th=50):
-    scores =[]
-    for a_file, a_kp, a_des in img_orb(a): # 資料
+def orb_matches_imwrite(a, b="attributes", th=50):
+    dir_str="thinking"
+        if a == "world" or b == "world":
+            dir_str += "{2}"
+        if ":log:" in a:
+            m=re.match(r".*:log:(.*)", a)
+            if not m:
+                return None  # 正則匹配失敗，直接返回 None
+
+            # 資料夾路徑 = 去掉最後一段
+            folder_parts=a.split(":")[:-1]
+            folder_path=os.path.join(*folder_parts)  # ***將多段組成路徑
+            log_file=os.path.join(folder_path, "log.txt")
+            if os.path.exists(log_file):
+                with open(log_file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        # 假設 log.txt 格式：每行是 "related_words:內容"
+                        if line.startswith(m.group(1) + ":"):
+                            # 回傳冒號後內容(字串)
+                            return line.strip().split(":", 1)[1]
+            # 如果 log.txt 不存在或找不到對應詞，就回傳原詞 related_words "字串"
+            return m.group(0)
+        if 關聯性詞:
+
+            pass
+    scores=[]
+    for a_file, a_kp, a_des in img_orb(a):  # 資料
         matches_all=[]
-        for b_file, b_kp, b_des in img_orb(b): # 資料，特徵點選比較多
+        for b_file, b_kp, b_des in img_orb(b):  # 資料，特徵點選比較多
             if b_des is None:
                 continue
-            matches = bf.match(b_des, a_des)
-            matches = sorted(matches, key=lambda x: x.distance) # ***改變排序和數值?
+            matches=bf.match(b_des, a_des)
+            matches=sorted(matches, key=lambda x: x.distance)  # ***改變排序和數值?
             matches_all.extend(matches)  # 收集所有比對結果
-        good_matches = [m for m in matches_all if m.distance < th]  # 粒子
+        good_matches=[m for m in matches_all if m.distance < th]  # 粒子
         # 直接把篩選後的匹配點畫在圖上
-        img_matches = cv2.drawMatches(a_file, a_kp, b_file, b_kp, good_matches, None, flags=2)
-        score = len(good_matches) / len(a_kp) if a_kp else 0 # 波
-        if score>th:
-            dir_str="thinking"
-            if a =="world" or b =="world":
-                dir_str+="{2}"
-            if ":log:" in a:
-                m = re.match(r".*:log:(.*)", a)
-                if not m:
-                    return None  # 正則匹配失敗，直接返回 None
-
-                # 資料夾路徑 = 去掉最後一段
-                folder_parts =  a.split(":")[:-1]
-                folder_path = os.path.join(*folder_parts)  # 將多段組成路徑
-                log_file = os.path.join(folder_path, "log.txt")
-                if os.path.exists(log_file):
-                    with open(log_file, "r", encoding="utf-8") as f:
-                        for line in f:
-                            # 假設 log.txt 格式：每行是 "關聯性詞:內容"
-                            if line.startswith(m.group(1) + ":"):
-                                return line.strip().split(":", 1)[1]  # 回傳冒號後內容(字串)
-                # 如果 log.txt 不存在或找不到對應詞，就回傳原詞 關聯性詞 字串
-                return m.group(0)
-    
-    
-#     
-#     
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-
-            rel_path = os.path.relpath(TEMPLATE_DIRS[dir_str], base_path)
-            filename = rel_path.replace(os.sep, "_") + ".jpg"
-            save_path = os.path.join(TEMPLATE_DIRS[dir_str], filename)
-            cv2.imwrite(save_path, img_matches)
+        img_matches=cv2.drawMatches(
+            a_file, a_kp, b_file, b_kp, good_matches, None, flags=2)
+        score=len(good_matches) / len(a_kp) if a_kp else 0  # 波
+        if score > th:
+            
+            filename=os.path.relpath(TEMPLATE_DIRS[dir_str], base_path)
+                .replace(os.sep, "_") + ".jpg"
+            save_path=os.path.join(TEMPLATE_DIRS[dir_str], filename)
+            cv2.imwrite(save_path, img_matches) # "img"
         # scores.append(score)
         # all_scores=sum(scores) / len(scores) if scores else 0
     # a 對 b 的整體相似度:print(all_scores)
@@ -1489,7 +1492,7 @@ def orb_matches_imwrite(a,b="attributes", th=50):
 
 def remove_thinking_file():
     if os.path.isfile(TEMPLATE_DIRS["thinking"]) or os.path.islink(TEMPLATE_DIRS["thinking"]):
-       os.unlink(TEMPLATE_DIRS["thinking"]) 
+       os.unlink(TEMPLATE_DIRS["thinking"])
 
     def cooperation:
         # 儲存 交流 資料夾
@@ -1500,25 +1503,29 @@ def remove_thinking_file():
         # 暫定
             # 上層=上層(資料夾)直接代表 攝影下來的真實世界
             # c=上層(全部，提醒不含獨立資料夾)，代表畫布
-            # ac= c(NER 用戶a交流)，代表a在畫布上畫畫 
+            # ac= c(NER 用戶a交流)，代表a在畫布上畫畫
             # bc= c(NER Noēsis交流)，代表Noēsis在畫布上畫畫
             # *keyword 和python一樣用法
         # NER 命名實體技術(預設 c(全部)):讀取 屬性 資料夾 ORB比對 攝影中的全部圖像(用戶手動儲存完整文本)，拓樸結構 相似度最高
         # 關鍵詞頻率:NER 出現次數/文本總字數>?%
         # 情緒前後詞:NER情緒 前後多少詞內 出現的詞
-        # 關聯性詞: NER 的關係近的詞
+        # related_words: NER 的關係近的詞
         # p.s.NER就像粒子、關聯就像波
         def NER(key):
-            orb_matches_imwrite(key) # thinking
-            orb_matches_imwrite("live_capture") # thinking
-            orb_matches_imwrite("thinking","world") # 加快比對省步驟
+            orb_matches_imwrite(key)  # thinking
+            orb_matches_imwrite("live_capture")  # thinking
+            orb_matches_imwrite("thinking", "world")  # 加快比對省步驟
             # img_orb("thinking2") # 回應
-        def 關聯性詞(key):
-            orb_matches_imwrite(orb_matches_imwrite("thinking:log:關聯性詞",th=100)) # 找語言辭典資料夾紀錄的 關聯性詞，在該詞同個資料夾的log.txt
+        def related_words():
+            # 思考中的影像 比對屬性 取得最相似的圖像，同時打開log.txt找 related_words(字串)有哪些
+                # 將找到的轉換成路徑 打開屬性 和 world比對影像
+            orb_matches_imwrite(orb_matches_imwrite(
+                "thinking:log:related_words", th=100))
             # 字串不合路徑
             # 怎麼找?讀取後回傳 圖像 資料夾?實際是思考資料夾。
-            
 
+
+            # 屬性***
             # 空間上 「靠不靠近」與「常不常一起出現」，代表 每次靠近、靠近的一組詞 數量/文本總詞數
         kp_desc.append((file, kp, des))  # 圖片檔案路徑,關鍵點 list,描述子 array
 
@@ -1574,24 +1581,24 @@ def remove_thinking_file():
             elif 關鍵詞頻率低 + 話題停滯:
                 開放式提問 or 用過渡語句讓對話轉向
         def 6456:
-            if ac幾乎全無:pass
+            if ac幾乎全無: pass
         def 64526:
-            if ac 否定:pass
-        # 
-        # 
-        # 
-        # 
-        # 
+            if ac 否定: pass
+        #
+        #
+        #
+        #
+        #
     def 自習:
-    
+
         pass
     def 16核:
         pass
-        
-        
+
+
 
 # *** 光子發射時序以分段、電場以能階變色，光子測距和計算誤差矯正量
-# 
+#
 
 # 該視窗可以置頂於畫面?固定寬度會自動換行的輸入框?點擊輸入框實輸入?當視窗拖動到最左或最右邊，最小化視窗並固定Y座標?
 # 透明視窗內可以讓3D模型正常地展示骨架動畫，並且可以操作調整模型，位移、放大、旋轉、子物件拉進父物件下面。不像GPT那麼廢物。
@@ -1603,22 +1610,22 @@ def remove_thinking_file():
 視窗標題,GPT:食指,全選:按下::視窗標題,GPT:肛門,位置深處:放開
 """
 if __name__ == "__main__":
-    ic = InputCommand()
-    rec = Recorder()
-    monitor = EventMonitor()
+    ic=InputCommand()
+    rec=Recorder()
+    monitor=EventMonitor()
 
-    app = QApplication(sys.argv)
-    ic.app = app
-    fmt = QSurfaceFormat()
+    app=QApplication(sys.argv)
+    ic.app=app
+    fmt=QSurfaceFormat()
     fmt.setAlphaBufferSize(8)
     fmt.setRenderableType(QSurfaceFormat.OpenGL)
     fmt.setProfile(QSurfaceFormat.CoreProfile)
     fmt.setVersion(4, 1)
     QSurfaceFormat.setDefaultFormat(fmt)
 
-    engine = QQmlApplicationEngine()
-    base = Path(os.path.dirname(os.path.abspath(__file__)))
-    qml_file = base / "ui.qml"  # 確保路徑正確
+    engine=QQmlApplicationEngine()
+    base=Path(os.path.dirname(os.path.abspath(__file__)))
+    qml_file=base / "ui.qml"  # 確保路徑正確
     engine.addImportPath(str(base))
 
     import PySide6.QtQml as Qml
@@ -1632,7 +1639,7 @@ if __name__ == "__main__":
         print("❌ QML 載入失敗！")
         sys.exit(-1)
 
-    win = engine.rootObjects()[0]
+    win=engine.rootObjects()[0]
     win.show()
 
     # 將 Python 對象暴露給 QML
