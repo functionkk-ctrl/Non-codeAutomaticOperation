@@ -62,6 +62,7 @@ TEMPLATE_DIRS = {
     "communication": os.path.join(base_path, "communication"),
     "dark_matter": os.path.join(base_path, "dark_matter"),
     "thinking": os.path.join(base_path, "thinking"), # 中轉站
+    "thinking2": os.path.join(base_path, "thinking2"), # 中轉站
 }
 MATCH_THRESHOLD = 0.85
 LANGS = "eng+chi_sim"
@@ -73,38 +74,6 @@ cred = credentials.Certificate("serviceAccountKey.json")
 firebase_admin.initialize_app(cred, {
     "databaseURL": "https://你的專案-id.firebaseio.com/"
 })
-
-
-def resource_info(key):
-    files = [os.path.join(TEMPLATE_DIRS[key], f) # 資料夾
-        for f in os.listdir(TEMPLATE_DIRS[key]) # 資料
-        if f.lower().endswith(('.png', '.jpg', '.jpeg'))] # 檔案格式
-    kp_desc = []
-    for file in files:
-        img = cv2.imread(file, cv2.IMREAD_GRAYSCALE)
-        kp, des = orb.detectAndCompute(img, None)
-        kp_desc.append((file, kp, des))  # 資料原圖,像數點位址,強度
-    return kp_desc
-
-def orb_matches_write(a,b, th=50):
-    scores =[]
-    for a_file, a_kp, a_des in resource_info(a): # 資料
-        matches_all=[]
-        for b_file, b_kp, b_des in resource_info(b): # 資料
-            if b_des is None:
-                continue
-            matches = bf.match(a_des, b_des)
-            matches = sorted(matches, key=lambda x: x.distance) # ***改變排序和數值?
-            matches_all.extend(matches)  # 收集所有比對結果
-        good_matches = [m for m in matches_all if m.distance < th]  # 粒子
-        # 直接把篩選後的匹配點畫在圖上
-        img_matches = cv2.drawMatches(a_file, a_kp, b_file, b_kp, good_matches, None, flags=2)
-        score = len(good_matches) / len(a_kp) if a_kp else 0 # 波
-        if score>th:
-            cv2.imwrite(TEMPLATE_DIRS["thinking"], img_matches)
-        
-        # scores.append(score)
-    # a 對 b 的整體相似度:print(sum(scores) / len(scores) if scores else 0)
 
 
 def watchdog():
@@ -729,6 +698,7 @@ class TargetExtractor:
     # *** 等待QML設定
     # *** Img+GPS 列出 圖像中占比大的一些相似物體 和長寬高，等待QML輸入要儲存的圖片名稱，進TEMPLATE_DIRS["img"]資料夾。計算相似物品的 單一數量的 實際大小
     def Img_IMU_GPS():
+        # 讀取設備，GPS得高度尺可以和地面參照，GPS平移得橫向尺在空中至少要移動20m，才可以參照
         # *** 先拓樸後幾何，穩定拓樸結構
 
         # 1️⃣ 讀相機內參
@@ -1446,6 +1416,81 @@ class Noēsis:
     # [淺紫] 長期目標核 → [深紫] 優化學習核 → [淺橙] 溝通/協作核 → [紅棕] 危機處理核
 
 # =====
+def img_orb(key):
+    # 一般資料夾，是不在TEMPLATE_DIRS
+    files = [os.path.join(TEMPLATE_DIRS[key], f) # 資料夾
+        for f in os.listdir(TEMPLATE_DIRS[key]) # 資料
+        if f.lower().endswith(('.png', '.jpg', '.jpeg'))] # 檔案格式
+    kp_desc = []
+    for file in files:
+        img = cv2.imread(file, cv2.IMREAD_GRAYSCALE)
+        kp, des = orb.detectAndCompute(img, None)
+        kp_desc.append((file, kp, des))  # 圖片檔案路徑,關鍵點 list,描述子 array
+    return kp_desc
+
+
+def orb_matches_imwrite(a,b="attributes", th=50):
+    scores =[]
+    for a_file, a_kp, a_des in img_orb(a): # 資料
+        matches_all=[]
+        for b_file, b_kp, b_des in img_orb(b): # 資料，特徵點選比較多
+            if b_des is None:
+                continue
+            matches = bf.match(b_des, a_des)
+            matches = sorted(matches, key=lambda x: x.distance) # ***改變排序和數值?
+            matches_all.extend(matches)  # 收集所有比對結果
+        good_matches = [m for m in matches_all if m.distance < th]  # 粒子
+        # 直接把篩選後的匹配點畫在圖上
+        img_matches = cv2.drawMatches(a_file, a_kp, b_file, b_kp, good_matches, None, flags=2)
+        score = len(good_matches) / len(a_kp) if a_kp else 0 # 波
+        if score>th:
+            dir_str="thinking"
+            if a =="world" or b =="world":
+                dir_str+="{2}"
+            if ":log:" in a:
+                m = re.match(r".*:log:(.*)", a)
+                if not m:
+                    return None  # 正則匹配失敗，直接返回 None
+
+                # 資料夾路徑 = 去掉最後一段
+                folder_parts =  a.split(":")[:-1]
+                folder_path = os.path.join(*folder_parts)  # 將多段組成路徑
+                log_file = os.path.join(folder_path, "log.txt")
+                if os.path.exists(log_file):
+                    with open(log_file, "r", encoding="utf-8") as f:
+                        for line in f:
+                            # 假設 log.txt 格式：每行是 "關聯性詞:內容"
+                            if line.startswith(m.group(1) + ":"):
+                                return line.strip().split(":", 1)[1]  # 回傳冒號後內容(字串)
+                # 如果 log.txt 不存在或找不到對應詞，就回傳原詞 關聯性詞 字串
+                return m.group(0)
+    
+    
+#     
+#     
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+
+            rel_path = os.path.relpath(TEMPLATE_DIRS[dir_str], base_path)
+            filename = rel_path.replace(os.sep, "_") + ".jpg"
+            save_path = os.path.join(TEMPLATE_DIRS[dir_str], filename)
+            cv2.imwrite(save_path, img_matches)
+        # scores.append(score)
+        # all_scores=sum(scores) / len(scores) if scores else 0
+    # a 對 b 的整體相似度:print(all_scores)
+
+
+def remove_thinking_file():
+    if os.path.isfile(TEMPLATE_DIRS["thinking"]) or os.path.islink(TEMPLATE_DIRS["thinking"]):
+       os.unlink(TEMPLATE_DIRS["thinking"]) 
+
     def cooperation:
         # 儲存 交流 資料夾
         # 儲存 屬性 資料夾
@@ -1463,32 +1508,36 @@ class Noēsis:
         # 情緒前後詞:NER情緒 前後多少詞內 出現的詞
         # 關聯性詞: NER 的關係近的詞
         # p.s.NER就像粒子、關聯就像波
-        def NER:
-            orb_matches_write(用戶 communication,"attributes")
-            orb_matches_write("live_capture","attributes")  
-            pass
-        def 關聯性詞:
-            pass
+        def NER(key):
+            orb_matches_imwrite(key) # thinking
+            orb_matches_imwrite("live_capture") # thinking
+            orb_matches_imwrite("thinking","world") # 加快比對省步驟
+            # img_orb("thinking2") # 回應
+        def 關聯性詞(key):
+            orb_matches_imwrite(orb_matches_imwrite("thinking:log:關聯性詞",th=100)) # 找語言辭典資料夾紀錄的 關聯性詞，在該詞同個資料夾的log.txt
+            # 字串不合路徑
+            # 怎麼找?讀取後回傳 圖像 資料夾?實際是思考資料夾。
+            
+
+            # 空間上 「靠不靠近」與「常不常一起出現」，代表 每次靠近、靠近的一組詞 數量/文本總詞數
+        kp_desc.append((file, kp, des))  # 圖片檔案路徑,關鍵點 list,描述子 array
+
+            # 0~1有順序有小數，小數誰是吸引或排斥?如果吸引或排斥是沒有順序，因為是在一維以上的維度，如果有順序，代表回答者IQ為5
         def 關鍵詞頻率:
             return "高低"
         def 情緒前後詞:
             pass
         def ac:
-            if os.path.isfile(TEMPLATE_DIRS["thinking"]) or os.path.islink(TEMPLATE_DIRS["thinking"]):
-                os.unlink(TEMPLATE_DIRS["thinking"]) 
-            orb_matches_write(用戶 communication,"attributes")
-            orb_matches_write("live_capture","attributes")
-            orb_matches_write("thinking","world")
+            remove_thinking_file()
+            NER(用戶+"communication")
         def bc:
-            orb_matches_write(Noēsis communication,"world")
-            orb_matches_write("live_capture","attributes")
-            orb_matches_write("thinking","world")
+            NER(Noēsis+"communication")
         def 暫定:
             # 讀 live_capture (ORB比對 讀 attributes 再ORB比對 讀world)****
-            orb_matches_write("live_capture","attributes")
-            orb_matches_write("thinking","world")
+            NER(用戶+"communication")
         def 引導對話更深層發展:
             # Noēsis 交流回去時， +bc(關聯 關鍵詞頻率(低))+ac
+
             pass
         def 分享經歷:
             # Noēsis 交流回去時， bc(NER a行為)
