@@ -912,7 +912,7 @@ class TargetExtractor:
         for f in os.listdir(self.multiple_img_goal):
             if not f.endswith(".png"):
                 continue
-            tpl=cv2.imread(os.path.join(self.multiple_img_goal, f), 0)
+            tpl=cv2.imread(os.path.join(os.path.join(base_path,self.multiple_img_goal), f), 0)
             kp_tpl, des_tpl=self.orb.detectAndCompute(tpl, None)
             if des_tpl is None:
                 continue
@@ -1427,77 +1427,116 @@ class Noēsis:
     # [淺紫] 長期目標核 → [深紫] 優化學習核 → [淺橙] 溝通/協作核 → [紅棕] 危機處理核
 
 # =====
-def img_orb(key):
-    # 一般資料夾，是不在TEMPLATE_DIRS
-    files=[os.path.join(TEMPLATE_DIRS[key], f)  # 資料夾
-        for f in os.listdir(TEMPLATE_DIRS[key])  # 資料
-        if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式
-    kp_desc=[]
-    for file in files:
-        img=cv2.imread(file, cv2.IMREAD_GRAYSCALE)
-        kp, des=orb.detectAndCompute(img, None)
-        kp_desc.append((file, kp, des))  # 圖片檔案路徑,關鍵點 list,描述子 array
-    return kp_desc
+    def img_orb(key):
+        if TEMPLATE_DIRS[key]:
+            files=[os.path.join(TEMPLATE_DIRS[key], f)  # 資料夾
+                for f in os.listdir(TEMPLATE_DIRS[key])  # 資料
+                if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式
+            kp_desc=[]
+            for file in files:
+                img=cv2.imread(file, cv2.IMREAD_GRAYSCALE)
+                kp, des=orb.detectAndCompute(img, None)
+                kp_desc.append((file, kp, des))  # 圖片檔案路徑,關鍵點 list,描述子 array
+            return kp_desc
+        else:
+            # 一般資料夾，是不在TEMPLATE_DIRS
+            files=[os.path.join(os.path.join(base_path, key), f)  # 資料夾
+                for f in os.listdir(os.path.join(base_path, key))  # 資料
+                if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式
+            kp_desc=[]
+            for file in files:
+                img=cv2.imread(file, cv2.IMREAD_GRAYSCALE)
+                kp, des=orb.detectAndCompute(img, None)
+                kp_desc.append((file, kp, des))  # 圖片檔案路徑,關鍵點 list,描述子 array
+            return kp_desc
+
+    def orb_matches_imwrite(a, b="attributes", th=50,frequency):
+        # 儲存進 thinking 或回傳 字串
+        dir_str="thinking"
+            if a == "world" or b == "world":
+                dir_str += "{2}"
+            if ":log:" in a:
+                m=re.match(r".*:log:(.*)", a)
+                if not m:
+                    return None  # 正則匹配失敗，直接返回 None
+                # 資料夾路徑 = 去掉最後一段
+                folder_parts=a.split(":")[:-1]
+                folder_path=os.path.join(os.path.join(base_path,*folder_parts))  # 將多段組成路徑
+                log_file=os.path.join(os.path.join(base_path,folder_path), "log.txt")
+                if os.path.exists(log_file):
+                    with open(log_file, "r", encoding="utf-8") as f:
+                        for line in f:
+                            # 假設 log.txt 格式：每行是 "related_words:內容"
+                            if line.startswith(m.group(1) + ":"):
+                                # 回傳冒號後內容(字串)
+                                return line.strip().split(":", 1)[1]
+                # 如果 log.txt 不存在或找不到對應詞，就回傳原詞 related_words "字串"
+                return m.group(0)
+        scores=[]
+        for a_file, a_kp, a_des in img_orb(a):  # 資料
+            matches_all=[]
+            for b_file, b_kp, b_des in img_orb(b):  # 資料，特徵點選比較多
+                if b_des is None:
+                    continue
+                matches=bf.match(b_des, a_des)
+                matches=sorted(matches, key=lambda x: x.distance) # 按照位置順序
+                matches_all.extend(matches)  # 收集所有比對結果
+            good_matches=[m for m in matches_all if m.distance < th]  # 粒子 
+            # ** 圖像之間的比對，改變排序和數值，暫時沒有
+
+            # *簡單來說是複雜資料夾樹，我要的是A樹自己的資料夾排成一個點，往下的資料夾再排成一個點在這個點中，然後就能排序哪些是重複的且重複多少次
+                # folder_signature → Counter
+
+            # 正常比對後把比對結果壓縮成一點，組成一張圖，然後排序得到 想要的 完成用途
+                # 圖像 → 詞
+                # 資料夾 → 句子
+                # 樹 → 文件集合
+                
+            if frequency=="高":
+            # 條件狀態(客制化 想要的任意用途)=>結果 點=>資料夾樹圖
+
+            # NO
+            h = hashlib.sha256()
+            for p in parts:
+                h.update(p)
+            return h.digest()
+
+pass
+            # 直接把篩選後的匹配點畫在圖上
+            img_matches=cv2.drawMatches(
+                a_file, a_kp, b_file, b_kp, good_matches, None, flags=2)
+            score=len(good_matches) / len(a_kp) if a_kp else 0  # 波
+            if score > th:
+                filename=os.path.relpath(TEMPLATE_DIRS[dir_str], base_path)
+                    .replace(os.sep, "_") + ".jpg"
+                save_path=os.path.join(TEMPLATE_DIRS[dir_str], filename)
+                cv2.imwrite(save_path, img_matches) # "img"
+            # scores.append(score)
+            # all_scores=sum(scores) / len(scores) if scores else 0
+        # a 對 b 的整體相似度:print(all_scores)
 
 
-def orb_matches_imwrite(a, b="attributes", th=50):
-    dir_str="thinking"
-        if a == "world" or b == "world":
-            dir_str += "{2}"
-        if ":log:" in a:
-            m=re.match(r".*:log:(.*)", a)
-            if not m:
-                return None  # 正則匹配失敗，直接返回 None
-
-            # 資料夾路徑 = 去掉最後一段
-            folder_parts=a.split(":")[:-1]
-            folder_path=os.path.join(*folder_parts)  # ***將多段組成路徑
-            log_file=os.path.join(folder_path, "log.txt")
-            if os.path.exists(log_file):
-                with open(log_file, "r", encoding="utf-8") as f:
-                    for line in f:
-                        # 假設 log.txt 格式：每行是 "related_words:內容"
-                        if line.startswith(m.group(1) + ":"):
-                            # 回傳冒號後內容(字串)
-                            return line.strip().split(":", 1)[1]
-            # 如果 log.txt 不存在或找不到對應詞，就回傳原詞 related_words "字串"
-            return m.group(0)
-        if 關聯性詞:
-
-            pass
-    scores=[]
-    for a_file, a_kp, a_des in img_orb(a):  # 資料
-        matches_all=[]
-        for b_file, b_kp, b_des in img_orb(b):  # 資料，特徵點選比較多
-            if b_des is None:
-                continue
-            matches=bf.match(b_des, a_des)
-            matches=sorted(matches, key=lambda x: x.distance)  # ***改變排序和數值?
-            matches_all.extend(matches)  # 收集所有比對結果
-        good_matches=[m for m in matches_all if m.distance < th]  # 粒子
-        # 直接把篩選後的匹配點畫在圖上
-        img_matches=cv2.drawMatches(
-            a_file, a_kp, b_file, b_kp, good_matches, None, flags=2)
-        score=len(good_matches) / len(a_kp) if a_kp else 0  # 波
-        if score > th:
-            
-            filename=os.path.relpath(TEMPLATE_DIRS[dir_str], base_path)
-                .replace(os.sep, "_") + ".jpg"
-            save_path=os.path.join(TEMPLATE_DIRS[dir_str], filename)
-            cv2.imwrite(save_path, img_matches) # "img"
-        # scores.append(score)
-        # all_scores=sum(scores) / len(scores) if scores else 0
-    # a 對 b 的整體相似度:print(all_scores)
+    def remove_thinking_file():
+        if os.path.isfile(TEMPLATE_DIRS["thinking"]) or os.path.islink(TEMPLATE_DIRS["thinking"]):
+        os.unlink(TEMPLATE_DIRS["thinking"])
 
 
-def remove_thinking_file():
-    if os.path.isfile(TEMPLATE_DIRS["thinking"]) or os.path.islink(TEMPLATE_DIRS["thinking"]):
-       os.unlink(TEMPLATE_DIRS["thinking"])
+# NO
+    def image_signature(img_path):
+        img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            return None
+        kp, des = orb.detectAndCompute(img, None)
+        if des is None:
+            return None
+        # 壓成一個固定向量（平均）
+        return np.mean(des, axis=0).astype(np.int16)
+
 
     def cooperation:
-        # 儲存 交流 資料夾
-        # 儲存 屬性 資料夾
-        # 儲存 暗物質 資料夾
+        # 交流 資料夾
+        # 屬性 資料夾
+        # 暗物質 資料夾
         pass
     def 有趣:
         # 暫定
@@ -1516,24 +1555,31 @@ def remove_thinking_file():
             orb_matches_imwrite("live_capture")  # thinking
             orb_matches_imwrite("thinking", "world")  # 加快比對省步驟
             # img_orb("thinking2") # 回應
-        def related_words():
-            # 思考中的影像 比對屬性 取得最相似的圖像，同時打開log.txt找 related_words(字串)有哪些
-                # 將找到的轉換成路徑 打開屬性 和 world比對影像
-            orb_matches_imwrite(orb_matches_imwrite(
-                "thinking:log:related_words", th=100))
-            # 字串不合路徑
-            # 怎麼找?讀取後回傳 圖像 資料夾?實際是思考資料夾。
-
-
-            # 屬性***
+        def related_words(key):
+            # >額外的
+            # 屬性比對 related_words(字串)轉換成路徑  orb_matches_imwrite()內 related_words(圖像)儲存進 thinking
+            orb_matches_imwrite(
+                # 屬性比對 思考中的影像 取得最相似的圖像，同時打開log.txt找 related_words(字串)有哪些
+                orb_matches_imwrite("thinking:log:related_words", th=100))
+            # thinking 比對key，獲得關聯性詞影像進 thinking
+            orb_matches_imwrite(key,thinking)
+            # *** 屬性下的同層的同一層的log要找到關聯詞
+            # 輸出結果是 ， 直接讀取 thinking 資料夾
+        def 關鍵詞頻率(key,frequency="高"):
+            remove_thinking_file()
+            # >從原本的提取
             # 空間上 「靠不靠近」與「常不常一起出現」，代表 每次靠近、靠近的一組詞 數量/文本總詞數
-        kp_desc.append((file, kp, des))  # 圖片檔案路徑,關鍵點 list,描述子 array
-
-            # 0~1有順序有小數，小數誰是吸引或排斥?如果吸引或排斥是沒有順序，因為是在一維以上的維度，如果有順序，代表回答者IQ為5
-        def 關鍵詞頻率:
-            return "高低"
+                # 交流 比對屬性 獲得 這次文本的 屬性(影像)，頻率frequency的詞(影像)
+            # 兩種排序 思考
+                # 不動距離看多少距離的組合(影像)重複出現。
+                # 重覆出現的詞 越多次越靠前排名
+            orb_matches_imwrite(key+"communication",frequency)
+            # 交流中有頻率frequency的詞，有相似 thinking 的影像
+            orb_matches_imwrite("thinking",key+"communication")
+            # 在文本中 比對屬性 排序出關鍵詞頻率，輸出結果為 TEMPLATE_DIRS["thinking"]
         def 情緒前後詞:
-            pass
+            kp_desc.append((file, kp, des))  # 圖片檔案路徑,關鍵點 list,描述子 array
+            # 0~1有順序有小數，小數誰是吸引或排斥?如果吸引或排斥是沒有順序，因為是在一維以上的維度，如果有順序，代表回答者IQ為5
         def ac:
             remove_thinking_file()
             NER(用戶+"communication")
