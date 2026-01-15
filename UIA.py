@@ -1427,30 +1427,48 @@ class Noēsis:
     # [淺紫] 長期目標核 → [深紫] 優化學習核 → [淺橙] 溝通/協作核 → [紅棕] 危機處理核
 
 # =====
-    def img_orb(key):
-        if TEMPLATE_DIRS[key]:
-            files=[os.path.join(TEMPLATE_DIRS[key], f)  # 資料夾
-                for f in os.listdir(TEMPLATE_DIRS[key])  # 資料
-                if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式
-            kp_desc=[]
-            for file in files:
-                img=cv2.imread(file, cv2.IMREAD_GRAYSCALE)
-                kp, des=orb.detectAndCompute(img, None)
-                kp_desc.append((file, kp, des))  # 圖片檔案路徑,關鍵點 list,描述子 array
-            return kp_desc
-        else:
-            # 一般資料夾，是不在TEMPLATE_DIRS
-            files=[os.path.join(os.path.join(base_path, key), f)  # 資料夾
-                for f in os.listdir(os.path.join(base_path, key))  # 資料
-                if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式
-            kp_desc=[]
-            for file in files:
-                img=cv2.imread(file, cv2.IMREAD_GRAYSCALE)
-                kp, des=orb.detectAndCompute(img, None)
-                kp_desc.append((file, kp, des))  # 圖片檔案路徑,關鍵點 list,描述子 array
-            return kp_desc
+    def img_orb(key,wave=None):
+        # 陣列儲存 在key資料夾中的圖像 的orb特徵，回傳整個key資料夾的全部圖像的orb特徵
+        dirs=TEMPLATE_DIRS[key]
+        if not dirs:
+            dirs=os.path.join(base_path,key)# 一般資料夾，是不在TEMPLATE_DIRS
+        files=[os.path.join(dirs, f)  # 資料夾
+            for f in os.listdir(dirs)  # 資料
+            if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式
+        kp_desc=[]
+        orb_repeat=[]
+        cont=0
+        for file in files:
+            img=cv2.imread(file, cv2.IMREAD_GRAYSCALE)
+            kp, des=cv2.ORB_create().detectAndCompute(img, None)
+            kp_desc.append((file, kp, des))  # 圖片檔案路徑,關鍵點 list,描述子 array
 
-    def orb_matches_imwrite(a, b="attributes", th=50,frequency):
+            for r_file, r_kp, r_des in orb_repeat:
+                matches=bf.match(des, o)
+                matches=sorted(matches, key=lambda x: x.distance) # 按照位置順序
+                matches_all.extend(matches)  # 收集所有比對結果
+            good_matches=[m for m in matches_all if m.distance < th]  # 粒子
+            
+            if des==r_des:
+                r_des=r_des+1
+            else:
+                orb_repeat.append((file, kp, des),1)
+        if wave:
+            if wave== "頻率":
+                return orb_repeat[file][1]/len(kp_desc+)
+            if wave== "振幅":
+                kp_desc+振幅
+            if wave== "相位":
+                kp_desc+相位
+            if wave== "波長":
+                kp_desc+波長
+            if wave== "波速":
+                kp_desc+波速
+        else:
+            return kp_desc # 座標
+            
+
+    def orb_matches_imwrite(a, b="attributes", th=50,wave=None):
         # 儲存進 thinking 或用path:log:return回傳 字串
         dir_str="thinking"
             if a == "world" or b == "world":
@@ -1473,27 +1491,15 @@ class Noēsis:
                 # 如果 log.txt 不存在或找不到對應詞，就回傳原詞 related_words "字串"
                 return m.group(0)
         scores=[]
-        for a_file, a_kp, a_des in img_orb(a):  # 資料
+        for a_file, a_kp, a_des in img_orb(a,wave):  # 資料
             matches_all=[]
-            for b_file, b_kp, b_des in img_orb(b):  # 資料，特徵點選比較多
+            for b_file, b_kp, b_des in img_orb(b,wave):  # 資料，特徵點選比較多
                 if b_des is None:
                     continue
                 matches=bf.match(b_des, a_des)
                 matches=sorted(matches, key=lambda x: x.distance) # 按照位置順序
                 matches_all.extend(matches)  # 收集所有比對結果
             good_matches=[m for m in matches_all if m.distance < th]  # 粒子 
-            # ** 圖像之間的比對，改變排序和數值，暫時沒有
-
-            # *簡單來說是複雜資料夾樹，我要的是A樹自己的資料夾排成一個點，往下的資料夾再排成一個點在這個點中，然後就能排序哪些是重複的且重複多少次
-                # folder_signature → Counter
-
-            # 正常比對後把比對結果壓縮成一點，組成一張圖，然後排序得到 想要的 完成用途
-                # 圖像 → 詞
-                # 資料夾 → 句子
-                # 樹 → 文件集合
-                
-            if frequency=="高":
-            
 
     
     def compressed_layer_imwrite(key, func=None,th=50):
@@ -1509,7 +1515,7 @@ class Noēsis:
         if not func:
             print("請輸入用途")
         for idx, a in enumerate(img_orb("thinking")):      # idx = 掃描順序 = 相位 # enumerate 第幾次index 取得原值value，index, value=enumerate()
-            A = img_orb("thinking")
+            A = orb_matches_imwrite(a)
             if A > th:                        # 命中一次
                 hits.append(idx)
                 amps.append(A)
