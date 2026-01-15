@@ -1493,14 +1493,44 @@ class Noēsis:
                 # 樹 → 文件集合
                 
             if frequency=="高":
-            # 條件狀態(客制化 想要的任意用途)=>結果 點=>資料夾樹圖
+            
 
-            # NO
-            h = hashlib.sha256()
-            for p in parts:
-                h.update(p)
-            return h.digest()
 
+    def compressed_layer_imwrite(key, func=None,th=50):
+        # 提出 資料夾，資料 屬性比對=>提出 條件狀態(客制化 想要的任意用途) 壓縮成=>結果 點 組合成=>資料夾樹圖 回傳=>符合用途 的目標影像
+            # 波包含：
+                # def 頻率 f   = 重複命中次數(ab比對完全相似) / 掃描次數(迴圈的最後一回)
+                # def 振幅 A   = 命中強度（例如 ORB 相似度）
+                # def 相位 φ   = 命中發生的相對位置 / 次序(enumerate)
+                # def 波長 λ   = 結構重複間距（資料層級距離）
+                # def 波速 c   = 常數（不參與判斷）
+        # key<=資料=>條件狀態("高頻率出現詞")=>結果 點=>key壓縮圖
+        if not func:
+            print("請輸入用途")
+        hits = []   # 相位 φ
+        amps = []   # 振幅 A
+        for idx, a in enumerate(orb_matches_imwrite(key)):      # idx = 掃描順序 = 相位 # enumerate 第幾次index 取得原值value，index, value=enumerate()
+            A = orb_matches_imwrite(a, TEMPLATE_DIRS["thinking"], th)
+            if A > th:                        # 命中一次
+                hits.append(idx)
+                amps.append(A)
+
+        if not hits:
+            return None
+
+        return {
+            # 頻率 f
+            "f": len(hits) / len(orb_matches_imwrite(key)),
+            # 振幅 A
+            "A": sum(amps) / len(amps),
+            # 相位 φ
+            "phi": hits,
+            # 波長 λ
+            "lambda": [hits[i+1] - hits[i] for i in range(len(hits)-1)],
+            # 波速 c（不用）
+            "c": 1
+        } 
+        pass
 pass
             # 直接把篩選後的匹配點畫在圖上
             img_matches=cv2.drawMatches(
@@ -1520,17 +1550,6 @@ pass
         if os.path.isfile(TEMPLATE_DIRS["thinking"]) or os.path.islink(TEMPLATE_DIRS["thinking"]):
         os.unlink(TEMPLATE_DIRS["thinking"])
 
-
-# NO
-    def image_signature(img_path):
-        img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-        if img is None:
-            return None
-        kp, des = orb.detectAndCompute(img, None)
-        if des is None:
-            return None
-        # 壓成一個固定向量（平均）
-        return np.mean(des, axis=0).astype(np.int16)
 
 
     def cooperation:
@@ -1580,6 +1599,9 @@ pass
         def 情緒前後詞:
             kp_desc.append((file, kp, des))  # 圖片檔案路徑,關鍵點 list,描述子 array
             # 0~1有順序有小數，小數誰是吸引或排斥?如果吸引或排斥是沒有順序，因為是在一維以上的維度，如果有順序，代表回答者IQ為5
+
+            # 完全錯誤，照理說會得到 gpt 真的 超臭，超臭 gpt
+            # ，而且只用orb判斷，之後才是將符合的對照路徑，取得圖像
         def ac:
             remove_thinking_file()
             NER(用戶+"communication")
