@@ -1451,7 +1451,7 @@ class Noēsis:
             return kp_desc
 
     def orb_matches_imwrite(a, b="attributes", th=50,frequency):
-        # 儲存進 thinking 或回傳 字串
+        # 儲存進 thinking 或用path:log:return回傳 字串
         dir_str="thinking"
             if a == "world" or b == "world":
                 dir_str += "{2}"
@@ -1495,8 +1495,9 @@ class Noēsis:
             if frequency=="高":
             
 
-
+    
     def compressed_layer_imwrite(key, func=None,th=50):
+        # 兩套 資料夾樹、圖像
         # 提出 資料夾，資料 屬性比對=>提出 條件狀態(客制化 想要的任意用途) 壓縮成=>結果 點 組合成=>資料夾樹圖 回傳=>符合用途 的目標影像
             # 波包含：
                 # def 頻率 f   = 重複命中次數(ab比對完全相似) / 掃描次數(迴圈的最後一回)
@@ -1507,10 +1508,8 @@ class Noēsis:
         # key<=資料=>條件狀態("高頻率出現詞")=>結果 點=>key壓縮圖
         if not func:
             print("請輸入用途")
-        hits = []   # 相位 φ
-        amps = []   # 振幅 A
-        for idx, a in enumerate(orb_matches_imwrite(key)):      # idx = 掃描順序 = 相位 # enumerate 第幾次index 取得原值value，index, value=enumerate()
-            A = orb_matches_imwrite(a, TEMPLATE_DIRS["thinking"], th)
+        for idx, a in enumerate(img_orb("thinking")):      # idx = 掃描順序 = 相位 # enumerate 第幾次index 取得原值value，index, value=enumerate()
+            A = img_orb("thinking")
             if A > th:                        # 命中一次
                 hits.append(idx)
                 amps.append(A)
@@ -1520,7 +1519,7 @@ class Noēsis:
 
         return {
             # 頻率 f
-            "f": len(hits) / len(orb_matches_imwrite(key)),
+            "f": len(hits) / len(img_orb("thinking")),
             # 振幅 A
             "A": sum(amps) / len(amps),
             # 相位 φ
