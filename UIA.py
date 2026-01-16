@@ -1427,7 +1427,7 @@ class Noēsis:
     # [淺紫] 長期目標核 → [深紫] 優化學習核 → [淺橙] 溝通/協作核 → [紅棕] 危機處理核
 
 # =====
-    def img_orb(key,wave=None):
+    def img_orb(key,th,wave=None):
         # 陣列儲存 在key資料夾中的圖像 的orb特徵，回傳整個key資料夾的全部圖像的orb特徵
         dirs=TEMPLATE_DIRS[key]
         if not dirs:
@@ -1435,27 +1435,39 @@ class Noēsis:
         files=[os.path.join(dirs, f)  # 資料夾
             for f in os.listdir(dirs)  # 資料
             if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式
-        kp_desc=[]
-        orb_repeat=[]
-        cont=0
+        kp_desc=[] # 關鍵點 list_ 描述子 array
+        orb_repeat =[] # 符合 用途的
+        matches_all =[] # 符合 用途的
         for file in files:
             img=cv2.imread(file, cv2.IMREAD_GRAYSCALE)
-            kp, des=cv2.ORB_create().detectAndCompute(img, None)
+            kp, des=cv2.ORB_create().detectAndCompute(img, None) # 圖像的 特徵
             kp_desc.append((file, kp, des))  # 圖片檔案路徑,關鍵點 list,描述子 array
-
-            for r_file, r_kp, r_des in orb_repeat:
-                matches=bf.match(des, o)
-                matches=sorted(matches, key=lambda x: x.distance) # 按照位置順序
+            if des is None:
+                continue
+            for r_file, r_kp, r_des,r_count in orb_repeat:
+                matches=bf.match(des, r_des) # key的每個資料 match(特徵) 紀錄的重複資料
+                matches=sorted(matches, key=lambda x: x.distance) # sorted排序 按照位置順序
                 matches_all.extend(matches)  # 收集所有比對結果
-            good_matches=[m for m in matches_all if m.distance < th]  # 粒子
+            matches_all=[m for m in matches_all if m.distance < 2]  # 用 th 篩選  # distance<th 越小越像
             
-            if des==r_des:
-                r_des=r_des+1
+            if des is r_des:
+                r_count=r_count+1 # 用途陣列無記錄到的
             else:
-                orb_repeat.append((file, kp, des),1)
+                orb_repeat.append(file, kp, des,1) # 儲存進用途陣列中
         if wave:
             if wave== "頻率":
-                return orb_repeat[file][1]/len(kp_desc+)
+                total = sum(count for _, _, _, count in orb_repeat)
+                freq = [count / total for _, _, _, count in orb_repeat]
+                return freq
+
+
+
+
+
+                repeat_matches=[m for m in matches_all if m.distance < 1]  # 篩選 重複的
+                # 回傳陣列時只有一個陣列，可能陣列/數字讓陣列中的每一個都/數字?
+                return sum(count for _, count in orb_repeat) / len(matches_all)
+            # *****
             if wave== "振幅":
                 kp_desc+振幅
             if wave== "相位":
@@ -1499,48 +1511,33 @@ class Noēsis:
                 matches=bf.match(b_des, a_des)
                 matches=sorted(matches, key=lambda x: x.distance) # 按照位置順序
                 matches_all.extend(matches)  # 收集所有比對結果
-            good_matches=[m for m in matches_all if m.distance < th]  # 粒子 
+            matches_all=[m for m in matches_all if m.distance < th]  # 粒子 
 
     
-    def compressed_layer_imwrite(key, func=None,th=50):
         # 兩套 資料夾樹、圖像
         # 提出 資料夾，資料 屬性比對=>提出 條件狀態(客制化 想要的任意用途) 壓縮成=>結果 點 組合成=>資料夾樹圖 回傳=>符合用途 的目標影像
-            # 波包含：
-                # def 頻率 f   = 重複命中次數(ab比對完全相似) / 掃描次數(迴圈的最後一回)
-                # def 振幅 A   = 命中強度（例如 ORB 相似度）
-                # def 相位 φ   = 命中發生的相對位置 / 次序(enumerate)
-                # def 波長 λ   = 結構重複間距（資料層級距離）
-                # def 波速 c   = 常數（不參與判斷）
+            # 波長（λ）:# 相鄰兩個波峰（或波谷）之間的距離。
+            # 振幅:# 波動時偏離平衡位置的最大值，和「能量大小」有關。
+            # 週期（T）:# 完成一次完整振動所需的時間，與頻率的關係是# T = 1 / f
+            # 波速（v）:# 波前進的速度，關係式為# v = f × λ
+            # 相位:# 描述波在某一時刻、某一位置的振動狀態（例如是否同時到達波峰）。
+            # 能量:# 波可以傳遞能量，但不會整體搬運介質（像水波）。
+            # 強度:# 單位面積上所傳遞的能量，通常和振幅平方成正比。
+            # 方向與偏振（特別是橫波，如光）
+            # 描述振動方向的特性。
         # key<=資料=>條件狀態("高頻率出現詞")=>結果 點=>key壓縮圖
-        if not func:
-            print("請輸入用途")
-        for idx, a in enumerate(img_orb("thinking")):      # idx = 掃描順序 = 相位 # enumerate 第幾次index 取得原值value，index, value=enumerate()
+            # idx = 掃描順序 = 相位 # enumerate 第幾次index 取得原值value，index, value=enumerate()
+        for idx, a in enumerate(img_orb("thinking")):      
             A = orb_matches_imwrite(a)
             if A > th:                        # 命中一次
                 hits.append(idx)
                 amps.append(A)
-
-        if not hits:
-            return None
-
-        return {
-            # 頻率 f
-            "f": len(hits) / len(img_orb("thinking")),
-            # 振幅 A
-            "A": sum(amps) / len(amps),
-            # 相位 φ
-            "phi": hits,
-            # 波長 λ
-            "lambda": [hits[i+1] - hits[i] for i in range(len(hits)-1)],
-            # 波速 c（不用）
-            "c": 1
-        } 
         pass
 pass
             # 直接把篩選後的匹配點畫在圖上
             img_matches=cv2.drawMatches(
-                a_file, a_kp, b_file, b_kp, good_matches, None, flags=2)
-            score=len(good_matches) / len(a_kp) if a_kp else 0  # 波
+                a_file, a_kp, b_file, b_kp, matches_all, None, flags=2)
+            score=len(matches_all) / len(a_kp) if a_kp else 0  # 波
             if score > th:
                 filename=os.path.relpath(TEMPLATE_DIRS[dir_str], base_path)
                     .replace(os.sep, "_") + ".jpg"
