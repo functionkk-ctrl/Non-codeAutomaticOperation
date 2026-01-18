@@ -74,7 +74,7 @@ TEMPLATE_DIRS = {
 MATCH_THRESHOLD = 0.85
 LANGS = "eng+chi_sim"
 DEBUG = True
-
+bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
 # --- 共用工具 ---
 alive_event = threading.Event()
 cred = credentials.Certificate("serviceAccountKey.json")
@@ -110,7 +110,6 @@ def locate_template_orb(name, sort=1, num=1, extractor=False, dir=TEMPLATE_DIRS[
     kp2, des2 = orb.detectAndCompute(screen_gray, None)
     if des1 is None or des2 is None:
         return None
-    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
     matches = sorted(bf.match(des1, des2), key=lambda m: m.distance)
     if len(matches) < 5:
         return None  # 太少特徵配對視為不可靠
@@ -594,7 +593,6 @@ class TargetExtractor:
         self.cancelled = False
         self.roi_mask = None
         self.orb = cv2.ORB_create(800)
-        self.bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
 
     def select_polygon_roi(self):
         """
@@ -885,7 +883,7 @@ class TargetExtractor:
             kp_tpl, des_tpl=self.orb.detectAndCompute(tpl, None)
             if des_tpl is None:
                 continue
-            matches=self.bf.match(des_tpl, des_frame)
+            matches=bf.match(des_tpl, des_frame)
             if len(matches) < 5:
                 continue
             pts_frame=np.float32(
@@ -916,7 +914,7 @@ class TargetExtractor:
             kp_tpl, des_tpl=self.orb.detectAndCompute(tpl, None)
             if des_tpl is None:
                 continue
-            matches=self.bf.match(des_tpl, des_frame)
+            matches=bf.match(des_tpl, des_frame)
             if len(matches) < 5:
                 continue
             pts_frame=np.float32(
@@ -976,7 +974,7 @@ class TargetExtractor:
 
         # === 速度(特徵變化率 + 更新頻率)
         start=time.time()
-        matches=self.bf.match(des_prev, des_curr)  # ORB 特徵匹配
+        matches=bf.match(des_prev, des_curr)  # ORB 特徵匹配
         end=time.time()
         speed=1 / (end - start)  # 時間越短 → 速度越高
         # === 穩定性(多幀一致 + 特徵方差)。多幀圖。反比，越小越穩，所以要被-1
@@ -1428,50 +1426,90 @@ class Noēsis:
 
 # =====
     def img_orb(key,th,wave=None):
-        # 陣列儲存 在key資料夾中的圖像 的orb特徵，回傳整個key資料夾的全部圖像的orb特徵
         dirs=TEMPLATE_DIRS[key]
         if not dirs:
             dirs=os.path.join(base_path,key)# 一般資料夾，是不在TEMPLATE_DIRS
         files=[os.path.join(dirs, f)  # 資料夾
             for f in os.listdir(dirs)  # 資料
-            if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式
-        kp_desc=[] # 關鍵點 list_ 描述子 array
-        orb_repeat =[] # 符合 用途的
-        matches_all =[] # 符合 用途的
-        for file in files:
-            img=cv2.imread(file, cv2.IMREAD_GRAYSCALE)
-            kp, des=cv2.ORB_create().detectAndCompute(img, None) # 圖像的 特徵
-            kp_desc.append((file, kp, des))  # 圖片檔案路徑,關鍵點 list,描述子 array
-            if des is None:
-                continue
-            for r_file, r_kp, r_des,r_count in orb_repeat:
-                matches=bf.match(des, r_des) # key的每個資料 match(特徵) 紀錄的重複資料
-                matches=sorted(matches, key=lambda x: x.distance) # sorted排序 按照位置順序
-                matches_all.extend(matches)  # 收集所有比對結果
-            matches_all=[m for m in matches_all if m.distance < 2]  # 用 th 篩選  # distance<th 越小越像
+            if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式(原圖像)
+        # 陣列儲存 在key資料夾中的圖像 的orb特徵，回傳整個key資料夾的全部圖像的orb特徵
+        kp_desc=[] # 關鍵點(座標) list_、 描述子 array
+        orb_repeat =[] # 客製化 重複
+        total=0 # 週期
+        orb_total=[] # 週期
+        orb_amplitude=[] # 週期
+        orb_total=[] # 週期
+        orb_total=[] # 週期
+        matches_all =[] # 
+        for i,file in enumerate(files):
+            total+=1
+            kp, des=cv2.ORB_create().detectAndCompute(cv2.imread(file, cv2.IMREAD_GRAYSCALE), None) # 圖像的 特徵
+            kp_desc.append([file,kp,des])
+            if "頻率" in wave: 
+                for j, (r_file, r_kp, r_des,r_count) in enumerate(orb_repeat):
+                    matches_repeat=bf.match(r_des, des) # key的每個資料 match(特徵) 紀錄的重複資料
+                    if len(matches_repeat) == 0:
+                        continue # len(matches_repeat) ==0 會報錯
+                    if file == r_file or sum(1 for m in matches_repeat if m.distance < 2)>len(matches_repeat)*0.95: # 相似到當成重覆的圖像
+                        orb_repeat[j][3] += 1
+                        break # 省迴圈
+                else :# 最後一筆跑完就執行 # 用途陣列 無記錄到的
+                    orb_repeat.append([file, kp, des,1]) # 儲存進 用途陣列中
+        if rf"高頻率" in wave: 
+            orb_repeat=sorted(orb_repeat, key=lambda x: x.count,reverse=True) # sorted排序 按照 重複次數順序，越大越靠前
+            matches_all.extend(orb_repeat)
+        if rf"低頻率" in wave:
+            orb_repeat=sorted(orb_repeat, key=lambda x: x.count) # sorted排序 按照 重複次數順序，越小越靠前
+            matches_all.extend(orb_repeat)
+        if rf"中頻率" in wave:
+            avg = mean(x.count for x in orb_repeat) # 平均值
+            orb_repeat = sorted(orb_repeat, key=lambda x: abs(x.count - avg)) # sorted排序 按照 重複次數順序，越接近平均值越靠前
+            matches_all.extend(orb_repeat)
+        if "週期" in wave: 
+            orb_total=sorted(orb_repeat, key=lambda x: total/x.count)
+            matches_all.extend(orb_total)
+        if "振幅" in wave: 
+            # 振幅:# 波動時偏離平衡位置的最大值，和「能量大小」有關。
+            # 平衡位置:檔案格式，錯誤格式會無法讀取，越偏離越大
+            # 強度為0的位置
+            # 屬性強度 = 狀態翻轉最小作用量 門檻強度 常數
+                # 我非常瞧不起 你被幹話，你被幹話 被炸飛 當然需要一個 你被幹話 被炸飛量，我已經證明了強度，剛剛講完了，你被幹話 懂不懂?
+            avg = mean(x.count for x in orb_repeat) # 平均值  
+            orb_amplitude = max(orb_repeat, key=lambda x: abs(x.count - avg))
+            matches_all.extend(orb_amplitude)
+        if "相位" in wave: 
+        
+            # 相位:# 描述波在某一時刻 i、某一位置的振動狀態（例如是否同時到達波峰）。
+        if "能量" in wave: 
+            # 能量:# 波可以傳遞能量，但不會整體搬運介質（像水波）。
+        if "強度" in wave: 
+            # 強度:# 單位面積上所傳遞的能量，通常和振幅平方成正比。
+        if "方向與偏振（特別是橫波，如光）" in wave: 
+
+        if "描述振動方向的特性。" in wave: 
             
-            if des is r_des:
-                r_count=r_count+1 # 用途陣列無記錄到的
-            else:
-                orb_repeat.append(file, kp, des,1) # 儲存進用途陣列中
+
+
+
+        if "3" in wave: 
+        # matches_all=[m for m in matches_all if m.distance < 2]  # 用 th 篩選  # distance<th 越小越像
+        # 加入水(分散成霧)感測(執行或終止) # 加入X感測(執行或終止) # 以木治人、以水觀察、以
+        rep=[rep for i,r in enumerate(orb_repeat) if i<th]
+        return rep
+            
         if wave:
             if wave== "頻率":
-                total = sum(count for _, _, _, count in orb_repeat)
-                freq = [count / total for _, _, _, count in orb_repeat]
-                return freq
-
-
-
+                
 
 
                 repeat_matches=[m for m in matches_all if m.distance < 1]  # 篩選 重複的
                 # 回傳陣列時只有一個陣列，可能陣列/數字讓陣列中的每一個都/數字?
                 return sum(count for _, count in orb_repeat) / len(matches_all)
             # *****
-            if wave== "振幅":
+            if wave== "振幅":# *****
                 kp_desc+振幅
             if wave== "相位":
-                kp_desc+相位
+                kp_desc+相位 absdiff delta
             if wave== "波長":
                 kp_desc+波長
             if wave== "波速":
@@ -1525,6 +1563,13 @@ class Noēsis:
             # 強度:# 單位面積上所傳遞的能量，通常和振幅平方成正比。
             # 方向與偏振（特別是橫波，如光）
             # 描述振動方向的特性。
+        # 
+            # 名稱（Name）
+            # 路徑（Path）
+            # 大小（Size）
+            # 類型 / 副檔名（Extension）
+            # 建立/修改時間（Timestamps）
+            # 權限/屬性（Permission / Attributes）
         # key<=資料=>條件狀態("高頻率出現詞")=>結果 點=>key壓縮圖
             # idx = 掃描順序 = 相位 # enumerate 第幾次index 取得原值value，index, value=enumerate()
         for idx, a in enumerate(img_orb("thinking")):      
