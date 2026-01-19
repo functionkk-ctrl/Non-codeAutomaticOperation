@@ -1438,21 +1438,7 @@ class Noēsis:
         total=0 # 週期
         orb_total=[] # 週期
         orb_amplitude=[] # 週期
-        # 最通用的 波紋:振幅 、 波長 、 頻率 、 波速 、 質點位移
-        orb_group .append({
-            "file": file, # 空間x，圖像名稱同時是 資料夾(屬性)的分支
-            "kp": kp, # 空間y
-            "des": des,
-            "timestamp": None, # 時間，檔案的修改日期 創立時間
-            # 不需要 "count": 1, # 重疊 
-            "frequency": 1, # 頻率 ，用到 相位 時間 。檔案格式 ，偏離會偏離平衡位置
-            "period": 1,    # 週期=波長 ，用到 相位 空間(位置)
-            "amplitude": 1, # 振幅 ，用到 位移(空間變化量) 能量
-            "phase": 1,     # 相位，***** ，時間 空間 波速
-            "velocity": 1,     # 波速，波長*頻率=1
-            "particle_displacement": 1, # 質點位移 ，用到 振幅 相位 時間 空間
-            "energy": 1,  # 能量
-        })
+        orb_group=[]
         for i,file in enumerate(files):
             total+=1
             img = cv2.imread(file, cv2.IMREAD_GRAYSCALE)
@@ -1470,6 +1456,23 @@ class Noēsis:
                         break # 省迴圈
                 else :# 最後一筆跑完就執行 # 用途陣列 無記錄到的
                     orb_repeat.append([file, kp, des,1]) # 儲存進 用途陣列中
+        else:
+            # 最通用的 波紋:振幅 、 波長 、 頻率 、 波速 、 質點位移
+            orb_group .append({
+                "file": file, # 空間x，圖像名稱同時是 資料夾(屬性)的分支
+                "kp": kp, # 空間y
+                "des": des,
+                "timestamp":  os.path.getmtime(file), # 時間，檔案的修改日期 創立時間
+                # 不需要 "count": 1, # 重疊 
+                "frequency": 1, # 頻率 ，用到 相位 時間 。檔案格式 ，偏離會偏離平衡位置
+                "period": 1,    # 週期=波長 ，用到 相位 空間(位置)
+                "amplitude": 1, # 振幅 ，用到 位移(空間變化量) 能量
+                "phase":  k * x - omega * t,     # 相位，***** ，時間 空間 波速
+                "velocity": 1,     # 波速，波長*頻率=1
+                "particle_displacement":  amplitude * sin(phase), # 質點位移 ，用到 振幅 相位 時間 空間
+                "energy": 1,  # 能量
+            })
+            
         if wave :
             if rf"高頻率" in wave: 
                 orb_repeat=sorted(orb_repeat, key=lambda x: x["count"],reverse=True) # sorted排序 按照 重複次數順序，越大越靠前
