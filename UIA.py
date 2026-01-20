@@ -785,15 +785,15 @@ class TargetExtractor:
         val alt = loc.altitude // 高度尺(Z）
         val speed=loc.speed // m/s
 
-        // == === 2️⃣ 判斷是否在空中 == ===
+        // == == = 2️⃣ 判斷是否在空中 == ===
         // 工程判斷：高度 + 速度(不搞 AI）
         val isAirborne=alt > 20.0 & & speed > 5.0
 
-        // == === 3️⃣ 讀取影像 == ===
+        // == == = 3️⃣ 讀取影像 == ===
         // img: OpenCV Mat(CameraX / Camera2 轉過來）
         val img: Mat=currentFrameMat
 
-        // == === 4️⃣ 找「大占比物體」 == ===
+        // == == = 4️⃣ 找「大占比物體」 == ===
         // 不分類、不追蹤，只找最大輪廓
         val gray=Mat()
         val bin=Mat()
@@ -816,10 +816,10 @@ class TargetExtractor:
 
         val rect=Imgproc.boundingRect(mainContour)
 
-        // == === 5️⃣ 僅在「空中」才使用橫向尺 == ===
+        // == == = 5️⃣ 僅在「空中」才使用橫向尺 == ===
         if (!isAirborne) return
 
-        // == === 6️⃣ 尺度換算 == ===
+        // == == = 6️⃣ 尺度換算 == ===
         // 高度直接當 Z 尺
         val Z=alt // meters
 
@@ -837,7 +837,7 @@ class TargetExtractor:
         // 長度：取寬高中較大者(工程定義）
         val L=maxOf(W, H)
 
-        // == === 7️⃣ 輸出唯一結果 == ===
+        // == == = 7️⃣ 輸出唯一結果 == ===
         Log.i("SIZE", "L,W,H (m) = $L, $W, $H")
 
 
@@ -911,7 +911,8 @@ class TargetExtractor:
         for f in os.listdir(self.multiple_img_goal):
             if not f.endswith(".png"):
                 continue
-            tpl=cv2.imread(os.path.join(os.path.join(base_path,self.multiple_img_goal), f), 0)
+            tpl=cv2.imread(os.path.join(os.path.join(
+                base_path, self.multiple_img_goal), f), 0)
             kp_tpl, des_tpl=self.orb.detectAndCompute(tpl, None)
             if des_tpl is None:
                 continue
@@ -1323,7 +1324,7 @@ class Noēsis:
     # ，引入相關故事增加對話深度
     # ，用過渡語句讓對話轉向
     # ，讚美或認可
-**  # ，觀察環境讚美或認可，再鍵位補充 讚美或認可
+    # ，觀察環境讚美或認可，再鍵位補充 讚美或認可
     # ，開放式提問
     # ，暗示下次相遇
     # 屬性 場景、時間、地點、狀態
@@ -1426,68 +1427,68 @@ class Noēsis:
     # [淺紫] 長期目標核 → [深紫] 優化學習核 → [淺橙] 溝通/協作核 → [紅棕] 危機處理核
 
 # =====
-    def img_orb(key,th,wave=None,velocity=1):
+    # Noēsis 處理 交流資料夾
+    def img_orb(key, th, wave=None, velocity=1):
         dirs=TEMPLATE_DIRS[key]
         if not dirs:
-            dirs=os.path.join(base_path,key)# 一般資料夾，是不在TEMPLATE_DIRS
+            dirs=os.path.join(base_path, key)  # 一般資料夾，是不在TEMPLATE_DIRS
         files=[os.path.join(dirs, f)  # 資料夾
             for f in os.listdir(dirs)  # 資料
             if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式(原圖像)
-        kp_desc=[] # 關鍵點(座標) list_、 描述子 array
+        kp_desc=[]  # 關鍵點(座標) list_、 描述子 array
         # 陣列儲存 在key資料夾中的圖像 的orb特徵，回傳整個key資料夾的全部圖像的orb特徵
         orb_group=[]
-        for i,file in enumerate(files):
-            img = cv2.imread(file, cv2.IMREAD_GRAYSCALE)
+        for i, file in enumerate(files):
+            img=cv2.imread(file, cv2.IMREAD_GRAYSCALE)
             if img is None:
                 continue
-            kp, des = orb.detectAndCompute(img, None) # 圖像特徵
-            kp_desc.append([file,kp,des])
+            kp, des=orb.detectAndCompute(img, None)  # 圖像特徵
+            kp_desc.append([file, kp, des])
             if wave:
                 timestamp=os.path.getmtime(file)
-                period= max(1, len(kp) if kp else 1)
-                phase=kp*2*math.pi/period- 2*math.pi*timestamp
-                phase = (
-                    2 * math.pi * (
-                        len(g["kp"]) / g["period"]
-                        - g["velocity"] * g["timestamp"]
-                    )
-                )
-
+                period=max(1, len(kp) if kp else 1)
+                phase=2 * math.pi * (velocity * timestamp-len(kp) / period )
+                amplitude= math.sqrt(len(kp))
                 # 最通用的 波紋:振幅 、 波長 、 頻率 、 波速 、 質點位移
                     # 替身使者會互相吸引
                 orb_group .append({
-                    "file": file, # 空間x，圖像名稱同時是 資料夾(屬性)的分支
+                    "file": file,  # 空間x，圖像名稱同時是 資料夾(屬性)的分支
                     # 輸出時排序kp
                         # 圖像特徵點數 波長自身對稱中心
                         # 圖像匹配數量 / 相似度 相似度最大位置
-                    "kp": kp, # 空間y
+                    "kp": kp,  # 空間y
                     "des": des,
-                    "timestamp":  timestamp, # 時間，檔案的修改日期 創立時間
-                    "frequency": 1/period, # 頻率 ，用到 相位 時間 。
-                    "period":  period, # 週期=波長 ，用到 相位 空間(位置) #相鄰兩個波峰（或波谷）之間的距離。 #完成一次完整振動所需的時間，與頻率的關係是
-                    "amplitude": math.sqrt(len(kp))  , # 振幅 ，用到 位移(空間變化量) 能量 #波動時偏離平衡位置的最大值，和「能量大小」有關。
-                    "phase":phase,     # 相位，***** ，時間 空間 波速， 平衡位置 phase=0 #描述波在某一時刻、某一位置的振動狀態（例如是否同時到達波峰）。
+                    "timestamp":  timestamp,  # 時間，檔案的修改日期 創立時間
+                    "frequency": 1/period,  # 頻率 ，用到 相位 時間 。
+                    # 週期=波長 ，用到 相位 空間(位置) #相鄰兩個波峰（或波谷）之間的距離。 #完成一次完整振動所需的時間，與頻率的關係是
+                    "period":  period,
+                    # 振幅 ，用到 位移(空間變化量) 能量 #波動時偏離平衡位置的最大值，和「能量大小」有關。
+                    "amplitude":amplitude,
+                    "phase": phase,     # 相位，***** ，時間 空間 波速， 平衡位置 phase=0 #描述波在某一時刻、某一位置的振動狀態（例如是否同時到達波峰）。
                     # 過去的累積形成的規律，註冊現在，未來的痕跡規範現在。空間Xy為現在，只有一筆的話就算被凍結，因為只有過去，波長為未來給于現在強度。
                         # 簡易版:過去註冊現在，未來規範現在
                     "velocity": velocity,     # 波速，波長*頻率 #波前進的速度
-                    "particle_displacement":  amplitude * math.sin(phase), # 質點位移 ，用到 振幅 相位 時間 空間
+                    # 質點位移 ，用到 振幅 相位 時間 空間
+                    "particle_displacement":  amplitude * math.sin(phase),
                     "energy": amplitude ** 2,  # 能量 #波可以傳遞能量，但不會整體搬運介質（像水波）。
                 })
+        # 屬性(資料夾)使用 orb_group，有趣元 怎麼使用?使用在協作上
         if wave:
-            if rf"高頻率" in wave: 
-                orb_repeat=sorted(orb_group, key=lambda x: x["kp"],reverse=True) # sorted排序 按照 重複次數順序，越大越靠前
+            if rf"高頻率" in wave:
+                # sorted排序 按照 重複次數順序，越大越靠前
+                orb_repeat=sorted(
+                    orb_group, key=lambda x: x["kp"], reverse=True)
             if rf"低頻率" in wave:
-                orb_repeat=sorted(orb_group, key=lambda x: x["kp"]) # sorted排序 按照 重複次數順序，越小越靠前
+                # sorted排序 按照 重複次數順序，越小越靠前
+                orb_repeat=sorted(orb_group, key=lambda x: x["kp"])
             if rf"中頻率" in wave:
-                avg = mean(orb_group, key=lambda x: abs(x["kp"] )) # 平均值
-                orb_repeat = sorted(orb_group, key=lambda x: abs(x["kp"] - avg)) # sorted排序 按照 重複次數順序，越接近平均值越靠前
-            
-                
-
+                avg=mean(orb_group, key=lambda x: abs(x["kp"]))  # 平均值
+                orb_repeat=sorted(orb_group, key=lambda x: abs(
+                    x["kp"] - avg))  # sorted排序 按照 重複次數順序，越接近平均值越靠前
 
 
     # 加入水(分散成霧)明觀(執行或終止) # 加入X感測(執行或終止) # 以木治人、以水觀察、以
-    def orb_matches_imwrite(a, b="attributes", th=50,wave=None):
+    def orb_matches_imwrite(a, b="attributes", th=50, wave=None):
         # 儲存進 thinking 或用path:log:return回傳 字串
         dir_str="thinking"
             if a == "world" or b == "world":
@@ -1498,8 +1499,10 @@ class Noēsis:
                     return None  # 正則匹配失敗，直接返回 None
                 # 資料夾路徑 = 去掉最後一段
                 folder_parts=a.split(":")[:-1]
-                folder_path=os.path.join(os.path.join(base_path,*folder_parts))  # 將多段組成路徑
-                log_file=os.path.join(os.path.join(base_path,folder_path), "log.txt")
+                folder_path=os.path.join(os.path.join(
+                    base_path, *folder_parts))  # 將多段組成路徑
+                log_file=os.path.join(os.path.join(
+                    base_path, folder_path), "log.txt")
                 if os.path.exists(log_file):
                     with open(log_file, "r", encoding="utf-8") as f:
                         for line in f:
@@ -1510,23 +1513,23 @@ class Noēsis:
                 # 如果 log.txt 不存在或找不到對應詞，就回傳原詞 related_words "字串"
                 return m.group(0)
         scores=[]
-        for a_file, a_kp, a_des in img_orb(a,wave):  # 資料
+        for a_file, a_kp, a_des in img_orb(a, wave):  # 資料
             orb_group=[]
-            for b_file, b_kp, b_des in img_orb(b,wave):  # 資料，特徵點選比較多
+            for b_file, b_kp, b_des in img_orb(b, wave):  # 資料，特徵點選比較多
                 if b_des is None:
                     continue
                 matches=bf.match(b_des, a_des)
-                matches=sorted(matches, key=lambda x: x.distance) # 按照位置順序
+                matches=sorted(matches, key=lambda x: x.distance)  # 按照位置順序
                 orb_group.append(matches)  # 收集所有比對結果
-            orb_group=[m for m in orb_group if m.distance < th]  # 粒子 
+            orb_group=[m for m in orb_group if m.distance < th]  # 粒子
 
-    
+
         # 兩套 資料夾樹、圖像
         # 提出 資料夾，資料 屬性比對=>提出 條件狀態(客制化 想要的任意用途) 壓縮成=>結果 點 組合成=>資料夾樹圖 回傳=>符合用途 的目標影像
         # key<=資料=>條件狀態("高頻率出現詞")=>結果 點=>key壓縮圖
             # idx = 掃描順序 = 相位 # enumerate 第幾次index 取得原值value，index, value=enumerate()
-        for idx, a in enumerate(img_orb("thinking")):      
-            A = orb_matches_imwrite(a)
+        for idx, a in enumerate(img_orb("thinking")):
+            A=orb_matches_imwrite(a)
             if A > th:                        # 命中一次
                 hits.append(idx)
                 amps.append(A)
@@ -1540,7 +1543,7 @@ pass
                 filename=os.path.relpath(TEMPLATE_DIRS[dir_str], base_path)
                     .replace(os.sep, "_") + ".jpg"
                 save_path=os.path.join(TEMPLATE_DIRS[dir_str], filename)
-                cv2.imwrite(save_path, img_matches) # "img"
+                cv2.imwrite(save_path, img_matches)  # "img"
             # scores.append(score)
             # all_scores=sum(scores) / len(scores) if scores else 0
         # a 對 b 的整體相似度:print(all_scores)
@@ -1581,10 +1584,10 @@ pass
                 # 屬性比對 思考中的影像 取得最相似的圖像，同時打開log.txt找 related_words(字串)有哪些
                 orb_matches_imwrite("thinking:log:related_words", th=100))
             # thinking 比對key，獲得關聯性詞影像進 thinking
-            orb_matches_imwrite(key,thinking)
+            orb_matches_imwrite(key, thinking)
             # *** 屬性下的同層的同一層的log要找到關聯詞
             # 輸出結果是 ， 直接讀取 thinking 資料夾
-        def 關鍵詞頻率(key,frequency="高"):
+        def 關鍵詞頻率(key, frequency="高"):
             remove_thinking_file()
             # >從原本的提取
             # 空間上 「靠不靠近」與「常不常一起出現」，代表 每次靠近、靠近的一組詞 數量/文本總詞數
@@ -1592,9 +1595,9 @@ pass
             # 兩種排序 思考
                 # 不動距離看多少距離的組合(影像)重複出現。
                 # 重覆出現的詞 越多次越靠前排名
-            orb_matches_imwrite(key+"communication",frequency)
+            orb_matches_imwrite(key+"communication", frequency)
             # 交流中有頻率frequency的詞，有相似 thinking 的影像
-            orb_matches_imwrite("thinking",key+"communication")
+            orb_matches_imwrite("thinking", key+"communication")
             # 在文本中 比對屬性 排序出關鍵詞頻率，輸出結果為 TEMPLATE_DIRS["thinking"]
         def 情緒前後詞:
             kp_desc.append((file, kp, des))  # 圖片檔案路徑,關鍵點 list,描述子 array
@@ -1608,7 +1611,7 @@ pass
         def bc:
             NER(Noēsis+"communication")
         def 暫定:
-            # 讀 live_capture (ORB比對 讀 attributes 再ORB比對 讀world)****
+            # 讀 live_capture (ORB比對 讀 attributes 再ORB比對 讀world)********
             NER(用戶+"communication")
         def 引導對話更深層發展:
             # Noēsis 交流回去時， +bc(關聯 關鍵詞頻率(低))+ac
@@ -1619,27 +1622,35 @@ pass
             pass
         def 關注對方的興趣或重點:
             # Noēsis 交流回去時， bc(關聯 興趣和重點)
+            # 關注對方重點	找 phase 接近
             pass
         def 接力式回應讓對方說更多:
             # Noēsis 交流回去時，+bc(NER 轉折詞or代詞+提問用詞-陳述用詞-上層)
+            # 接力式回應	小 Δphase + 正 Δenergy
             pass
         def 引入相關故事增加對話深度:
             # Noēsis 交流回去時， bc(關聯 **相關故事)-ac(NER **敘事元素)
+            # 引入故事	時間殘響大的波
+            # 引導對話更深層	沿能量梯度走
             pass
         def 用過渡語句讓對話轉向:
             # Noēsis 交流回去時，bc(NER 轉折詞)+ac(關聯 提問用詞)+ac(情緒前後詞 5)
+            # 過渡語句	phase 中等差
             pass
         def 讚美或認可:
             # Noēsis 交流回去時， ** bc(NER 讚美或認可)+ac(NER a行為)
+            # 讚美或認可	phase 對齊
             pass
         def 觀察環境:
             # Noēsis 交流回去時， c(NER 場景+時間+地點+狀態)
             pass
         def 開放式提問:
             # Noēsis 交流回去時，bc(關聯 關鍵詞頻率(低)+中性疑問詞)
+            # 開放式提問	phase 未閉合
             pass
         def 暗示下次相遇:
             # Noēsis 交流回去時，bc(關聯 時間、低強度情緒、結束語句)
+            # 暗示下次相遇	時間未收斂
             pass
         def 313:
             if ac(關鍵詞頻率(高) 情緒用詞):
@@ -1652,6 +1663,26 @@ pass
             if ac幾乎全無: pass
         def 64526:
             if ac 否定: pass
+
+        # phase 接近 → 共振 → 被理解
+        # phase 不同但穩定 → 張力 → 被挑動
+        # phase 雜亂 → 噪音 → 無趣
+        Δphase = abs(phase_i - phase_j)
+        # 正梯度 → 話題可延伸
+        # 負梯度 → 話題收斂
+        # 平的 → 對話死水
+        Δenergy = energy_j - energy_i
+        # 太短 → 反射
+        # 太長 → 斷裂
+        # 剛好 → 回應感
+        Δt = timestamp_j - timestamp_i
+        #
+        #
+        #
+        #
+        #
+        #
+        #
         #
         #
         #
