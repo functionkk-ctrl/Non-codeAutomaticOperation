@@ -71,6 +71,7 @@ TEMPLATE_DIRS = {
     "thinking": os.path.join(base_path, "thinking"),  # 中轉站
     "thinking2": os.path.join(base_path, "thinking2"),  # 中轉站
 }
+
 MATCH_THRESHOLD = 0.85
 LANGS = "eng+chi_sim"
 DEBUG = True
@@ -1425,7 +1426,7 @@ class Noēsis:
     # [淺紫] 長期目標核 → [深紫] 優化學習核 → [淺橙] 溝通/協作核 → [紅棕] 危機處理核
 
 # =====
-    def img_orb(key,th,wave=None):
+    def img_orb(key,th,wave=None,velocity=1):
         dirs=TEMPLATE_DIRS[key]
         if not dirs:
             dirs=os.path.join(base_path,key)# 一般資料夾，是不在TEMPLATE_DIRS
@@ -1434,110 +1435,58 @@ class Noēsis:
             if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式(原圖像)
         kp_desc=[] # 關鍵點(座標) list_、 描述子 array
         # 陣列儲存 在key資料夾中的圖像 的orb特徵，回傳整個key資料夾的全部圖像的orb特徵
-        orb_repeat =[] # 客製化 重複
-        total=0 # 週期
-        orb_total=[] # 週期
-        orb_amplitude=[] # 週期
         orb_group=[]
         for i,file in enumerate(files):
-            total+=1
             img = cv2.imread(file, cv2.IMREAD_GRAYSCALE)
             if img is None:
                 continue
             kp, des = orb.detectAndCompute(img, None) # 圖像特徵
             kp_desc.append([file,kp,des])
-            if wave and "頻率" in wave:
-                for j, (r_file, r_kp, r_des,r_count) in enumerate(orb_repeat):
-                    matches_repeat=bf.match(r_des, des) # key的每個資料 match(特徵) 紀錄的重複資料
-                    if len(matches_repeat) == 0 or not matches_repeat:
-                        continue # len(matches_repeat) ==0 會報錯
-                    if file == r_file or sum(1 for m in matches_repeat if m.distance < 2)>len(matches_repeat)*0.95: # 相似到當成重覆的圖像
-                        orb_repeat[j][3] += 1
-                        break # 省迴圈
-                else :# 最後一筆跑完就執行 # 用途陣列 無記錄到的
-                    orb_repeat.append([file, kp, des,1]) # 儲存進 用途陣列中
-        else:
-            # 最通用的 波紋:振幅 、 波長 、 頻率 、 波速 、 質點位移
-            orb_group .append({
-                "file": file, # 空間x，圖像名稱同時是 資料夾(屬性)的分支
-                "kp": kp, # 空間y
-                "des": des,
-                "timestamp":  os.path.getmtime(file), # 時間，檔案的修改日期 創立時間
-                # 不需要 "count": 1, # 重疊 
-                "frequency": 1, # 頻率 ，用到 相位 時間 。檔案格式 ，偏離會偏離平衡位置
-                "period": 1,    # 週期=波長 ，用到 相位 空間(位置)
-                "amplitude": 1, # 振幅 ，用到 位移(空間變化量) 能量
-                "phase":  k * x - omega * t,     # 相位，***** ，時間 空間 波速
-                "velocity": 1,     # 波速，波長*頻率=1
-                "particle_displacement":  amplitude * sin(phase), # 質點位移 ，用到 振幅 相位 時間 空間
-                "energy": 1,  # 能量
-            })
-            
-        if wave :
-            if rf"高頻率" in wave: 
-                orb_repeat=sorted(orb_repeat, key=lambda x: x["count"],reverse=True) # sorted排序 按照 重複次數順序，越大越靠前
-                orb_group.append(orb_repeat)
-            if rf"低頻率" in wave:
-                orb_repeat=sorted(orb_repeat, key=lambda x: x["count"]) # sorted排序 按照 重複次數順序，越小越靠前
-                orb_group.append(orb_repeat)
-            if rf"中頻率" in wave:
-                avg = mean(x.count for x in orb_repeat) # 平均值
-                orb_repeat = sorted(orb_repeat, key=lambda x: abs(x["count"] - avg)) # sorted排序 按照 重複次數順序，越接近平均值越靠前
-                orb_group.append(orb_repeat)
-            if "週期" in wave: 
-                orb_total=sorted(orb_repeat, key=lambda x: total/x["count"])
-                orb_group.append(orb_total)
-            if "振幅" in wave: 
-                # 振幅:# 波動時偏離平衡位置的最大值，和「能量大小」有關。
-                # 平衡位置:檔案格式，錯誤格式會無法讀取，越偏離越大
-                # 強度為0的位置
-                # 屬性強度 = 狀態翻轉最小作用量 門檻強度 常數
-                    # 我非常瞧不起 你被幹話，你被幹話 被炸飛 當然需要一個 你被幹話 被炸飛量，我已經證明了強度，剛剛講完了，你被幹話 懂不懂?
-                avg = mean(x.count for x in orb_repeat) # 平均值  
-                orb_amplitude = max(orb_repeat, key=lambda x: abs(x["count"] - avg))
-                orb_group.append(orb_amplitude)
-            if "相位" in wave: 
-                # 相位:# 描述波在某一時刻 i、某一位置的振動狀態（例如是否同時到達波峰）。
-                    # orb_repeat 的每個 r_file 在i的位置 file ，的振幅
-                    # 
-            if "能量" in wave: 
-                # 能量:# 波可以傳遞能量，但不會整體搬運介質（像水波）。
-            if "強度" in wave: 
-                # 強度:# 單位面積上所傳遞的能量，通常和振幅平方成正比。
-            if "方向與偏振（特別是橫波，如光）" in wave: 
+            if wave:
+                timestamp=os.path.getmtime(file)
+                period= max(1, len(kp) if kp else 1)
+                phase=kp*2*math.pi/period- 2*math.pi*timestamp
+                phase = (
+                    2 * math.pi * (
+                        len(g["kp"]) / g["period"]
+                        - g["velocity"] * g["timestamp"]
+                    )
+                )
 
-            if "描述振動方向的特性。" in wave: 
-                
-
-
-
-        if "3" in wave: 
-        # orb_group=[m for m in orb_group if m.distance < 2]  # 用 th 篩選  # distance<th 越小越像
-        # 加入水(分散成霧)感測(執行或終止) # 加入X感測(執行或終止) # 以木治人、以水觀察、以
-        rep=[rep for i,r in enumerate(orb_repeat) if i<th]
-        return rep
-            
+                # 最通用的 波紋:振幅 、 波長 、 頻率 、 波速 、 質點位移
+                    # 替身使者會互相吸引
+                orb_group .append({
+                    "file": file, # 空間x，圖像名稱同時是 資料夾(屬性)的分支
+                    # 輸出時排序kp
+                        # 圖像特徵點數 波長自身對稱中心
+                        # 圖像匹配數量 / 相似度 相似度最大位置
+                    "kp": kp, # 空間y
+                    "des": des,
+                    "timestamp":  timestamp, # 時間，檔案的修改日期 創立時間
+                    "frequency": 1/period, # 頻率 ，用到 相位 時間 。
+                    "period":  period, # 週期=波長 ，用到 相位 空間(位置) #相鄰兩個波峰（或波谷）之間的距離。 #完成一次完整振動所需的時間，與頻率的關係是
+                    "amplitude": math.sqrt(len(kp))  , # 振幅 ，用到 位移(空間變化量) 能量 #波動時偏離平衡位置的最大值，和「能量大小」有關。
+                    "phase":phase,     # 相位，***** ，時間 空間 波速， 平衡位置 phase=0 #描述波在某一時刻、某一位置的振動狀態（例如是否同時到達波峰）。
+                    # 過去的累積形成的規律，註冊現在，未來的痕跡規範現在。空間Xy為現在，只有一筆的話就算被凍結，因為只有過去，波長為未來給于現在強度。
+                        # 簡易版:過去註冊現在，未來規範現在
+                    "velocity": velocity,     # 波速，波長*頻率 #波前進的速度
+                    "particle_displacement":  amplitude * math.sin(phase), # 質點位移 ，用到 振幅 相位 時間 空間
+                    "energy": amplitude ** 2,  # 能量 #波可以傳遞能量，但不會整體搬運介質（像水波）。
+                })
         if wave:
-            if wave== "頻率":
+            if rf"高頻率" in wave: 
+                orb_repeat=sorted(orb_group, key=lambda x: x["kp"],reverse=True) # sorted排序 按照 重複次數順序，越大越靠前
+            if rf"低頻率" in wave:
+                orb_repeat=sorted(orb_group, key=lambda x: x["kp"]) # sorted排序 按照 重複次數順序，越小越靠前
+            if rf"中頻率" in wave:
+                avg = mean(orb_group, key=lambda x: abs(x["kp"] )) # 平均值
+                orb_repeat = sorted(orb_group, key=lambda x: abs(x["kp"] - avg)) # sorted排序 按照 重複次數順序，越接近平均值越靠前
+            
                 
 
 
-                repeat_matches=[m for m in orb_group if m.distance < 1]  # 篩選 重複的
-                # 回傳陣列時只有一個陣列，可能陣列/數字讓陣列中的每一個都/數字?
-                return sum(count for _, count in orb_repeat) / len(orb_group)
-            # *****
-            if wave== "振幅":# *****
-                kp_desc+振幅
-            if wave== "相位":
-                kp_desc+相位 absdiff delta
-            if wave== "波長":
-                kp_desc+波長
-            if wave== "波速":
-                kp_desc+波速
-        else:
-            return kp_desc # 座標
-            
 
+    # 加入水(分散成霧)明觀(執行或終止) # 加入X感測(執行或終止) # 以木治人、以水觀察、以
     def orb_matches_imwrite(a, b="attributes", th=50,wave=None):
         # 儲存進 thinking 或用path:log:return回傳 字串
         dir_str="thinking"
@@ -1574,22 +1523,6 @@ class Noēsis:
     
         # 兩套 資料夾樹、圖像
         # 提出 資料夾，資料 屬性比對=>提出 條件狀態(客制化 想要的任意用途) 壓縮成=>結果 點 組合成=>資料夾樹圖 回傳=>符合用途 的目標影像
-            # 波長（λ）:# 相鄰兩個波峰（或波谷）之間的距離。
-            # 振幅:# 波動時偏離平衡位置的最大值，和「能量大小」有關。
-            # 週期（T）:# 完成一次完整振動所需的時間，與頻率的關係是# T = 1 / f
-            # 波速（v）:# 波前進的速度，關係式為# v = f × λ
-            # 相位:# 描述波在某一時刻、某一位置的振動狀態（例如是否同時到達波峰）。
-            # 能量:# 波可以傳遞能量，但不會整體搬運介質（像水波）。
-            # 強度:# 單位面積上所傳遞的能量，通常和振幅平方成正比。
-            # 方向與偏振（特別是橫波，如光）
-            # 描述振動方向的特性。
-        # 
-            # 名稱（Name）
-            # 路徑（Path）
-            # 大小（Size）
-            # 類型 / 副檔名（Extension）
-            # 建立/修改時間（Timestamps）
-            # 權限/屬性（Permission / Attributes）
         # key<=資料=>條件狀態("高頻率出現詞")=>結果 點=>key壓縮圖
             # idx = 掃描順序 = 相位 # enumerate 第幾次index 取得原值value，index, value=enumerate()
         for idx, a in enumerate(img_orb("thinking")):      
