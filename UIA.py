@@ -1329,7 +1329,7 @@ class Noēsis:
     # ，暗示下次相遇
     # 屬性 場景、時間、地點、狀態
 # *** 找到話題
-    # 關鍵詞頻率、情緒前後詞、關聯性詞、NER 命名實體技術
+    # 關鍵詞頻率 、 情緒前後詞 、 關聯性詞 、NER 命名實體技術
 # * 被理解(有趣不是外在，而是內在被打開)、被挑動(有趣不是結果，是過程中的心動)、被延伸(有趣不是熱鬧，是有回應感)
     # 打開內在
     # 過程中的心動
@@ -1451,7 +1451,7 @@ class Noēsis:
                 amplitude= math.sqrt(len(kp))
                 # 最通用的 波紋:振幅 、 波長 、 頻率 、 波速 、 質點位移
                     # 替身使者會互相吸引
-                orb_group .append({
+                orb_group.append({
                     "file": file,  # 空間x，圖像名稱同時是 資料夾(屬性)的分支
                     # 輸出時排序kp
                         # 圖像特徵點數 波長自身對稱中心
@@ -1488,7 +1488,7 @@ class Noēsis:
 
 
     # 加入水(分散成霧)明觀(執行或終止) # 加入X感測(執行或終止) # 以木治人、以水觀察、以
-    def orb_matches_imwrite(a, b="attributes", th=50, wave=None):
+    def orb_matches_imwrite(a, b="attributes", th=50):
         # 儲存進 thinking 或用path:log:return回傳 字串
         dir_str="thinking"
             if a == "world" or b == "world":
@@ -1599,12 +1599,61 @@ pass
             # 交流中有頻率frequency的詞，有相似 thinking 的影像
             orb_matches_imwrite("thinking", key+"communication")
             # 在文本中 比對屬性 排序出關鍵詞頻率，輸出結果為 TEMPLATE_DIRS["thinking"]
+
+
+            period_th=sorted(orb_group, key=lambda x: x["kp"])
+            for i,p in enumerate(period_th):
+                if p["file"] == key:
+                    return [x["file"] for x in period_th[i:i + p["period"]]]
+
         def 情緒前後詞:
             kp_desc.append((file, kp, des))  # 圖片檔案路徑,關鍵點 list,描述子 array
             # 0~1有順序有小數，小數誰是吸引或排斥?如果吸引或排斥是沒有順序，因為是在一維以上的維度，如果有順序，代表回答者IQ為5
 
             # 完全錯誤，照理說會得到 gpt 真的 超臭，超臭 gpt
             # ，而且只用orb判斷，之後才是將符合的對照路徑，取得圖像
+            
+            seq = sorted(orb_group, key=lambda x: x["timestamp"])
+            idx = next(i for i, it in enumerate(seq) if it["file"] == key)
+            # 目標前後片段
+            start = max(0, idx - window)
+            end = min(len(seq), idx + window + 1)
+            segment = seq[start:end]
+            # 計算共同變動（情緒）——以能量/振幅變化為準
+            base = seq[idx]
+            result = []
+            for it in segment:
+                if it["file"] == key:
+                    continue
+                delta = abs(it["energy"] - base["energy"]) + abs(it["amplitude"] - base["amplitude"])
+                if delta > 0:
+                    result.append(it["file"])
+            return result
+
+        def 關聯性詞:
+            target = next(it for it in orb_group if it["file"] == key)
+            t_des = target["des"]
+
+            def sim(des1, des2):
+                if des1 is None or des2 is None:
+                    return 0
+                matches = bf.match(des1, des2)
+                return len(matches)
+
+            scores = []
+            for it in orb_group:
+                if it["file"] == key:
+                    continue
+                s = sim(t_des, it["des"])
+                if s > 0:
+                    scores.append((it["file"], s))
+
+            scores.sort(key=lambda x: x[1], reverse=True)
+            return [name for name, _ in scores[:top_k]]
+
+
+
+
         def ac:
             remove_thinking_file()
             NER(用戶+"communication")
