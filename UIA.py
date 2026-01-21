@@ -1585,8 +1585,9 @@ pass
                 orb_matches_imwrite("thinking:log:related_words", th=100))
             # thinking 比對key，獲得關聯性詞影像進 thinking
             orb_matches_imwrite(key, thinking)
-            # *** 屬性下的同層的同一層的log要找到關聯詞
-            # 輸出結果是 ， 直接讀取 thinking 資料夾
+
+            # *** 時間上前後一起出現的詞
+            orb_group
         def 關鍵詞頻率(key, frequency="高"):
             remove_thinking_file()
             # >從原本的提取
@@ -1600,11 +1601,12 @@ pass
             orb_matches_imwrite("thinking", key+"communication")
             # 在文本中 比對屬性 排序出關鍵詞頻率，輸出結果為 TEMPLATE_DIRS["thinking"]
 
-
-            period_th=sorted(orb_group, key=lambda x: x["kp"])
+            # 和key接近的頻率的詞，跳過相似詞，各相似的圖像波長/總波長
+            repeat_th=sorted(orb_group, key=lambda x: x["kp"])
+            period_th=sorted(repeat_th, key=lambda x: x["period"],reversed=True)
             for i,p in enumerate(period_th):
                 if p["file"] == key:
-                    return [x["file"] for x in period_th[i:i + p["period"]]]
+                    return [x["file"] for x in period_th[i:i+th*p["period"]:p["period"]]]
 
         def 情緒前後詞:
             kp_desc.append((file, kp, des))  # 圖片檔案路徑,關鍵點 list,描述子 array
@@ -1613,6 +1615,7 @@ pass
             # 完全錯誤，照理說會得到 gpt 真的 超臭，超臭 gpt
             # ，而且只用orb判斷，之後才是將符合的對照路徑，取得圖像
             
+            # 
             seq = sorted(orb_group, key=lambda x: x["timestamp"])
             idx = next(i for i, it in enumerate(seq) if it["file"] == key)
             # 目標前後片段
@@ -1630,7 +1633,19 @@ pass
                     result.append(it["file"])
             return result
 
-        def 關聯性詞:
+        def 關聯性詞:# *****
+            timeline = sorted(orb_group, key=lambda x: x["timestamp"])
+            idx = next(i for i, x in enumerate(timeline) if x["file"] == key)
+            p = timeline[idx]["period"]
+
+            related = []
+            for offset in range(-3*p, 4*p, p):
+                j = idx + offset
+                if 0 <= j < len(timeline) and j != idx:
+                    related.append(timeline[j]["file"])
+
+
+            # timestamp period
             target = next(it for it in orb_group if it["file"] == key)
             t_des = target["des"]
 
