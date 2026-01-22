@@ -1436,7 +1436,7 @@ class Noēsis:
         files=[os.path.join(dirs, f)  # 資料夾
             for f in os.listdir(dirs)  # 資料
             if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式(原圖像)
-        kp_desc=[]  # 關鍵點(座標) list_、 描述子 array
+        kp_desc=[]  # 圖片檔案路徑,關鍵點 list,描述子 array
         # 陣列儲存 在key資料夾中的圖像 的orb特徵，回傳整個key資料夾的全部圖像的orb特徵
         orb_group=[]
         for i, file in enumerate(files):
@@ -1621,14 +1621,7 @@ pass
                 if p["file"] == key:
                     return [x["file"] for x in period_th[i:i+th*p["period"]:p["period"]]]
 
-        def 情緒前後詞:
-            kp_desc.append((file, kp, des))  # 圖片檔案路徑,關鍵點 list,描述子 array
-            # 0~1有順序有小數，小數誰是吸引或排斥?如果吸引或排斥是沒有順序，因為是在一維以上的維度，如果有順序，代表回答者IQ為5
-
-            # 完全錯誤，照理說會得到 gpt 真的 超臭，超臭 gpt
-            # ，而且只用orb判斷，之後才是將符合的對照路徑，取得圖像
-            
-            # **** 情緒前後詞（時間上前後一起出現）， 要分類文本全部情緒，key不一定是情緒，或單一情緒
+        # **** 情緒前後詞（時間上前後一起出現）， 要分類文本全部情緒，key不一定是情緒，或單一情緒
         def 情緒前後詞(key):
             NER(情緒)
             orb_matches_imwrite("thinking2") 
