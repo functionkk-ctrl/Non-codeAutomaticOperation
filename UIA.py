@@ -1514,8 +1514,8 @@ class Noēsis:
                 # 如果 log.txt 不存在或找不到對應詞，就回傳原詞 related_words "字串"
                 return m.group(0)
         scores=[]
+        orb_group=[]
         for a_file, a_kp, a_des in img_orb(a, wave):  # 資料
-            orb_group=[]
             for b_file, b_kp, b_des in img_orb(b, wave):  # 資料，特徵點選比較多
                 if b_des is None:
                     continue
@@ -1576,7 +1576,7 @@ pass
         def NER(key):
             orb_matches_imwrite(key)  # thinking
             orb_matches_imwrite("live_capture")  # thinking
-            orb_matches_imwrite("thinking", "world")  # 加快比對省步驟
+            orb_matches_imwrite("thinking", "world")  # 加快比對，省步驟 # thinking2
             # img_orb("thinking2") # 回應
         def related(key):
             # >額外的
@@ -1623,9 +1623,10 @@ pass
 
         # **** 情緒前後詞（時間上前後一起出現）， 要分類文本全部情緒，key不一定是情緒，或單一情緒
         def 情緒前後詞(key):
-            NER(情緒)
-            orb_matches_imwrite("thinking2") 
-            seq = sorted(orb_group, key=lambda x: x["timestamp"])
+            NER(情緒) # **** 同時用還是分開用?  
+            NER(key) # **** 同時用還是分開用?  
+            orb_group=img_orb("thinking2",wave="wave").orb_group # 和情緒或key有關聯的詞 且在文本中
+            seq = sorted(orb_group, key=lambda x: x["timestamp"]) #  有找 thinking2 資料夾?
             idx = next(i for i, it in enumerate(seq) if it["file"] == key)
             period = max(1, seq[idx]["period"])
             feeling = [
