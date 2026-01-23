@@ -1429,16 +1429,16 @@ class EventMonitor:
     # =====
     # Noēsis 處理 交流資料夾
 class Noēsis:
-    def img_orb(key, th, wave=None, velocity=1):
+    def img_orb(self,key, th, wave=None, velocity=1):
         dirs=TEMPLATE_DIRS[key]
         if not dirs:
             dirs=os.path.join(base_path, key)  # 一般資料夾，是不在TEMPLATE_DIRS
         files=[os.path.join(dirs, f)  # 資料夾
             for f in os.listdir(dirs)  # 資料
             if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式(原圖像)
-        kp_desc=[]  # 圖片檔案路徑,關鍵點 list,描述子 array
+        self.kp_desc=[]  # 圖片檔案路徑,關鍵點 list,描述子 array
         # 陣列儲存 在key資料夾中的圖像 的orb特徵，回傳整個key資料夾的全部圖像的orb特徵
-        orb_group=[]
+        self.orb_group=[]
         for i, file in enumerate(files):
             img=cv2.imread(file, cv2.IMREAD_GRAYSCALE)
             if img is None:
@@ -1490,6 +1490,11 @@ class Noēsis:
 
     # 加入水(分散成霧)明觀(執行或終止) # 加入X感測(執行或終止) # 以木治人、以水觀察、以
     def orb_matches_imwrite(a, b="attributes", th=50):
+        # 兩套 資料夾樹、圖像?
+        # 提出 資料夾，資料 屬性比對=>提出 條件狀態(客制化 想要的任意用途) 壓縮成=>結果 點 組合成=>資料夾樹圖 回傳=>符合用途 的目標影像
+        # key<=資料=>條件狀態("高頻率出現詞")=>結果 點=>key壓縮圖
+            # idx = 掃描順序 = 相位 # enumerate 第幾次index 取得原值value，index, value=enumerate()
+        
         # 儲存進 thinking 或用path:log:return回傳 字串
         dir_str="thinking"
             if a == "world" or b == "world":
@@ -1524,18 +1529,6 @@ class Noēsis:
                 orb_group.append(matches)  # 收集所有比對結果
             orb_group=[m for m in orb_group if m.distance < th]  # 粒子
 
-
-        # 兩套 資料夾樹、圖像
-        # 提出 資料夾，資料 屬性比對=>提出 條件狀態(客制化 想要的任意用途) 壓縮成=>結果 點 組合成=>資料夾樹圖 回傳=>符合用途 的目標影像
-        # key<=資料=>條件狀態("高頻率出現詞")=>結果 點=>key壓縮圖
-            # idx = 掃描順序 = 相位 # enumerate 第幾次index 取得原值value，index, value=enumerate()
-        for idx, a in enumerate(img_orb("thinking")):
-            A=orb_matches_imwrite(a)
-            if A > th:                        # 命中一次
-                hits.append(idx)
-                amps.append(A)
-        pass
-pass
             # 直接把篩選後的匹配點畫在圖上
             img_matches=cv2.drawMatches(
                 a_file, a_kp, b_file, b_kp, orb_group, None, flags=2)
@@ -1557,9 +1550,10 @@ pass
 
 
     def cooperation:
-        # 交流 資料夾
-        # 屬性 資料夾
+        # 交流 資料夾 # Noēsis和用戶的交流資料夾一定要區分，不然會內捲和用戶話不投機
+        # 屬性 資料夾 ，對接交流的不同單元、規範交流的統一輸出
         # 暗物質 資料夾
+        # 波紋 控制交流節奏
         pass
     def 有趣:
         # 暫定
@@ -1622,14 +1616,14 @@ pass
                     return [x["file"] for x in period_th[i:i+th*p["period"]:p["period"]]]
 
         # **** 情緒前後詞（時間上前後一起出現）， 要分類文本全部情緒，key不一定是情緒，或單一情緒
-        def 情緒前後詞(key):
-            NER(情緒) # **** 同時用還是分開用?  
-            NER(key) # **** 同時用還是分開用?  
-            orb_group=img_orb("thinking2",wave="wave").orb_group # 和情緒或key有關聯的詞 且在文本中
+        def 情緒前後詞(self,key): # ,wave
+            NER(情緒) # 先找情緒關聯詞，再找key  
+            NER(key) # 先找情緒關聯詞，再找key  
+            orb_group=img_orb("thinking2").orb_group # 和情緒或key有關聯的詞 且在文本中  # ,wave
             seq = sorted(orb_group, key=lambda x: x["timestamp"]) #  有找 thinking2 資料夾?
             idx = next(i for i, it in enumerate(seq) if it["file"] == key)
             period = max(1, seq[idx]["period"])
-            feeling = [
+            self.feeling = [
                 seq[j]["file"]
                 for j in range(
                     max(0, idx - period),
@@ -1639,6 +1633,36 @@ pass
             ]
             return feeling
 
+        # key 話題
+        attr = {
+            "emotion": NER("emotion"),     # 情緒詞（來自屬性資料夾）
+            "action":  NER("action"),      # 行為
+            "interest":NER("interest"),    # 興趣
+            "scene":   NER("scene"),       # 時間/地點/狀態
+            "value":   NER("value"),       # 價值、態度
+        }
+        # 時序波（只是輔助）
+        orb_group = img_orb("thinking2", wave="wave").orb_group
+        orb = img_orb("thinking2", wave="wave").orb_group
+        seq = sorted(orb, key=lambda x: x["timestamp"])
+        idx = index_of(seq, key)
+        energy = seq[idx]["energy"]
+        period = seq[idx]["period"]
+        phase  = seq[idx]["phase"]
+
+        if energy 高 and attr["value"]:
+            技巧 = 讚美或認可
+
+        elif energy 中 and attr["emotion"]:
+            技巧 = 接力式回應
+
+        elif energy 低 and attr["interest"]:
+            技巧 = 開放式提問
+        elif attr["scene"] and period 大:
+            技巧 = 引入相關故事
+        else:
+            技巧 = 延續話題
+            詞 = related(key) ∩ attr["action"]
 
 
 
@@ -1647,84 +1671,47 @@ pass
             NER(用戶+"communication")
         def bc:
             NER(Noēsis+"communication")
-        def 暫定:
-            # 讀 live_capture (ORB比對 讀 attributes 再ORB比對 讀world)********
-            NER(用戶+"communication")
         def 引導對話更深層發展:
             # Noēsis 交流回去時， +bc(關聯 關鍵詞頻率(低))+ac
-
-            pass
+            return attr_value ∩ related(key)
         def 分享經歷:
             # Noēsis 交流回去時， bc(NER a行為)
-            pass
+            詞 = attr["scene"] ∩ attr["action"]
+
         def 關注對方的興趣或重點:
             # Noēsis 交流回去時， bc(關聯 興趣和重點)
             # 關注對方重點	找 phase 接近
-            pass
+            return top_frequency(attr_interest)
         def 接力式回應讓對方說更多:
             # Noēsis 交流回去時，+bc(NER 轉折詞or代詞+提問用詞-陳述用詞-上層)
             # 接力式回應	小 Δphase + 正 Δenergy
-            pass
+            詞 = attr["emotion"] ∩ related(key)
         def 引入相關故事增加對話深度:
             # Noēsis 交流回去時， bc(關聯 **相關故事)-ac(NER **敘事元素)
             # 引入故事	時間殘響大的波
             # 引導對話更深層	沿能量梯度走
-            pass
+            詞 = attr["scene"] ∩ attr["value"]
         def 用過渡語句讓對話轉向:
             # Noēsis 交流回去時，bc(NER 轉折詞)+ac(關聯 提問用詞)+ac(情緒前後詞 5)
             # 過渡語句	phase 中等差
-            pass
+            next_key = shared_attribute(key, attr)
         def 讚美或認可:
             # Noēsis 交流回去時， ** bc(NER 讚美或認可)+ac(NER a行為)
             # 讚美或認可	phase 對齊
-            pass
+            詞 = attr["action"] ∩ attr["value"]
         def 觀察環境:
             # Noēsis 交流回去時， c(NER 場景+時間+地點+狀態)
-            pass
+            return attr_scene ∩ attr_value
         def 開放式提問:
             # Noēsis 交流回去時，bc(關聯 關鍵詞頻率(低)+中性疑問詞)
             # 開放式提問	phase 未閉合
-            pass
+            詞 = unresolved(attr["value"] | attr["interest"])
         def 暗示下次相遇:
             # Noēsis 交流回去時，bc(關聯 時間、低強度情緒、結束語句)
             # 暗示下次相遇	時間未收斂
-            pass
-        def 313:
-            if ac(關鍵詞頻率(高) 情緒用詞):
-                讚美或認可
-            elif 新 NER 出現率高:
-                接力式回應讓對方說更多
-            elif 關鍵詞頻率低 + 話題停滯:
-                開放式提問 or 用過渡語句讓對話轉向
-        def 6456:
-            if ac幾乎全無: pass
-        def 64526:
-            if ac 否定: pass
+            詞 = pending(attr["scene"] | attr["interest"])
 
-        # phase 接近 → 共振 → 被理解
-        # phase 不同但穩定 → 張力 → 被挑動
-        # phase 雜亂 → 噪音 → 無趣
-        Δphase = abs(phase_i - phase_j)
-        # 正梯度 → 話題可延伸
-        # 負梯度 → 話題收斂
-        # 平的 → 對話死水
-        Δenergy = energy_j - energy_i
-        # 太短 → 反射
-        # 太長 → 斷裂
-        # 剛好 → 回應感
-        Δt = timestamp_j - timestamp_i
-        #
-        #
-        #
-        #
-        #
-        #
-        #
-        #
-        #
-        #
-        #
-        #
+        
     def 自習:
 
         pass
