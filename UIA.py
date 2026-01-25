@@ -70,6 +70,11 @@ TEMPLATE_DIRS = {
     "dark_matter": os.path.join(base_path, "dark_matter"),
     "thinking": os.path.join(base_path, "thinking"),  # 中轉站
     "thinking2": os.path.join(base_path, "thinking2"),  # 中轉站
+    "emotion": os.path.join(base_path, "emotion"),  # 情緒詞
+    "action": os.path.join(base_path, "action"),  # 行為
+    "interest": os.path.join(base_path, "interest"),  # 興趣
+    "scene": os.path.join(base_path, "scene"),  # 時間/地點/狀態
+    "value": os.path.join(base_path, "value"),  # 價值、態度
 }
 
 MATCH_THRESHOLD = 0.85
@@ -1304,7 +1309,48 @@ class EventMonitor:
                     # 此行為缺則補；不缺則優化
                         # 交流c不合輔助元c，即多次嘗試行為，讓交流c 越近則近 輔助元c
                 # 交流 資料夾，依照 屬性 命名
-                        #
+                        # 真正的人的答一反三
+                        # 1️⃣ 核心定義
+                        # 人的答一反三，不是從答案推出答案，而是從「立場、目的與局面」出發，做出延續性行動。
+                        # 2️⃣ 本質特徵
+                        # 立場感知
+                        # 人首先評估自己在局面中的位置、角色與利益。
+                        # 例：保護自己、取得優勢、觀察對手。
+                        # 目標導向
+                        # 回應不是單純回答，而是為了達到目的。
+                        # 例：延續對話、引導方向、取得資訊、影響情緒。
+                        # 世界模型壓縮
+                        # 人會把大量經驗、知識、規則壓縮成少數直覺行動。
+                        # 例：看到「問題」，直覺判斷：「我要觀察？挑釁？提供資訊？」而不是逐條分析。
+                        # 行動可延續
+                        # 每個答復都為下一步行動創造可能性。
+                        # 核心：答一反三 → 延續局面 → 建立選項。
+                        # 多路思考
+                        # 人腦同時考慮：
+                        # 攻（積極取得優勢）
+                        # 守（避免損失或危險）
+                        # 轉向（換路、保留選項）
+                        # 然後基於目的選一條最適路線。
+                        # 3️⃣ 人的答一反三與資訊的關係
+                        # 資訊量 ≠ 答一反三能力
+                        # 即使擁有幾百T資料，沒有立場、目的、直覺行動，也輸給單人。
+                        # 資訊只是材料
+                        # 真正關鍵：如何把材料轉化為行動，而非被材料限制。
+                        # 4️⃣ 人的答一反三流程
+                        # 評估局面：我在哪裡？對方是誰？局勢如何？
+                        # 設立目的：我希望達到什麼結果？
+                        # 壓縮經驗：從已知案例抽象成規則或直覺。
+                        # 生成行動選項：攻、守、轉向。
+                        # 選擇行動：基於目的選出最合適的一條。
+                        # 延續可能性：每個行動都保留下一步延展空間。
+                        # 5️⃣ 核心要點總結
+                        # 人的答一反三 = 立場 + 目的 + 世界模型 + 直覺 + 延續性行動
+                        # 不是：上下文 + 回答
+                        # 不是：資料越多越聰明
+                        # 是：在局面中活過、承擔後果、做出可延續選擇的能力
+                        
+     
+                    
                             # 版本:每次交流或意外被覆寫時 都儲存現實世界的時間戳
                             # 可回朔:交流中提出回朔，即回朔到該版本
                             # 可能多維的運用還能提前處理用戶遇到的問題?
@@ -1426,9 +1472,36 @@ class EventMonitor:
         # 高階
         # [淺紫] 長期目標核 → [深紫] 優化學習核 → [淺橙] 溝通/協作核 → [紅棕] 危機處理核
 
-    # =====
-    # Noēsis 處理 交流資料夾
+# =====
+# Noēsis 處理 交流資料夾
+    # 分析圖像 # img_orb
+        # 儲存圖像之間的聯繫 每個圖像.orb_group、無return?
+    # 圖像之間比對 # orb_matches_imwrite
+        # orb_group 純粹亂寫，錯誤使用? thinking資料夾儲存圖像之間比隊的特徵拓樸圖像
+    # 清空thinking資料夾 # remove_thinking_file
+    # NER(key) 屬性比對 key 話題=字串=檔案路徑，屬性比對 現在拍攝圖像，thinking圖像 比對 真實世界圖像
+    # related(話題): 和 NER(話題) 關係近的詞
+        # 回傳 關聯性詞圖像 
+    # 關鍵詞頻率:NER 出現次數/文本總字數>?%
+        # 回傳 關鍵詞頻率圖像
+    # 情緒前後詞:NER情緒 前後多少詞內 出現的詞
+        # 回傳 情緒前後詞圖像
+
+    # GPT可能想統一排序，但我感覺很假
+    # ac
+        # 分析出用戶拍攝圖像代表 甚麼意義，用NER 屬性比對。  GPT智障不先用，還自以為是地認為沒有任何問題
+    # bc
+        # 分析出Noēsis圖像代表 交流甚麼，用NER 屬性比對。  GPT智障不先用，還自以為是地認為沒有任何問題
+
+    # 三元協作
+        # 有趣元
+            # 直接移除!# attr陣列儲存，毫無意義，是GPT寫的
+            # gpt寫的if回覆策略，將就一下
+            # GPT寫的回覆技巧和造句，無return，"技巧"和"詞"也是GPT隨便寫的
+            # #有趣元只處理回覆策略和分析交流資料夾，與ORB函數分開，但使用ORB函數
+    # #
 class Noēsis:
+    # Noēsis 的通用def
     def img_orb(self,key, th, wave=None, velocity=1):
         dirs=TEMPLATE_DIRS[key]
         if not dirs:
@@ -1452,7 +1525,7 @@ class Noēsis:
                 amplitude= math.sqrt(len(kp))
                 # 最通用的 波紋:振幅 、 波長 、 頻率 、 波速 、 質點位移
                     # 替身使者會互相吸引
-                orb_group.append({
+                self.orb_group.append({
                     "file": file,  # 空間x，圖像名稱同時是 資料夾(屬性)的分支
                     # 輸出時排序kp
                         # 圖像特徵點數 波長自身對稱中心
@@ -1475,22 +1548,23 @@ class Noēsis:
                 })
         # 屬性(資料夾)使用 orb_group，有趣元 怎麼使用?使用在協作上
         if wave:
+            # ***隨便寫的，非常不通用
             if rf"高頻率" in wave:
                 # sorted排序 按照 重複次數順序，越大越靠前
                 orb_repeat=sorted(
-                    orb_group, key=lambda x: x["kp"], reverse=True)
+                    self.orb_group, key=lambda x: x["kp"], reverse=True)
             if rf"低頻率" in wave:
                 # sorted排序 按照 重複次數順序，越小越靠前
-                orb_repeat=sorted(orb_group, key=lambda x: x["kp"])
+                orb_repeat=sorted(self.orb_group, key=lambda x: x["kp"])
             if rf"中頻率" in wave:
-                avg=mean(orb_group, key=lambda x: abs(x["kp"]))  # 平均值
-                orb_repeat=sorted(orb_group, key=lambda x: abs(
+                avg=mean(self.orb_group, key=lambda x: abs(x["kp"]))  # 平均值
+                orb_repeat=sorted(self.orb_group, key=lambda x: abs(
                     x["kp"] - avg))  # sorted排序 按照 重複次數順序，越接近平均值越靠前
 
 
     # 加入水(分散成霧)明觀(執行或終止) # 加入X感測(執行或終止) # 以木治人、以水觀察、以
     def orb_matches_imwrite(a, b="attributes", th=50):
-        # 兩套 資料夾樹、圖像?
+        # 資料夾樹(路徑)、打開圖像或使用圖像
         # 提出 資料夾，資料 屬性比對=>提出 條件狀態(客制化 想要的任意用途) 壓縮成=>結果 點 組合成=>資料夾樹圖 回傳=>符合用途 的目標影像
         # key<=資料=>條件狀態("高頻率出現詞")=>結果 點=>key壓縮圖
             # idx = 掃描順序 = 相位 # enumerate 第幾次index 取得原值value，index, value=enumerate()
@@ -1499,35 +1573,34 @@ class Noēsis:
         dir_str="thinking"
             if a == "world" or b == "world":
                 dir_str += "{2}"
-            if ":log:" in a:
-                m=re.match(r".*:log:(.*)", a)
-                if not m:
-                    return None  # 正則匹配失敗，直接返回 None
-                # 資料夾路徑 = 去掉最後一段
-                folder_parts=a.split(":")[:-1]
-                folder_path=os.path.join(os.path.join(
-                    base_path, *folder_parts))  # 將多段組成路徑
-                log_file=os.path.join(os.path.join(
-                    base_path, folder_path), "log.txt")
-                if os.path.exists(log_file):
-                    with open(log_file, "r", encoding="utf-8") as f:
-                        for line in f:
-                            # 假設 log.txt 格式：每行是 "related_words:內容"
-                            if line.startswith(m.group(1) + ":"):
-                                # 回傳冒號後內容(字串)
-                                return line.strip().split(":", 1)[1]
-                # 如果 log.txt 不存在或找不到對應詞，就回傳原詞 related_words "字串"
-                return m.group(0)
-        scores=[]
-        orb_group=[]
+              # if ":log:" in a:
+                # m=re.match(r".*:log:(.*)", a)
+                # if not m:
+                    # return None  # 正則匹配失敗，直接返回 None
+                # # 資料夾路徑 = 去掉最後一段
+                # folder_parts=a.split(":")[:-1]
+                # folder_path=os.path.join(os.path.join(
+                    # base_path, *folder_parts))  # 將多段組成路徑
+                # log_file=os.path.join(os.path.join(
+                    # base_path, folder_path), "log.txt")
+                # if os.path.exists(log_file):
+                    # with open(log_file, "r", encoding="utf-8") as f:
+                        # for line in f:
+                            # # 假設 log.txt 格式：每行是 "related_words:內容"
+                            # if line.startswith(m.group(1) + ":"):
+                                # # 回傳冒號後內容(字串)
+                                # return line.strip().split(":", 1)[1]
+                # # 如果 log.txt 不存在或找不到對應詞，就回傳原詞 related_words "字串"
+                # return m.group(0)                                                                                                                                                                  
+        # scores=[]
         for a_file, a_kp, a_des in img_orb(a, wave):  # 資料
             for b_file, b_kp, b_des in img_orb(b, wave):  # 資料，特徵點選比較多
                 if b_des is None:
                     continue
                 matches=bf.match(b_des, a_des)
                 matches=sorted(matches, key=lambda x: x.distance)  # 按照位置順序
-                orb_group.append(matches)  # 收集所有比對結果
-            orb_group=[m for m in orb_group if m.distance < th]  # 粒子
+                self.orb_group.append(matches)  # 收集所有比對結果
+            orb_group=[m for m in self.orb_group if m.distance < th]  # 粒子
 
             # 直接把篩選後的匹配點畫在圖上
             img_matches=cv2.drawMatches(
@@ -1547,101 +1620,68 @@ class Noēsis:
         if os.path.isfile(TEMPLATE_DIRS["thinking"]) or os.path.islink(TEMPLATE_DIRS["thinking"]):
         os.unlink(TEMPLATE_DIRS["thinking"])
 
+    # NER 命名實體技術(預設 c(全部)):讀取 屬性 資料夾 ORB比對 攝影中的全部圖像(用戶手動儲存完整文本)，拓樸結構 相似度最高 # p.s.NER就像粒子、關聯就像波
+    def NER(key):
+        orb_matches_imwrite(key)  # thinking
+        orb_matches_imwrite("live_capture")  # thinking
+        orb_matches_imwrite("thinking", "world")  # 加快比對，省步驟 # thinking2
+        # img_orb("thinking2") # 回應
 
+    def related(key):
+        # 屬性比對 related_words(字串)轉換成路徑  orb_matches_imwrite()內 related_words(圖像)儲存進 thinking
+        orb_matches_imwrite(
+            # 屬性比對 思考中的影像 取得最相似的圖像，同時打開log.txt找 related_words(字串)有哪些
+            orb_matches_imwrite("thinking:log:related_words", th=100))
+        # thinking 比對key，獲得關聯性詞影像進 thinking
+        orb_matches_imwrite(key, thinking)
 
-    def cooperation:
-        # 交流 資料夾 # Noēsis和用戶的交流資料夾一定要區分，不然會內捲和用戶話不投機
-        # 屬性 資料夾 ，對接交流的不同單元、規範交流的統一輸出
-        # 暗物質 資料夾
-        # 波紋 控制交流節奏
-        pass
-    def 有趣:
-        # 暫定
-            # 上層=上層(資料夾)直接代表 攝影下來的真實世界
-            # c=上層(全部，提醒不含獨立資料夾)，代表畫布
-            # ac= c(NER 用戶a交流)，代表a在畫布上畫畫
-            # bc= c(NER Noēsis交流)，代表Noēsis在畫布上畫畫
-            # *keyword 和python一樣用法
-        # NER 命名實體技術(預設 c(全部)):讀取 屬性 資料夾 ORB比對 攝影中的全部圖像(用戶手動儲存完整文本)，拓樸結構 相似度最高
-        # 關鍵詞頻率:NER 出現次數/文本總字數>?%
-        # 情緒前後詞:NER情緒 前後多少詞內 出現的詞
-        # related_words: NER 的關係近的詞
-        # p.s.NER就像粒子、關聯就像波
-        def NER(key):
-            orb_matches_imwrite(key)  # thinking
-            orb_matches_imwrite("live_capture")  # thinking
-            orb_matches_imwrite("thinking", "world")  # 加快比對，省步驟 # thinking2
-            # img_orb("thinking2") # 回應
-        def related(key):
-            # >額外的
-            # 屬性比對 related_words(字串)轉換成路徑  orb_matches_imwrite()內 related_words(圖像)儲存進 thinking
-            orb_matches_imwrite(
-                # 屬性比對 思考中的影像 取得最相似的圖像，同時打開log.txt找 related_words(字串)有哪些
-                orb_matches_imwrite("thinking:log:related_words", th=100))
-            # thinking 比對key，獲得關聯性詞影像進 thinking
-            orb_matches_imwrite(key, thinking)
-
-            # *** 時間上前後一起出現的詞
-            timeline = sorted(orb_group, key=lambda x: x["timestamp"])
-            idx = next(i for i, x in enumerate(timeline) if x["file"] == key)
-            period = max(1, timeline[idx]["period"])
-            p = [
-                timeline[j]["file"]
-                for j in range(
-                    max(0, idx - period),
-                    min(len(timeline), idx + period + 1)
-                )
-                if j != idx
-                ]
-            return p
-            
-        def 關鍵詞頻率(key, frequency="高"):
-            remove_thinking_file()
-            # >從原本的提取
-            # 空間上 「靠不靠近」與「常不常一起出現」，代表 每次靠近、靠近的一組詞 數量/文本總詞數
-                # 交流 比對屬性 獲得 這次文本的 屬性(影像)，頻率frequency的詞(影像)
-            # 兩種排序 思考
-                # 不動距離看多少距離的組合(影像)重複出現。
-                # 重覆出現的詞 越多次越靠前排名
-            orb_matches_imwrite(key+"communication", frequency)
-            # 交流中有頻率frequency的詞，有相似 thinking 的影像
-            orb_matches_imwrite("thinking", key+"communication")
-            # 在文本中 比對屬性 排序出關鍵詞頻率，輸出結果為 TEMPLATE_DIRS["thinking"]
-
-            # 和key接近的頻率的詞，跳過相似詞，各相似的圖像波長/總波長
-            repeat_th=sorted(orb_group, key=lambda x: x["kp"])
-            period_th=sorted(repeat_th, key=lambda x: x["period"],reversed=True)
-            for i,p in enumerate(period_th):
-                if p["file"] == key:
-                    return [x["file"] for x in period_th[i:i+th*p["period"]:p["period"]]]
-
-        # **** 情緒前後詞（時間上前後一起出現）， 要分類文本全部情緒，key不一定是情緒，或單一情緒
-        def 情緒前後詞(self,key): # ,wave
-            NER(情緒) # 先找情緒關聯詞，再找key  
-            NER(key) # 先找情緒關聯詞，再找key  
-            orb_group=img_orb("thinking2").orb_group # 和情緒或key有關聯的詞 且在文本中  # ,wave
-            seq = sorted(orb_group, key=lambda x: x["timestamp"]) #  有找 thinking2 資料夾?
-            idx = next(i for i, it in enumerate(seq) if it["file"] == key)
-            period = max(1, seq[idx]["period"])
-            self.feeling = [
-                seq[j]["file"]
-                for j in range(
-                    max(0, idx - period),
-                    min(len(seq), idx + period + 1)
-                )
-                if j != idx
+        # *** 時間上前後一起出現的詞
+        timeline = sorted(orb_group, key=lambda x: x["timestamp"])
+        idx = next(i for i, x in enumerate(timeline) if x["file"] == key)
+        period = max(1, timeline[idx]["period"])
+        p = [
+            timeline[j]["file"]
+            for j in range(
+                max(0, idx - period),
+                min(len(timeline), idx + period + 1)
+            )
+            if j != idx
             ]
-            return feeling
+        return p
+        
+    def 關鍵詞頻率(key, frequency="高"):
+        remove_thinking_file()
+        orb_matches_imwrite(key+"communication", frequency)
+        # 交流中有頻率frequency的詞，有相似 thinking 的影像
+        orb_matches_imwrite("thinking", key+"communication")
+        # 在文本中 比對屬性 排序出關鍵詞頻率，輸出結果為 TEMPLATE_DIRS["thinking"]
 
-        # key 話題
-        attr = {
-            "emotion": NER("emotion"),     # 情緒詞（來自屬性資料夾）
-            "action":  NER("action"),      # 行為
-            "interest":NER("interest"),    # 興趣
-            "scene":   NER("scene"),       # 時間/地點/狀態
-            "value":   NER("value"),       # 價值、態度
-        }
-        # 時序波（只是輔助）
+        # 和key接近的頻率的詞，跳過相似詞，各相似的圖像波長/總波長
+        repeat_th=sorted(orb_group, key=lambda x: x["kp"])
+        period_th=sorted(repeat_th, key=lambda x: x["period"],reversed=True)
+        for i,p in enumerate(period_th):
+            if p["file"] == key:
+                return [x["file"] for x in period_th[i:i+th*p["period"]:p["period"]]]
+
+    # **** 情緒前後詞（時間上前後一起出現）， 要分類文本全部情緒，key不一定是情緒，或單一情緒
+    def 情緒前後詞(self,key): # ,wave
+        NER(情緒) # 先找情緒關聯詞，再找key  
+        NER(key) # 先找情緒關聯詞，再找key  
+        orb_group=img_orb("thinking2").orb_group # 和情緒或key有關聯的詞 且在文本中  # ,wave
+        seq = sorted(orb_group, key=lambda x: x["timestamp"]) #  有找 thinking2 資料夾?
+        idx = next(i for i, it in enumerate(seq) if it["file"] == key)
+        period = max(1, seq[idx]["period"])
+        self.feeling = [
+            seq[j]["file"]
+            for j in range(
+                max(0, idx - period),
+                min(len(seq), idx + period + 1)
+            )
+            if j != idx
+        ]
+        return feeling
+
+    # 通用波紋?
         orb_group = img_orb("thinking2", wave="wave").orb_group
         orb = img_orb("thinking2", wave="wave").orb_group
         seq = sorted(orb, key=lambda x: x["timestamp"])
@@ -1650,73 +1690,74 @@ class Noēsis:
         period = seq[idx]["period"]
         phase  = seq[idx]["phase"]
 
-        if energy 高 and attr["value"]:
-            技巧 = 讚美或認可
 
-        elif energy 中 and attr["emotion"]:
-            技巧 = 接力式回應
+    # 暫定
+        # 上層=上層(資料夾)直接代表 攝影下來的真實世界
+        # c=上層(全部，提醒不含獨立資料夾)，代表畫布
+        # ac= c(NER 用戶a交流)，代表a在畫布上畫畫
+        # bc= c(NER Noēsis交流)，代表Noēsis在畫布上畫畫
+        # *keyword 和python一樣用法
 
-        elif energy 低 and attr["interest"]:
-            技巧 = 開放式提問
-        elif attr["scene"] and period 大:
-            技巧 = 引入相關故事
-        else:
-            技巧 = 延續話題
-            詞 = related(key) ∩ attr["action"]
+    def ac:
+        remove_thinking_file()
+        NER(用戶+"communication")
+    def bc:
+        NER(Noēsis+"communication")
 
+    def cooperation:
+        # 交流 資料夾 # Noēsis和用戶的交流資料夾一定要區分，不然會內捲和用戶話不投機
+        # 屬性 資料夾 ，對接交流的不同單元、規範交流的統一輸出
+        # 暗物質 資料夾
+        # 波紋 控制交流節奏
 
+        def 有趣:
+            # 交流資料夾(內含資料) 是整個文本，本來就不需要上下文
+            # 2️⃣ 建立回覆策略字典
+            回覆策略 = {}
 
-        def ac:
-            remove_thinking_file()
-            NER(用戶+"communication")
-        def bc:
-            NER(Noēsis+"communication")
-        def 引導對話更深層發展:
-            # Noēsis 交流回去時， +bc(關聯 關鍵詞頻率(低))+ac
-            return attr_value ∩ related(key)
-        def 分享經歷:
-            # Noēsis 交流回去時， bc(NER a行為)
-            詞 = attr["scene"] ∩ attr["action"]
+            # 引導對話更深層發展
+            回覆策略["引導對話"] = 關聯詞 & NER屬性.get("value", set())
 
-        def 關注對方的興趣或重點:
-            # Noēsis 交流回去時， bc(關聯 興趣和重點)
-            # 關注對方重點	找 phase 接近
-            return top_frequency(attr_interest)
-        def 接力式回應讓對方說更多:
-            # Noēsis 交流回去時，+bc(NER 轉折詞or代詞+提問用詞-陳述用詞-上層)
-            # 接力式回應	小 Δphase + 正 Δenergy
-            詞 = attr["emotion"] ∩ related(key)
-        def 引入相關故事增加對話深度:
-            # Noēsis 交流回去時， bc(關聯 **相關故事)-ac(NER **敘事元素)
-            # 引入故事	時間殘響大的波
-            # 引導對話更深層	沿能量梯度走
-            詞 = attr["scene"] ∩ attr["value"]
-        def 用過渡語句讓對話轉向:
-            # Noēsis 交流回去時，bc(NER 轉折詞)+ac(關聯 提問用詞)+ac(情緒前後詞 5)
-            # 過渡語句	phase 中等差
-            next_key = shared_attribute(key, attr)
-        def 讚美或認可:
-            # Noēsis 交流回去時， ** bc(NER 讚美或認可)+ac(NER a行為)
-            # 讚美或認可	phase 對齊
-            詞 = attr["action"] ∩ attr["value"]
-        def 觀察環境:
-            # Noēsis 交流回去時， c(NER 場景+時間+地點+狀態)
-            return attr_scene ∩ attr_value
-        def 開放式提問:
-            # Noēsis 交流回去時，bc(關聯 關鍵詞頻率(低)+中性疑問詞)
-            # 開放式提問	phase 未閉合
-            詞 = unresolved(attr["value"] | attr["interest"])
-        def 暗示下次相遇:
-            # Noēsis 交流回去時，bc(關聯 時間、低強度情緒、結束語句)
-            # 暗示下次相遇	時間未收斂
-            詞 = pending(attr["scene"] | attr["interest"])
+            # 分享經歷
+            回覆策略["分享經歷"] = NER屬性.get("scene", set()) & NER屬性.get("action", set())
 
-        
-    def 自習:
+            # 關注對方的興趣或重點
+            回覆策略["關注興趣"] = top_frequency(NER屬性.get("interest", set()))
 
-        pass
-    def 16核:
-        pass
+            # 接力式回應讓對方說更多
+            回覆策略["接力回應"] = NER屬性.get("emotion", set()) & 關聯詞
+
+            # 引入相關故事增加對話深度
+            回覆策略["引入故事"] = NER屬性.get("scene", set()) & NER屬性.get("value", set())
+
+            # 用過渡語句讓對話轉向
+            回覆策略["過渡語句"] = shared_attribute(key, NER屬性)
+
+            # 讚美或認可
+            回覆策略["讚美認可"] = NER屬性.get("action", set()) & NER屬性.get("value", set())
+
+            # 觀察環境讚美或認可
+            回覆策略["觀察環境"] = NER屬性.get("scene", set()) & NER屬性.get("value", set())
+
+            # 開放式提問
+            回覆策略["開放式提問"] = unresolved(NER屬性.get("value", set()) | NER屬性.get("interest", set()))
+
+            # 暗示下次相遇
+            回覆策略["暗示下次相遇"] = pending(NER屬性.get("scene", set()) | NER屬性.get("interest", set()))
+
+            # 3️⃣ 最後整合所有策略，產生延續話題回覆
+            延續話題回覆詞 = set()
+            for v in 回覆策略.values():
+                延續話題回覆詞 |= v   # 合併所有策略的詞集合
+
+            return 延續話題回覆詞
+
+            
+        def 自習:
+
+            pass
+        def 16核:
+            pass
 
 
 
