@@ -1522,7 +1522,7 @@ class Noēsis:
                 })
         # 屬性(資料夾)使用 orb_group，有趣元 怎麼使用?使用在協作上
         if wave:
-            # TODO:# ***隨便寫的，非常不通用
+            # TODO:重疊的# ***隨便寫的，非常不通用
             if rf"高頻率" in wave:
                 # sorted排序 按照 重複次數順序，越大越靠前
                 orb_repeat=sorted(
@@ -1602,13 +1602,6 @@ class Noēsis:
         # img_orb("thinking2") # 回應
 
     def related(key):
-        # 屬性比對 related_words(字串)轉換成路徑  orb_matches_imwrite()內 related_words(圖像)儲存進 thinking
-        orb_matches_imwrite(
-            # 屬性比對 思考中的影像 取得最相似的圖像，同時打開log.txt找 related_words(字串)有哪些
-            orb_matches_imwrite("thinking:log:related_words", th=100))
-        # thinking 比對key，獲得關聯性詞影像進 thinking
-        orb_matches_imwrite(key, thinking)
-
         # *** 時間上前後一起出現的詞
         timeline = sorted(orb_group, key=lambda x: x["timestamp"])
         idx = next(i for i, x in enumerate(timeline) if x["file"] == key)
@@ -1656,7 +1649,6 @@ class Noēsis:
         return feeling
 
     # 有趣元 波紋
-        orb_group = img_orb("thinking2", wave="wave").orb_group
         orb = img_orb("thinking2", wave="wave").orb_group
         seq = sorted(orb, key=lambda x: x["timestamp"])
         idx = index_of(seq, key)
@@ -1678,8 +1670,8 @@ class Noēsis:
     def bc:
         NER(Noēsis+"communication")
 
+    # 交流 資料夾 # Noēsis和用戶的交流資料夾一定要區分，不然會內捲和用戶話不投機
     def cooperation(self,dirs=TEMPLATE_DIRS["communication"]):
-        # 交流 資料夾 # Noēsis和用戶的交流資料夾一定要區分，不然會內捲和用戶話不投機
         # 屬性 資料夾 ，對接交流的不同單元、規範交流的統一輸出
         # 暗物質 資料夾
         # 波紋 控制交流節奏
@@ -1697,22 +1689,26 @@ class Noēsis:
                 # 立場、目的、局面:提高話題連續性和總長度、讓用戶感到有趣、
         orb_matches_imwrite(局面,有趣.代價)
         if not img_orb("thinking"):
+            now=None
             if 有趣.直覺:
-                有趣.直覺 # 行動
+                now=有趣.直覺 # 行動
             else:
-                random.choice(有趣.經驗) # 行動
+                now=random.choice(有趣.經驗) # 行動
+            now
             orb_matches_imwrite(局面,有趣.立場)
             if img_orb("thinking"):
                 # TODO:有趣.經驗[dirs 非細分的路徑 要重寫細分的路徑(資料夾的每個檔案)]+=1行動次數/行動總次數
                 for i,a in enumerate(有趣.經驗["action"]):
-                    if a == :
-                    有趣.經驗["成功率"][i]=有趣.經驗["成功率"][i]+1 # 分子+1/分母+1
-
+                    if a == now:
+                    有趣.經驗["行動次數"][i]+=1 
+                    有趣.經驗["成功次數"][i]+=1 
+                    有趣.經驗["成功率"][i]=有趣.經驗["成功次數"][i]/有趣.經驗["行動次數"][i] # 分子+1/分母+1
             else:
                 # TODO:有趣.經驗[dirs 非細分的路徑 要重寫細分的路徑(資料夾的每個檔案)]-=1行動次數/行動總次數
                 for i,a in enumerate(有趣.經驗["action"]):
-                    if a == :
-                    有趣.經驗["成功率"][i]=有趣.經驗["成功率"][i]-1 # 分子-1/分母+1
+                    if a == now:
+                    有趣.經驗["行動次數"][i]+=1 
+                    有趣.經驗["成功率"][i]=有趣.經驗["成功次數"][i]/有趣.經驗["行動次數"][i] # 分子/分母+1
 
         # 有趣 參照:
             # 承擔後果:交流不幽默
@@ -1724,8 +1720,10 @@ class Noēsis:
             self.立場={}
             self.目的={}
             self.經驗={
-                "行動":,
-                "成功率":,
+                "行動":{},
+                "成功率":0,
+                "成功次數":0,
+                "行動次數":0,
                 }
             self.直覺={}
             self.環境最合適策略={}
