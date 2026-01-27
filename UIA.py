@@ -1348,7 +1348,7 @@ class EventMonitor:
         # ，開放式提問
         # ，暗示下次相遇
         # 屬性 場景、時間、地點、狀態
-    # *** 找到話題
+    # 找到話題 # 被GPT坑!根本不需要這些老方法
         # 關鍵詞頻率 、 情緒前後詞 、 關聯性詞 、NER 命名實體技術
     # * 被理解(有趣不是外在，而是內在被打開)、被挑動(有趣不是結果，是過程中的心動)、被延伸(有趣不是熱鬧，是有回應感)
         # 打開內在
@@ -1454,7 +1454,7 @@ class EventMonitor:
         # orb_group 純粹亂寫，錯誤使用? thinking資料夾儲存圖像之間比隊的特徵拓樸圖像
     # 清空thinking資料夾 # remove_thinking_file
     # NER(key) 屬性比對 key 話題=字串=檔案路徑，屬性比對 現在拍攝圖像，thinking圖像 比對 真實世界圖像
-    # related(話題): 和 NER(話題) 關係近的詞
+    # 關聯詞(話題): 和 NER(話題) 關係近的詞
         # 回傳 關聯性詞圖像 
     # 關鍵詞頻率:NER 出現次數/文本總字數>?%
         # 回傳 關鍵詞頻率圖像
@@ -1601,7 +1601,7 @@ class Noēsis:
         orb_matches_imwrite("thinking", "world")  # 加快比對，省步驟 # thinking2
         # img_orb("thinking2") # 回應
 
-    def related(key):
+    def 關聯詞(key):
         # *** 時間上前後一起出現的詞
         timeline = sorted(orb_group, key=lambda x: x["timestamp"])
         idx = next(i for i, x in enumerate(timeline) if x["file"] == key)
@@ -1682,73 +1682,106 @@ class Noēsis:
                 # 生成可延續的行動:讓局面符合立場
                     # 並根據經驗、直覺和環境選擇最合適策略，而不是單純回答或處理資訊
                         # TODO:# dist 經驗=三元行為;直覺=主導元行為 成功率高的 主導元目的;檔案路徑 環境選擇=主導元代價低的行為
-            #
-
-        # 有趣 主導:
-            # 承擔後果:不有趣
-                # 立場、目的、局面:提高話題連續性和總長度、讓用戶感到有趣、
-        orb_matches_imwrite(局面,有趣.代價)
-        if not img_orb("thinking"):
-            now=None
-            if 有趣.直覺:
-                now=有趣.直覺 # 行動
-            else:
-                now=random.choice(有趣.經驗) # 行動
-            now
-            orb_matches_imwrite(局面,有趣.立場)
-            if img_orb("thinking"):
-                # TODO:有趣.經驗[dirs 非細分的路徑 要重寫細分的路徑(資料夾的每個檔案)]+=1行動次數/行動總次數
-                for i,a in enumerate(有趣.經驗["action"]):
-                    if a == now:
-                    有趣.經驗["行動次數"][i]+=1 
-                    有趣.經驗["成功次數"][i]+=1 
-                    有趣.經驗["成功率"][i]=有趣.經驗["成功次數"][i]/有趣.經驗["行動次數"][i] # 分子+1/分母+1
-            else:
-                # TODO:有趣.經驗[dirs 非細分的路徑 要重寫細分的路徑(資料夾的每個檔案)]-=1行動次數/行動總次數
-                for i,a in enumerate(有趣.經驗["action"]):
-                    if a == now:
-                    有趣.經驗["行動次數"][i]+=1 
-                    有趣.經驗["成功率"][i]=有趣.經驗["成功次數"][i]/有趣.經驗["行動次數"][i] # 分子/分母+1
-
-        # 有趣 參照:
-            # 承擔後果:交流不幽默
-                # 立場、目的、局面:自習主導 立場、讓用戶感到有趣、自習正處理的 局面
-
-        def 有趣(self):
-            # 交流資料夾(內含資料) 是整個文本，本來就不需要上下文
-            self.代價={}
-            self.立場={}
-            self.目的={}
-            self.經驗={
+        self.有趣={
+            "代價"=[],
+            "立場"=[],
+            "目的"=[],
+            "經驗"={
                 "行動":{},
                 "成功率":0,
                 "成功次數":0,
                 "行動次數":0,
-                }
-            self.直覺={}
-            self.環境最合適策略={}
+                },
+            "直覺"=[],
+            "環境最合適策略"=[],
+        }
+        self.輔助={
+            "代價"=[],
+            "立場"=[],
+            "目的"=[],
+            "經驗"={
+                "行動":{},
+                "成功率":0,
+                "成功次數":0,
+                "行動次數":0,
+                },
+            "直覺"=[],
+            "環境最合適策略"=[],
+        }
+        self.自習={
+            "代價"=[],
+            "立場"=[],
+            "目的"=[],
+            "經驗"={
+                "行動":{},
+                "成功率":0,
+                "成功次數":0,
+                "行動次數":0,
+                },
+            "直覺"=[],
+            "環境最合適策略"=[],
+        }
+        def c(元):
+            if not self.元:
+                break
+            # 有趣 主導:
+                # 承擔後果:不有趣
+                    # 立場、目的、局面:提高話題連續性和總長度、讓用戶感到有趣、
+            orb_matches_imwrite(局面,self.元["代價"])
+            if not img_orb("thinking"):
+                now=None
+                if self.元["直覺"]:
+                    now=self.元["直覺"] # 行動
+                else:
+                    now=random.choice(self.元["經驗"]) # 行動
+                now
+                orb_matches_imwrite(局面,self.元["立場"])
+                if img_orb("thinking"):
+                    # TODO:self.元["經驗"][dirs 非細分的路徑 要重寫細分的路徑(資料夾的每個檔案)]+=1行動次數/行動總次數
+                    for i,a in enumerate(self.元["經驗"]["action"]):
+                        if a == now:
+                        self.元["經驗"]["行動次數"][i]+=1 
+                        self.元["經驗"]["成功次數"][i]+=1 
+                        self.元["經驗"]["成功率"][i]=self.元["經驗"]["成功次數"][i]/self.元["經驗"]["行動次數"][i] # 分子+1/分母+1
+                else:
+                    # TODO:self.元["經驗"][dirs 非細分的路徑 要重寫細分的路徑(資料夾的每個檔案)]-=1行動次數/行動總次數
+                    for i,a in enumerate(self.元["經驗"]["action"]):
+                        if a == now:
+                        self.元["經驗"]["行動次數"][i]+=1 
+                        self.元["經驗"]["成功率"][i]=self.元["經驗"]["成功次數"][i]/self.元["經驗"]["行動次數"][i] # 分子/分母+1
+
+            # 有趣 參照:
+                # 承擔後果:交流不幽默
+                    # 立場、目的、局面:自習主導 立場、讓用戶感到有趣、自習正處理的 局面
+
+        def 有趣(self):
+            # TODO:*************智障GPT修改死GPT寫的 # 交流資料夾(內含資料) 是整個文本，本來就不需要上下文。
+            # 造句 # 哪個話題用哪個策略
+            cv2.imwrite(save_path, img)
+
+
             # 2️⃣ 建立回覆策略字典
             回覆策略 = {}
             # 引導對話更深層發展
-            回覆策略["引導對話"] = 關聯詞 & NER屬性.get("value", set())
+            回覆策略["引導對話"] = 關聯詞 & NER(value)
             # 分享經歷
-            回覆策略["分享經歷"] = NER屬性.get("scene", set()) & NER屬性.get("action", set())
+            回覆策略["分享經歷"] = NER(scene) & NER(action)
             # 關注對方的興趣或重點
-            回覆策略["關注興趣"] = top_frequency(NER屬性.get("interest", set()))
+            回覆策略["關注興趣"] = top_frequency(NER(interest))
             # 接力式回應讓對方說更多
-            回覆策略["接力回應"] = NER屬性.get("emotion", set()) & 關聯詞
+            回覆策略["接力回應"] = NER(emotion) & 關聯詞
             # 引入相關故事增加對話深度
-            回覆策略["引入故事"] = NER屬性.get("scene", set()) & NER屬性.get("value", set())
+            回覆策略["引入故事"] = NER(scene) & NER(value)
             # 用過渡語句讓對話轉向
             回覆策略["過渡語句"] = shared_attribute(key, NER屬性)
             # 讚美或認可
-            回覆策略["讚美認可"] = NER屬性.get("action", set()) & NER屬性.get("value", set())
+            回覆策略["讚美認可"] = NER(action) & NER(value)
             # 觀察環境讚美或認可
-            回覆策略["觀察環境"] = NER屬性.get("scene", set()) & NER屬性.get("value", set())
+            回覆策略["觀察環境"] = NER(scene) & NER(value)
             # 開放式提問
-            回覆策略["開放式提問"] = unresolved(NER屬性.get("value", set()) | NER屬性.get("interest", set()))
+            回覆策略["開放式提問"] = unresolved(NER(value) | NER(interest))
             # 暗示下次相遇
-            回覆策略["暗示下次相遇"] = pending(NER屬性.get("scene", set()) | NER屬性.get("interest", set()))
+            回覆策略["暗示下次相遇"] = pending(NER(scene) | NER(interest))
             # 3️⃣ 最後整合所有策略，產生延續話題回覆 # GPT亂寫的，依據 # 交流資料夾(內含資料) 是整個文本，本來就不需要上下文
             #，回傳路徑就是造句，輸出方式為字串時讀取路徑就算完整的對話了，圖像也是
             延續話題回覆詞 = set()
@@ -1756,8 +1789,13 @@ class Noēsis:
                 延續話題回覆詞 |= v   # 合併所有策略的詞集合
 
             return 延續話題回覆詞
+        
 
-            
+        # 世界第一直觀顯示，比世界通用顯示還強了億倍，比占卜還像占卜。找 → 讀寫 → 看
+            # 像占卜找題目，解需求； 像占卜壓縮關鍵詞，誇越多維； 像占卜解壓縮成各種細項，符合不同差異的需求
+            # 列表為dist{}，對稱結構很直觀，方便讀，後面一直堆[]，方便寫
+            # 像即時提示 / 小便條 / 註解
+            # 舒服 UI、UX、音效
         def 自習:
 
             pass
