@@ -1768,8 +1768,9 @@ class Noēsis:
                 # 開放式提問:問「感受 / 想法 / 選擇原因」
                 # 自然換話題:用 情緒或價值 當橋
                 # 暗示下次相遇 / 延續:輕、不承諾、不壓迫
+                # 資料夾名稱(類似副檔名)含屬性(增加真實性的調味料): 場景、時間、地點、狀態
         def 有趣(self):   
-            # TODO: # 技巧
+            # TODO:****************如何改路徑，改完路徑，整套交流功能便完整 # 技巧
                 # 用 過渡句 接住 話題
                 # 讚美行為 / 狀態 / 選擇（不只外表），也可觀察環境＋補充認可
                 # 引入相關故事或分享經歷:短、真、有連結，結尾留空，不搶話
@@ -1777,6 +1778,8 @@ class Noēsis:
                 # 自然換話題:用 情緒或價值 當橋
                 # 暗示下次相遇 / 延續:輕、不承諾、不壓迫
             TECHNIQUES = {
+                # TODO:要使用路徑 all_show、技巧要正確
+                    # 資料夾(類似副檔名):屬性(增加真實性的調味料) 場景、時間、地點、狀態
                 "transition": lambda p: p.parts[-1:],          # 過渡句：只接狀態
                 "affirm":     lambda p: p.parts[-2:],          # 認可選擇
                 "story":      lambda p: p.parts[:-1],          # 同層不同實例
@@ -1786,108 +1789,56 @@ class Noēsis:
             }
             # TODO: 我這一句話，會不會讓對方更想說
             # 找出用戶的交流資料夾，代表和用戶交談，同時已經區分話題，接著更改資料夾位址就算 延續話題，新位址與目前位址共享前綴
-                # 話題排序:頻率(資料夾檔案數量)、前後詞(同層)、關聯詞(上下層)、資料夾名稱(NER)
+                # 話題排序(操作路徑):頻率(資料夾檔案數量)、前後詞(同層)、關聯詞(上下層)、資料夾名稱(NER)
                 # 資料夾(類似副檔名):屬性(增加真實性的調味料) 場景、時間、地點、狀態
-            # 流動，看用戶的交流的檔案數量
-            dirs=TEMPLATE_DIRS["user"]+"/communication"
+            # 流動，看用戶的交流(user/communication)的檔案數量
+            dirs_user=TEMPLATE_DIRS["user"]+"/communication"
+            dirs_attributes=TEMPLATE_DIRS["attributes"]
             用戶話量=sum(1 for p in dirs.rglob("*") if p.is_file())
-            if 用戶話量<:
-                pass
-            elif 用戶話量<:
-                pass
+            speak=[]
+            # if日常聊天、剛認識、對方能量低:隨機2個技巧
+            if 用戶話量< :
+                if found( [
+                    found( "日常聊天",path=dirs_attributes),found( "剛認識",path=dirs_attributes),found( "情緒低",path=dirs_attributes)
+                    ],path=dirs_user):
+                    speaker([random.choice(TECHNIQUES),random.choice(TECHNIQUES)])
+            # if對方開始分享經歷、氣氛變得比較深、有情緒、有故事:技巧 認可、相關故事、開方式提問
+            elif 用戶話量< :
+                if found( [
+                    found( "分享經歷",path=dirs_attributes),found( "氣氛變得比較深",path=dirs_attributes),found( "情緒",path=dirs_attributes),found( "故事",path=dirs_attributes)
+                    ],path=dirs_user):
+                    speaker([TECHNIQUES[技巧],TECHNIQUES[affirm],TECHNIQUES[相關故事],TECHNIQUES[開方式提問]])
+            # if深夜聊天、曖昧升溫、關係轉折點、對方主動掏心:全套技巧  
             else:
-            # TODO: # 情境，找交流資料夾中有無 情境
-            def folder_contains_keywords( keywords,path=dirs):
+                if found( [
+                    found( "深夜聊天",path=dirs_attributes),found( "曖昧升溫",path=dirs_attributes),found( "關係轉折點",path=dirs_attributes),found( "對方主動掏心",path=dirs_attributes)
+                    ],path=dirs_user):
+                    speaker(TECHNIQUES)
+            # 情境，找交流資料夾中的 情境(keywords)
+            def found( keywords,path=dirs_user):
                 for root, dirs, files in os.walk(path):
                     if any(any(k in f for k in keywords) for f in files):
                         return True
                 return False
-            # 找出話題
-            def list_all_files(path=dirs):
-                path = Path(path)
-                return [p for p in path.rglob("*") if p.is_file()]
-            # if日常聊天、剛認識、對方能量低:隨機2個技巧
-            if found([,]):
-                list_all_files().TECHNIQUES
-            # if對方開始分享經歷、氣氛變得比較深、有情緒、有故事:技巧 認可、相關故事、開方式提問
-            if found([,]):
-                list_all_files().TECHNIQUES
-            # if深夜聊天、曖昧升溫、關係轉折點、對方主動掏心:全套技巧  
-            if found([,]):
-                list_all_files().TECHNIQUES
+            # 找出話題， path 路徑下的全部檔案，包含更下層的檔案到最下層的檔案
+            def all_show(path=dirs_user):
+                return [p for p in Path(path).rglob("*") if p.is_file()]
             
-            
-            # 造句 # 圖片名稱與路徑共享語意，路徑由屬性組成，造句不是生成文字，而是「從屬性路徑中拉出一段」，找話題的四個方法，只負責決定：拉哪一段屬性
-            (TEMPLATE_DIRS["speak"] / save_path).parent.mkdir(parents=True, exist_ok=True)
-            cv2.imwrite(str(TEMPLATE_DIRS["speak"] / save_path), img)
+            # 造句說給用戶 # 圖片名稱與路徑共享語意，路徑由屬性組成，造句不是生成文字，而是「從屬性路徑中拉出一段」，找話題的四個方法，只負責決定：拉哪一段屬性
+            def speaker(img_path_list):
+                for img_path in img_path_list:
+                    save_path=rf"{TEMPLATE_DIRS["speak"]}/{img_path}/{int(time.time())}.jpg"
+                    save_path.parent.mkdir(parents=True, exist_ok=True) # 沒有資料夾，重建資料夾
+                    cv2.imwrite(save_path, img)
 
-            path_parts = save_path.parts[:-1]  # 去掉檔名
 
-            # def 有趣(self, img, energy: float):
-            user_root  = Path(TEMPLATE_DIRS["user"]) / "communication"
-            speak_root = Path(TEMPLATE_DIRS["speak"])
-
-            topic = pick_topic(user_root)
-            if not topic:
-                return
-                
-            # 1️⃣ 流動 → 技巧數量上限
-            limit = flow_limit(topic)
-            # 2️⃣ 情境 → 技巧池
-            pool = context_pool(energy, len(topic.parts))
-            # 3️⃣ 真正用的技巧
-            techniques = random.sample(pool, min(limit, len(pool)))
-            # 4️⃣ 造句 = 路徑切片
-            parts = []
-            for t in techniques:
-                parts += TECHNIQUES[t](topic)
-
-            # 去重保序
-            seen = set()
-            parts = [p for p in parts if not (p in seen or seen.add(p))]
-
-            # 5️⃣ 寫入 = 延續話題
-            save_path = Path(*parts) / f"{int(time.time())}.jpg"
-            full = speak_root / save_path
-            full.parent.mkdir(parents=True, exist_ok=True)
-            cv2.imwrite(str(full), img)
-
-            # 2️⃣ 建立回覆策略字典
-            回覆策略 = {}
-            # 引導對話更深層發展
-            回覆策略["引導對話"] = 關聯詞 & NER(value)
-            # 分享經歷
-            回覆策略["分享經歷"] = NER(scene) & NER(action)
-            # 關注對方的興趣或重點
-            回覆策略["關注興趣"] = top_frequency(NER(interest))
-            # 接力式回應讓對方說更多
-            回覆策略["接力回應"] = NER(emotion) & 關聯詞
-            # 引入相關故事增加對話深度
-            回覆策略["引入故事"] = NER(scene) & NER(value)
-            # 用過渡語句讓對話轉向
-            回覆策略["過渡語句"] = shared_attribute(key, NER屬性)
-            # 讚美或認可
-            回覆策略["讚美認可"] = NER(action) & NER(value)
-            # 觀察環境讚美或認可
-            回覆策略["觀察環境"] = NER(scene) & NER(value)
-            # 開放式提問
-            回覆策略["開放式提問"] = unresolved(NER(value) | NER(interest))
-            # 暗示下次相遇
-            回覆策略["暗示下次相遇"] = pending(NER(scene) | NER(interest))
-            # 3️⃣ 最後整合所有策略，產生延續話題回覆 # GPT亂寫的，依據 # 交流資料夾(內含資料) 是整個文本，本來就不需要上下文
-            #，回傳路徑就是造句，輸出方式為字串時讀取路徑就算完整的對話了，圖像也是
-            延續話題回覆詞 = set()
-            for v in 回覆策略.values():
-                延續話題回覆詞 |= v   # 合併所有策略的詞集合
-            return 延續話題回覆詞
-
-            save_path = Path("/home/user/docs/file.txt")
-            print("完整路徑:", save_path)
-            print("檔名:", save_path.name)      # file.txt
-            print("檔名不含副檔名:", save_path.stem)  # file
-            print("副檔名:", save_path.suffix)   # .txt
-            print("資料夾路徑:", save_path.parent)  # /home/user/docs
-            print("路徑各層:", save_path.parts)    # ('/', 'home', 'user', 'docs', 'file.txt')
+            # save_path = Path("/home/user/docs/file.txt")
+            # print("完整路徑:", save_path)
+            # print("檔名:", save_path.name)      # file.txt
+            # print("檔名不含副檔名:", save_path.stem)  # file
+            # print("副檔名:", save_path.suffix)   # .txt
+            # print("資料夾路徑:", save_path.parent)  # /home/user/docs
+            # print("路徑各層:", save_path.parts)    # ('/', 'home', 'user', 'docs', 'file.txt')
         
 
         # 世界第一直觀顯示，比世界通用顯示還強了億倍，比占卜還像占卜。找 → 讀寫 → 看
