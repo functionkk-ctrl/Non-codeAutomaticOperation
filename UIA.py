@@ -66,15 +66,12 @@ TEMPLATE_DIRS = {
     "live_capture": os.path.join(base_path, 'live_capture'),
     "attributes": os.path.join(base_path, "attributes"),
     "world": os.path.join(base_path, "world"),
+    "user": os.path.join(base_path, "user"),
     "communication": os.path.join(base_path, "communication"),
     "dark_matter": os.path.join(base_path, "dark_matter"),
     "thinking": os.path.join(base_path, "thinking"),  # 中轉站
     "thinking2": os.path.join(base_path, "thinking2"),  # 中轉站
-    "emotion": os.path.join(base_path, "emotion"),  # 情緒詞
-    "action": os.path.join(base_path, "action"),  # 行為
-    "interest": os.path.join(base_path, "interest"),  # 興趣
-    "scene": os.path.join(base_path, "scene"),  # 時間/地點/狀態
-    "value": os.path.join(base_path, "value"),  # 價值、態度
+    "speak": os.path.join(base_path, "speak"),  # 交流的回覆
 }
 
 MATCH_THRESHOLD = 0.85
@@ -1347,7 +1344,7 @@ class EventMonitor:
         # ，觀察環境讚美或認可，再鍵位補充 讚美或認可
         # ，開放式提問
         # ，暗示下次相遇
-        # 屬性 場景、時間、地點、狀態
+        # 屬性(增加真實性的調味料) 場景、時間、地點、狀態
     # 找到話題 # 被GPT坑!根本不需要這些老方法
         # 關鍵詞頻率 、 情緒前後詞 、 關聯性詞 、NER 命名實體技術
     # * 被理解(有趣不是外在，而是內在被打開)、被挑動(有趣不是結果，是過程中的心動)、被延伸(有趣不是熱鬧，是有回應感)
@@ -1754,11 +1751,106 @@ class Noēsis:
                 # 承擔後果:交流不幽默
                     # 立場、目的、局面:自習主導 立場、讓用戶感到有趣、自習正處理的 局面
 
-        def 有趣(self):
-            # TODO:*************智障GPT修改死GPT寫的 # 交流資料夾(內含資料) 是整個文本，本來就不需要上下文。
-            # 造句 # 哪個話題用哪個策略
-            cv2.imwrite(save_path, img)
+        
+        # 策略性(流動>情境)選技巧:
+            # 流動 # 看誰說得比較多： 
+                # 如果 對方說很多 ，你只要「接＋認可」 
+                # 如果 對方說很少 ，別急著用技巧，先降低深度 
+                # 如果 你開始講比對方多 ，技巧用過頭了，收手
+            # 情境
+                # 日常聊天、剛認識、對方能量低:隨機2個技巧
+                # 對方開始分享經歷、氣氛變得比較深、有情緒、有故事:技巧 認可、相關故事、開方式提問
+                # 深夜聊天、曖昧升溫、關係轉折點、對方主動掏心:全套技巧
+            # 技巧 # 以對方為主軸，接力回應＋情緒認可＋故事延伸，用開放式提問把對話推向下一層，並自然留下「下次再聊」的鉤子。
+                # 用 過渡句 接住 話題
+                # 讚美行為 / 狀態 / 選擇（不只外表），也可觀察環境＋補充認可
+                # 引入相關故事或分享經歷:短、真、有連結，結尾留空，不搶話
+                # 開放式提問:問「感受 / 想法 / 選擇原因」
+                # 自然換話題:用 情緒或價值 當橋
+                # 暗示下次相遇 / 延續:輕、不承諾、不壓迫
+        def 有趣(self):   
+            # TODO: # 技巧
+                # 用 過渡句 接住 話題
+                # 讚美行為 / 狀態 / 選擇（不只外表），也可觀察環境＋補充認可
+                # 引入相關故事或分享經歷:短、真、有連結，結尾留空，不搶話
+                # 開放式提問:問「感受 / 想法 / 選擇原因」
+                # 自然換話題:用 情緒或價值 當橋
+                # 暗示下次相遇 / 延續:輕、不承諾、不壓迫
+            TECHNIQUES = {
+                "transition": lambda p: p.parts[-1:],          # 過渡句：只接狀態
+                "affirm":     lambda p: p.parts[-2:],          # 認可選擇
+                "story":      lambda p: p.parts[:-1],          # 同層不同實例
+                "question":   lambda p: p.parts[-2:],          # 問為什麼選這層
+                "shift":      lambda p: p.parts[:-2],          # 用價值/情緒換層
+                "hook":       lambda p: p.parts[-1:],          # 留下未完結
+            }
+            # TODO: 我這一句話，會不會讓對方更想說
+            # 找出用戶的交流資料夾，代表和用戶交談，同時已經區分話題，接著更改資料夾位址就算 延續話題，新位址與目前位址共享前綴
+                # 話題排序:頻率(資料夾檔案數量)、前後詞(同層)、關聯詞(上下層)、資料夾名稱(NER)
+                # 資料夾(類似副檔名):屬性(增加真實性的調味料) 場景、時間、地點、狀態
+            # 流動，看用戶的交流的檔案數量
+            dirs=TEMPLATE_DIRS["user"]+"/communication"
+            用戶話量=sum(1 for p in dirs.rglob("*") if p.is_file())
+            if 用戶話量<:
+                pass
+            elif 用戶話量<:
+                pass
+            else:
+            # TODO: # 情境，找交流資料夾中有無 情境
+            def folder_contains_keywords( keywords,path=dirs):
+                for root, dirs, files in os.walk(path):
+                    if any(any(k in f for k in keywords) for f in files):
+                        return True
+                return False
+            # 找出話題
+            def list_all_files(path=dirs):
+                path = Path(path)
+                return [p for p in path.rglob("*") if p.is_file()]
+            # if日常聊天、剛認識、對方能量低:隨機2個技巧
+            if found([,]):
+                list_all_files().TECHNIQUES
+            # if對方開始分享經歷、氣氛變得比較深、有情緒、有故事:技巧 認可、相關故事、開方式提問
+            if found([,]):
+                list_all_files().TECHNIQUES
+            # if深夜聊天、曖昧升溫、關係轉折點、對方主動掏心:全套技巧  
+            if found([,]):
+                list_all_files().TECHNIQUES
+            
+            
+            # 造句 # 圖片名稱與路徑共享語意，路徑由屬性組成，造句不是生成文字，而是「從屬性路徑中拉出一段」，找話題的四個方法，只負責決定：拉哪一段屬性
+            (TEMPLATE_DIRS["speak"] / save_path).parent.mkdir(parents=True, exist_ok=True)
+            cv2.imwrite(str(TEMPLATE_DIRS["speak"] / save_path), img)
 
+            path_parts = save_path.parts[:-1]  # 去掉檔名
+
+            # def 有趣(self, img, energy: float):
+            user_root  = Path(TEMPLATE_DIRS["user"]) / "communication"
+            speak_root = Path(TEMPLATE_DIRS["speak"])
+
+            topic = pick_topic(user_root)
+            if not topic:
+                return
+                
+            # 1️⃣ 流動 → 技巧數量上限
+            limit = flow_limit(topic)
+            # 2️⃣ 情境 → 技巧池
+            pool = context_pool(energy, len(topic.parts))
+            # 3️⃣ 真正用的技巧
+            techniques = random.sample(pool, min(limit, len(pool)))
+            # 4️⃣ 造句 = 路徑切片
+            parts = []
+            for t in techniques:
+                parts += TECHNIQUES[t](topic)
+
+            # 去重保序
+            seen = set()
+            parts = [p for p in parts if not (p in seen or seen.add(p))]
+
+            # 5️⃣ 寫入 = 延續話題
+            save_path = Path(*parts) / f"{int(time.time())}.jpg"
+            full = speak_root / save_path
+            full.parent.mkdir(parents=True, exist_ok=True)
+            cv2.imwrite(str(full), img)
 
             # 2️⃣ 建立回覆策略字典
             回覆策略 = {}
@@ -1787,8 +1879,15 @@ class Noēsis:
             延續話題回覆詞 = set()
             for v in 回覆策略.values():
                 延續話題回覆詞 |= v   # 合併所有策略的詞集合
-
             return 延續話題回覆詞
+
+            save_path = Path("/home/user/docs/file.txt")
+            print("完整路徑:", save_path)
+            print("檔名:", save_path.name)      # file.txt
+            print("檔名不含副檔名:", save_path.stem)  # file
+            print("副檔名:", save_path.suffix)   # .txt
+            print("資料夾路徑:", save_path.parent)  # /home/user/docs
+            print("路徑各層:", save_path.parts)    # ('/', 'home', 'user', 'docs', 'file.txt')
         
 
         # 世界第一直觀顯示，比世界通用顯示還強了億倍，比占卜還像占卜。找 → 讀寫 → 看
