@@ -50,9 +50,9 @@ if platform == 'android':
 
 
 def read_imu(dt):
-    val = accelerometer.acceleration
-    if val:
-        ax, ay, az = val
+    # val = accelerometer.acceleration
+    if # val:
+        ax, ay, az = # val
         print(ax, ay, az)
 
 
@@ -85,6 +85,16 @@ firebase_admin.initialize_app(cred, {
     "databaseURL": "https://你的專案-id.firebaseio.com/"
 })
 
+
+def find_part_index(path, keyword):
+    parts = Path(path).parts
+    find_index(parts,keyword)
+
+def find_index(seq, target):
+    for i, part in enumerate(seq):
+        if target == part:
+            return i
+    return None
 
 def watchdog():
     while not alive_event.wait(timeout=10):
@@ -714,132 +724,131 @@ class TargetExtractor:
         # *** 先拓樸後幾何，穩定拓樸結構
 
         # 1️⃣ 讀相機內參
-        val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
-        val cameraId = cameraManager.cameraIdList[0]
-        val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+        # val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        # val cameraId = cameraManager.cameraIdList[0]
+        # val characteristics = cameraManager.getCameraCharacteristics(cameraId)
 
-        val focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
-        val sensorSize = characteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE)
+        # val focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
+        # val sensorSize = characteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE)
 
-        val fx = focalLengths[0] / sensorSize!!.width * imageWidth
-        val fy = focalLengths[0] / sensorSize.height * imageHeight
-        val cx = imageWidth / 2f
-        val cy = imageHeight / 2f
-        val K = arrayOf(arrayOf(fx, 0, cx), arrayOf(0, fy, cy), arrayOf(0, 0, 1))
+        # val fx = focalLengths[0] / sensorSize!!.width * imageWidth
+        # val fy = focalLengths[0] / sensorSize.height * imageHeight
+        # val cx = imageWidth / 2f
+        # val cy = imageHeight / 2f
+        # val K = arrayOf(arrayOf(fx, 0, cx), arrayOf(0, fy, cy), arrayOf(0, 0, 1))
 
         # 2️⃣ 讀 GPS
-        val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        val location1 = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-        val C1 = doubleArrayOf(location1.latitude, location1.longitude, location1.altitude)
+        # val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        # val location1 = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+        # val C1 = doubleArrayOf(location1.latitude, location1.longitude, location1.altitude)
 
-        val location2 = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-        val C2 = doubleArrayOf(location2.latitude, location2.longitude, location2.altitude)
+        # val location2 = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+        # val C2 = doubleArrayOf(location2.latitude, location2.longitude, location2.altitude)
 
         # 3️⃣ 拍兩張照片，取得影像點 (ORB)
-        val orb = ORB.create(3000)
-        val kp1 = MatOfKeyPoint()
-        val kp2 = MatOfKeyPoint()
-        val des1 = Mat()
-        val des2 = Mat()
+        # val orb = ORB.create(3000)
+        # val kp1 = MatOfKeyPoint()
+        # val kp2 = MatOfKeyPoint()
+        # val des1 = Mat()
+        # val des2 = Mat()
         orb.detectAndCompute(img1, Mat(), kp1, des1)
         orb.detectAndCompute(img2, Mat(), kp2, des2)
 
-        val bf = BFMatcher(NORM_HAMMING, true)
-        val matches = bf.match(des1, des2)
+        # val bf = BFMatcher(NORM_HAMMING, true)
+        # val matches = bf.match(des1, des2)
 
-        val pts1 = matches.map {kp1.toArray()[it.queryIdx].pt}
-        val pts2 = matches.map {kp2.toArray()[it.trainIdx].pt}
+        # val pts1 = matches.map {kp1.toArray()[it.queryIdx].pt}
+        # val pts2 = matches.map {kp2.toArray()[it.trainIdx].pt}
 
         # 4️⃣ Essential Matrix + recoverPose (旋轉不用管)
-        val E = Calib3d.findEssentialMat(pts1, pts2, K, RANSAC, 0.999, 1.0)
-        val R = Mat()
-        val t = Mat()
+        # val E = Calib3d.findEssentialMat(pts1, pts2, K, RANSAC, 0.999, 1.0)
+        # val R = Mat()
+        # val t = Mat()
         Calib3d.recoverPose(E, pts1, pts2, K, R, t)
 
         # 5️⃣ GPS 當尺
-        val baseline = doubleArrayOf(C2[0]-C1[0], C2[1]-C1[1], C2[2]-C1[2])
+        # val baseline = doubleArrayOf(C2[0]-C1[0], C2[1]-C1[1], C2[2]-C1[2])
 
         # 6️⃣ Triangulate
-        val P1 = Mat.eye(3, 4, CV_64F)
-        val P2 = Mat(3, 4, CV_64F)
+        # val P1 = Mat.eye(3, 4, CV_64F)
+        # val P2 = Mat(3, 4, CV_64F)
         # P2 = [R | -R*t]
         Core.hconcat(listOf(R, -R * Mat(baseline)), P2)
 
-        val pts4D = Mat()
+        # val pts4D = Mat()
         Calib3d.triangulatePoints(P1, P2, pts1, pts2, pts4D)
-        val pts3D = pts4D.rowRange(0, 3) / pts4D.row(3)
+        # val pts3D = pts4D.rowRange(0, 3) / pts4D.row(3)
 
         # 7️⃣ 計算物體長寬高
-        val objPts = pts3D.submat(objIndices)
-        val sizeX = Core.minMaxLoc(objPts.col(0)).maxVal - Core.minMaxLoc(objPts.col(0)).minVal
-        val sizeY = Core.minMaxLoc(objPts.col(1)).maxVal - Core.minMaxLoc(objPts.col(1)).minVal
-        val sizeZ = Core.minMaxLoc(objPts.col(2)).maxVal - Core.minMaxLoc(objPts.col(2)).minVal
+        # val objPts = pts3D.submat(objIndices)
+        # val sizeX = Core.minMaxLoc(objPts.col(0)).maxVal - Core.minMaxLoc(objPts.col(0)).minVal
+        # val sizeY = Core.minMaxLoc(objPts.col(1)).maxVal - Core.minMaxLoc(objPts.col(1)).minVal
+        # val sizeZ = Core.minMaxLoc(objPts.col(2)).maxVal - Core.minMaxLoc(objPts.col(2)).minVal
         println("L,W,H (m): $sizeX, $sizeY, $sizeZ")
 
         # V2
-        // == == = 1️⃣ 讀取 GPS == == =
-        val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        val loc: Location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-            ?: return
+        # // == == = 1️⃣ 讀取 GPS == == =
+        # val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        # val loc: Location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)?: return
 
-        val lat = loc.latitude
-        val lon = loc.longitude
-        val alt = loc.altitude // 高度尺(Z）
-        val speed=loc.speed // m/s
+        # val lat = loc.latitude
+        # val lon = loc.longitude
+        # val alt = loc.altitude // 高度尺(Z）
+        # val speed=loc.speed // m/s
 
-        // == == = 2️⃣ 判斷是否在空中 == ===
-        // 工程判斷：高度 + 速度(不搞 AI）
-        val isAirborne=alt > 20.0 & & speed > 5.0
+        # // == == = 2️⃣ 判斷是否在空中 == ===
+        # // 工程判斷：高度 + 速度(不搞 AI）
+        # val isAirborne=alt > 20.0 & & speed > 5.0
 
-        // == == = 3️⃣ 讀取影像 == ===
-        // img: OpenCV Mat(CameraX / Camera2 轉過來）
-        val img: Mat=currentFrameMat
+        # // == == = 3️⃣ 讀取影像 == ===
+        # // img: OpenCV Mat(CameraX / Camera2 轉過來）
+        # val img: Mat=currentFrameMat
 
-        // == == = 4️⃣ 找「大占比物體」 == ===
-        // 不分類、不追蹤，只找最大輪廓
-        val gray=Mat()
-        val bin=Mat()
+        # // == == = 4️⃣ 找「大占比物體」 == ===
+        # // 不分類、不追蹤，只找最大輪廓
+        # val gray=Mat()
+        # val bin=Mat()
         Imgproc.cvtColor(img, gray, Imgproc.COLOR_BGR2GRAY)
         Imgproc.threshold(gray, bin, 0.0, 255.0,
             Imgproc.THRESH_BINARY + Imgproc.THRESH_OTSU)
 
-        val contours=ArrayList < MatOfPoint > ()
+        # val contours=ArrayList < MatOfPoint > ()
         Imgproc.findContours(
             bin, contours, Mat(),
             Imgproc.RETR_EXTERNAL,
             Imgproc.CHAIN_APPROX_SIMPLE
         )
 
-        if (contours.isEmpty()) return
+        # if (contours.isEmpty()) return
 
-        val mainContour=contours.maxBy {
-            Imgproc.contourArea(it)
-        } ?: return
+        # val mainContour=contours.maxBy {
+        #     Imgproc.contourArea(it)
+        # } ?: return
 
-        val rect=Imgproc.boundingRect(mainContour)
+        # val rect=Imgproc.boundingRect(mainContour)
 
-        // == == = 5️⃣ 僅在「空中」才使用橫向尺 == ===
-        if (!isAirborne) return
+        # // == == = 5️⃣ 僅在「空中」才使用橫向尺 == ===
+        # if (!isAirborne) return
 
-        // == == = 6️⃣ 尺度換算 == ===
-        // 高度直接當 Z 尺
-        val Z=alt // meters
+        # // == == = 6️⃣ 尺度換算 == ===
+        # // 高度直接當 Z 尺
+        # val Z=alt // meters
 
-        // 相機視角(來自設備，實際可從 CameraCharacteristics 讀）
-        val hfov=Math.toRadians(60.0) // 水平視角(例）
-        val vfov=Math.toRadians(45.0)
+        # // 相機視角(來自設備，實際可從 CameraCharacteristics 讀）
+        # val hfov=Math.toRadians(60.0) // 水平視角(例）
+        # val vfov=Math.toRadians(45.0)
 
-        val imgW=img.cols().toDouble()
-        val imgH=img.rows().toDouble()
+        # val imgW=img.cols().toDouble()
+        # val imgH=img.rows().toDouble()
 
-        // 像素 → 實際尺寸(幾何，不是 SLAM）
-        val W=2 * Z * Math.tan(hfov / 2) * (rect.width / imgW)
-        val H=2 * Z * Math.tan(vfov / 2) * (rect.height / imgH)
+        # // 像素 → 實際尺寸(幾何，不是 SLAM）
+        # val W=2 * Z * Math.tan(hfov / 2) * (rect.width / imgW)
+        # val H=2 * Z * Math.tan(vfov / 2) * (rect.height / imgH)
 
-        // 長度：取寬高中較大者(工程定義）
-        val L=maxOf(W, H)
+        # // 長度：取寬高中較大者(工程定義）
+        # val L=maxOf(W, H)
 
-        // == == = 7️⃣ 輸出唯一結果 == ===
+        # // == == = 7️⃣ 輸出唯一結果 == ===
         Log.i("SIZE", "L,W,H (m) = $L, $W, $H")
 
 
@@ -1542,27 +1551,27 @@ class Noēsis:
         
         # 儲存進 thinking 或用path:log:return回傳 字串
         dir_str="thinking"
-            if a == "world" or b == "world":
-                dir_str += "{2}"
-            if ":log:" in a:
-                m=re.match(r".*:log:(.*)", a)
-                if not m:
-                    return None  # 正則匹配失敗，直接返回 None
-                # 資料夾路徑 = 去掉最後一段
-                folder_parts=a.split(":")[:-1]
-                folder_path=os.path.join(os.path.join(
-                    base_path, *folder_parts))  # 將多段組成路徑
-                log_file=os.path.join(os.path.join(
-                    base_path, folder_path), "log.txt")
-                if os.path.exists(log_file):
-                    with open(log_file, "r", encoding="utf-8") as f:
-                        for line in f:
-                            # 假設 log.txt 格式：每行是 "related_words:內容"
-                            if line.startswith(m.group(1) + ":"):
-                                # 回傳冒號後內容(字串)
-                                return line.strip().split(":", 1)[1]
-                # 如果 log.txt 不存在或找不到對應詞，就回傳原詞 related_words "字串"
-                return m.group(0)                                                                                                                                                                  
+        if a == "world" or b == "world":
+            dir_str += "{2}"
+        if ":log:" in a:
+            m=re.match(r".*:log:(.*)", a)
+            if not m:
+                return None  # 正則匹配失敗，直接返回 None
+            # 資料夾路徑 = 去掉最後一段
+            folder_parts=a.split(":")[:-1]
+            folder_path=os.path.join(os.path.join(
+                base_path, *folder_parts))  # 將多段組成路徑
+            log_file=os.path.join(os.path.join(
+                base_path, folder_path), "log.txt")
+            if os.path.exists(log_file):
+                with open(log_file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        # 假設 log.txt 格式：每行是 "related_words:內容"
+                        if line.startswith(m.group(1) + ":"):
+                            # 回傳冒號後內容(字串)
+                            return line.strip().split(":", 1)[1]
+            # 如果 log.txt 不存在或找不到對應詞，就回傳原詞 related_words "字串"
+            return m.group(0)                                                                                                                                                                  
         # scores=[]
         for a_file, a_kp, a_des in img_orb(a, wave):  # 資料
             for b_file, b_kp, b_des in img_orb(b, wave):  # 資料，特徵點選比較多
@@ -1579,7 +1588,7 @@ class Noēsis:
             score=len(orb_group) / len(a_kp) if a_kp else 0  # 波
             if score > th:
                 filename=os.path.relpath(TEMPLATE_DIRS[dir_str], base_path)
-                    .replace(os.sep, "_") + ".jpg"
+                .replace(os.sep, "_") + ".jpg"
                 save_path=os.path.join(TEMPLATE_DIRS[dir_str], filename)
                 cv2.imwrite(save_path, img_matches)  # "img"
             # scores.append(score)
@@ -1589,7 +1598,7 @@ class Noēsis:
 
     def remove_thinking_file():
         if os.path.isfile(TEMPLATE_DIRS["thinking"]) or os.path.islink(TEMPLATE_DIRS["thinking"]):
-        os.unlink(TEMPLATE_DIRS["thinking"])
+            os.unlink(TEMPLATE_DIRS["thinking"])
 
     # NER 命名實體技術(預設 c(全部)):讀取 屬性 資料夾 ORB比對 攝影中的全部圖像(用戶手動儲存完整文本)，拓樸結構 相似度最高 # p.s.NER就像粒子、關聯就像波
     def NER(key):
@@ -1661,10 +1670,10 @@ class Noēsis:
         # bc= c(NER Noēsis交流)，代表Noēsis在畫布上畫畫
         # *keyword 和python一樣用法
 
-    def ac:
+    def ac():
         remove_thinking_file()
         NER(用戶+"communication")
-    def bc:
+    def bc():
         NER(Noēsis+"communication")
 
     # 交流 資料夾 # Noēsis和用戶的交流資料夾一定要區分，不然會內捲和用戶話不投機
@@ -1720,7 +1729,7 @@ class Noēsis:
         }
         def c(元):
             if not self.元:
-                break
+                pass
             # 有趣 主導:
                 # 承擔後果:不有趣
                     # 立場、目的、局面:提高話題連續性和總長度、讓用戶感到有趣、
@@ -1737,15 +1746,15 @@ class Noēsis:
                     # TODO:self.元["經驗"][dirs 非細分的路徑 要重寫細分的路徑(資料夾的每個檔案)]+=1行動次數/行動總次數
                     for i,a in enumerate(self.元["經驗"]["action"]):
                         if a == now:
-                        self.元["經驗"]["行動次數"][i]+=1 
-                        self.元["經驗"]["成功次數"][i]+=1 
-                        self.元["經驗"]["成功率"][i]=self.元["經驗"]["成功次數"][i]/self.元["經驗"]["行動次數"][i] # 分子+1/分母+1
+                            self.元["經驗"]["行動次數"][i]+=1 
+                            self.元["經驗"]["成功次數"][i]+=1 
+                            self.元["經驗"]["成功率"][i]=self.元["經驗"]["成功次數"][i]/self.元["經驗"]["行動次數"][i] # 分子+1/分母+1
                 else:
                     # TODO:self.元["經驗"][dirs 非細分的路徑 要重寫細分的路徑(資料夾的每個檔案)]-=1行動次數/行動總次數
                     for i,a in enumerate(self.元["經驗"]["action"]):
                         if a == now:
-                        self.元["經驗"]["行動次數"][i]+=1 
-                        self.元["經驗"]["成功率"][i]=self.元["經驗"]["成功次數"][i]/self.元["經驗"]["行動次數"][i] # 分子/分母+1
+                            self.元["經驗"]["行動次數"][i]+=1 
+                            self.元["經驗"]["成功率"][i]=self.元["經驗"]["成功次數"][i]/self.元["經驗"]["行動次數"][i] # 分子/分母+1
 
             # 有趣 參照:
                 # 承擔後果:交流不幽默
@@ -1771,22 +1780,42 @@ class Noēsis:
                 # 資料夾名稱(類似副檔名)含屬性(增加真實性的調味料): 場景、時間、地點、狀態
         def 有趣(self):   
             # TODO:****************如何改路徑，改完路徑，整套交流功能便完整 # 技巧
-                # 用 過渡句 接住 話題
-                # 讚美行為 / 狀態 / 選擇（不只外表），也可觀察環境＋補充認可
-                # 引入相關故事或分享經歷:短、真、有連結，結尾留空，不搶話
-                # 開放式提問:問「感受 / 想法 / 選擇原因」
-                # 自然換話題:用 情緒或價值 當橋
-                # 暗示下次相遇 / 延續:輕、不承諾、不壓迫
-            TECHNIQUES = {
+                
+                
+                
+                
+            all_show    
+                
+            technology = {
                 # TODO:要使用路徑 all_show、技巧要正確
                     # 資料夾(類似副檔名):屬性(增加真實性的調味料) 場景、時間、地點、狀態
-                "transition": lambda p: p.parts[-1:],          # 過渡句：只接狀態
-                "affirm":     lambda p: p.parts[-2:],          # 認可選擇
-                "story":      lambda p: p.parts[:-1],          # 同層不同實例
-                "question":   lambda p: p.parts[-2:],          # 問為什麼選這層
-                "shift":      lambda p: p.parts[:-2],          # 用價值/情緒換層
-                "hook":       lambda p: p.parts[-1:],          # 留下未完結
+                    # [最前端名稱(路徑重疊最長的):末端的完整路徑(每個檔案)]+found(找(類似副檔名))
+            
+                # 用 過渡句 接住 話題
+                "過渡句": lambda p: list(p.parts) if p.parts else [],
+                # 讚美行為 / 狀態 / 選擇（不只外表），也可觀察環境＋補充認可
+                "讚美行為": lambda p: list(p.parts[:2]) if len(p.parts) >= 2 else list(p.parts),
+                # 引入相關故事或分享經歷:短、真、有連結，結尾留空，不搶話
+                "引入故事": lambda p: list(p.parts[:3]) if len(p.parts) >= 3 else list(p.parts),
+                # 開放式提問:問「感受 / 想法 / 選擇原因」
+                "開放式提問": lambda p: slice_from_keyword(p, "感受"),
+                # 自然換話題:用 情緒或價值 當橋
+                "換話題": lambda p: list(p.parts[-2:]) if len(p.parts) >= 2 else list(p.parts),
+                # 暗示下次相遇 / 延續:輕、不承諾、不壓迫
+                "暗示下次": lambda p: list(p.parts[-1:]) if p.parts else [],
             }
+
+
+            # 所以接收用戶訊息，按照接收順序同時標記路徑總長度，要等全部接收完畢，才能開始決定最常路徑長度，不然會錯綜複雜，第二次讀取用戶訊息[訊息最前面的路徑:訊息最後面的路徑]。然後和找情境一樣方法找 # 用 過渡句 接住 話題
+            # 讚美行為 / 狀態 / 選擇（不只外表），也可觀察環境＋補充認可
+            # 引入相關故事或分享經歷:短、真、有連結，結尾留空，不搶話
+            # 開放式提問:問「感受 / 想法 / 選擇原因」
+            # 自然換話題:用 情緒或價值 當橋
+            # 暗示下次相遇 / 延續:輕、不承諾、不壓迫
+            # ，技巧列表 輸入和找情境一樣方法找 用戶訊息，找到則用，找不到則補充非屬性                     # 資料夾(類似副檔名):屬性(增加真實性的調味料) 場景、時間、地點、狀態
+            # 因為你一直討幹，所以你已經被幹壞掉了。 
+
+
             # TODO: 我這一句話，會不會讓對方更想說
             # 找出用戶的交流資料夾，代表和用戶交談，同時已經區分話題，接著更改資料夾位址就算 延續話題，新位址與目前位址共享前綴
                 # 話題排序(操作路徑):頻率(資料夾檔案數量)、前後詞(同層)、關聯詞(上下層)、資料夾名稱(NER)
@@ -1798,28 +1827,35 @@ class Noēsis:
             speak=[]
             # if日常聊天、剛認識、對方能量低:隨機2個技巧
             if 用戶話量< :
-                if found( [
-                    found( "日常聊天",path=dirs_attributes),found( "剛認識",path=dirs_attributes),found( "情緒低",path=dirs_attributes)
-                    ],path=dirs_user):
-                    speaker([random.choice(TECHNIQUES),random.choice(TECHNIQUES)])
+                keywords = ["日常聊天", "剛認識", "情緒低"]
+                if any(found(k, path=dirs_attributes) for k in keywords):
+                    if f in all_show():
+                        chosen = random.sample(list(technology.values()), 2)
+                        speaker([func(f) for func in chosen])
             # if對方開始分享經歷、氣氛變得比較深、有情緒、有故事:技巧 認可、相關故事、開方式提問
             elif 用戶話量< :
-                if found( [
-                    found( "分享經歷",path=dirs_attributes),found( "氣氛變得比較深",path=dirs_attributes),found( "情緒",path=dirs_attributes),found( "故事",path=dirs_attributes)
-                    ],path=dirs_user):
-                    speaker([TECHNIQUES[技巧],TECHNIQUES[affirm],TECHNIQUES[相關故事],TECHNIQUES[開方式提問]])
+                keywords = ["分享經歷", "氣氛變得比較深", "情緒", "故事"]
+                if any(found(k, path=dirs_attributes) for k in keywords):
+                    if f in all_show():
+                        speaker([
+                            technology["技巧"](f),
+                            technology["讚美行為"](f),
+                            technology["引入故事"](f),
+                            technology["開放式提問"](f)
+                        ])
             # if深夜聊天、曖昧升溫、關係轉折點、對方主動掏心:全套技巧  
             else:
-                if found( [
-                    found( "深夜聊天",path=dirs_attributes),found( "曖昧升溫",path=dirs_attributes),found( "關係轉折點",path=dirs_attributes),found( "對方主動掏心",path=dirs_attributes)
-                    ],path=dirs_user):
-                    speaker(TECHNIQUES)
+                keywords = ["深夜聊天", "曖昧升溫", "關係轉折點", "對方主動掏心"]
+                if any(found(k, path=dirs_attributes) for k in keywords):
+                    if f in all_show():
+                        speaker([func(f) for func in technology.values()])
             # 情境，找交流資料夾中的 情境(keywords)
             def found( keywords,path=dirs_user):
                 for root, dirs, files in os.walk(path):
                     if any(any(k in f for k in keywords) for f in files):
                         return True
                 return False
+            
             # 找出話題， path 路徑下的全部檔案，包含更下層的檔案到最下層的檔案
             def all_show(path=dirs_user):
                 return [p for p in Path(path).rglob("*") if p.is_file()]
@@ -1827,9 +1863,9 @@ class Noēsis:
             # 造句說給用戶 # 圖片名稱與路徑共享語意，路徑由屬性組成，造句不是生成文字，而是「從屬性路徑中拉出一段」，找話題的四個方法，只負責決定：拉哪一段屬性
             def speaker(img_path_list):
                 for img_path in img_path_list:
-                    save_path=rf"{TEMPLATE_DIRS["speak"]}/{img_path}/{int(time.time())}.jpg"
+                    save_path=Path(TEMPLATE _DIRS["speak"]/img_path/f"{int(time.time())}.jpg")
                     save_path.parent.mkdir(parents=True, exist_ok=True) # 沒有資料夾，重建資料夾
-                    cv2.imwrite(save_path, img)
+                    cv2.imwrite(str(save_path), img)
 
 
             # save_path = Path("/home/user/docs/file.txt")
