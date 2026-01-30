@@ -93,7 +93,7 @@ def find_part_index(path, keyword):
 
 def find_index(seq, target):
     for i, part in enumerate(seq):
-        if target == part:
+        if target in part:
             return i
     return None
 
@@ -1270,6 +1270,8 @@ class EventMonitor:
                     evt["Cost"] = input(
                         f"{img}{stage}成本太高 時的應對作法：").strip() or evt.get("Cost")
 
+
+# 把GPT的甚麼鬼邏輯清乾淨，只要說:你又犯了，可以，打扁你，你扁掉了?
 # === class Noēsis:
     # Noēsis(諾埃西斯）希臘文 νόησις。Perceptive Structural Language(PSL）。自己用 World-Formation Language(WFL）
         # 我正在創建 新社交，因為聊天機器人好像很賺錢。
@@ -1337,6 +1339,7 @@ class EventMonitor:
                 # 可能多維的運用還能提前處理用戶遇到的問題?
                     # 問題的趨勢
             # 我的交流 和 Noēsis(諾埃西斯)的三大(自習、有趣、16核)的交流 放在一起互相聯繫
+                # 新規:用戶訊息為c(整個文本)，Noēsis為a，ac說給用戶聽，ab為Noēsis的理解。ac交流、ab觀察
                 # a對象和b對象交流c內容，((a-c)**2+(b-c)**2)**0.5 為靈感來源，得到a和b的交流c量
                 # 多維a對多維c畫畫得ac，b也畫畫得bc， ac 和 bc 的不相似 得到交流C量
                 # 暗物質資料夾。  因為權限不足 沒辦法直接使用整個畫布c，故存在此獨立資料夾。
@@ -1468,11 +1471,6 @@ class EventMonitor:
     # 情緒前後詞:NER情緒 前後多少詞內 出現的詞
         # 回傳 情緒前後詞圖像
 
-    # GPT可能想統一排序，但我感覺很假
-    # ac
-        # 分析出用戶拍攝圖像代表 甚麼意義，用NER 屬性比對。  GPT智障不先用，還自以為是地認為沒有任何問題
-    # bc
-        # 分析出Noēsis圖像代表 交流甚麼，用NER 屬性比對。  GPT智障不先用，還自以為是地認為沒有任何問題
 
     # 三元協作
         # 有趣元
@@ -1673,12 +1671,6 @@ class Noēsis:
         # bc= c(NER Noēsis交流)，代表Noēsis在畫布上畫畫
         # *keyword 和python一樣用法
 
-    def ac():
-        remove_thinking_file()
-        NER(用戶+"communication")
-
-    def bc():
-        NER(Noēsis+"communication")
 
     # 交流 資料夾 # Noēsis 和用戶的交流資料夾一定要區分，不然會內捲和用戶話不投機
     def cooperation(self, dirs=TEMPLATE_DIRS["communication"]):
@@ -1785,101 +1777,174 @@ class Noēsis:
                 # 暗示下次相遇 / 延續:輕、不承諾、不壓迫
                 # 資料夾名稱(類似副檔名)含屬性(增加真實性的調味料): 場景、時間、地點、狀態
         def 有趣(self):
-            # TODO:****************如何改路徑，改完路徑，整套交流功能便完整 # 技巧
+            # 技巧
             technology = {
-                # TODO:要使用路徑 all_show、技巧要正確
-                # 資料夾(類似副檔名):屬性(增加真實性的調味料) 場景、時間、地點、狀態
-                # [最前端名稱(路徑重疊最長的):末端的完整路徑(每個檔案)]+found(找(類似副檔名))
-
-                # 用 過渡句 接住 話題
-                "過渡句": lambda p: list(p.parts[find_part_index(p, "狀態"):]) if "感受" in p.parts[find_part_index(p, "狀態")] else [],
-                # 讚美行為 / 狀態 / 選擇（不只外表），也可觀察環境＋補充認可
-                "讚美行為": lambda p: list(p.parts[find_part_index(p, "狀態"):]) if "感受" in p.parts[find_part_index(p, "狀態")] else [],
-                # 引入相關故事或分享經歷:短、真、有連結，結尾留空，不搶話
-                "引入故事": lambda p: list(p.parts[find_part_index(p, "狀態"):]) if "感受" in p.parts[find_part_index(p, "狀態")] else [],
-                # 開放式提問:問「感受 / 想法 / 選擇原因」
-                "開放式提問": lambda p: list(p.parts[find_part_index(p, "狀態"):]) if "感受" in p.parts[find_part_index(p, "狀態")] else [],
-                # 自然換話題:用 情緒或價值 當橋
-                "換話題": lambda p: list(p.parts[find_part_index(p, "狀態"):]) if "感受" in p.parts[find_part_index(p, "狀態")] else [],
-                # 暗示下次相遇 / 延續:輕、不承諾、不壓迫
-                "暗示下次": lambda p: list(p.parts[find_part_index(p, "狀態"):]) if "感受" in p.parts[find_part_index(p, "狀態")] else [],
-                # 資料夾(類似副檔名):屬性(增加真實性的調味料) 場景、時間、地點、狀態
+                "接力": ('場景/過渡句','時間/過渡句','地點/過渡句','狀態/過渡句','場景/接力式回應','時間/接力式回應','地點/接力式回應','狀態/接力式回應'),
+                "讚美": ('場景/讚美行為','時間/讚美行為','地點/讚美行為','狀態/讚美行為','場景/補充認可','時間/補充認可','地點/補充認可','狀態/補充認可'),
+                "分享": ('場景/引入故事','時間/引入故事','地點/引入故事','狀態/引入故事','場景/關注對方的興趣或重點','時間/關注對方的興趣或重點','地點/關注對方的興趣或重點','狀態/關注對方的興趣或重點'),
+                "提問": ('狀態/開放式提問',),
+                "轉向": ('場景/換話題','時間/換話題','地點/換話題','狀態/換話題'),
+                "相遇": ('時間/暗示下次相遇','狀態/暗示下次相遇'),
             }
+            # 參照元
+            def 觀察():
+                # TODO:代價:不 有趣。讀取屬性資料夾的同一詞，並找到代價下的圖像，出現在本dirs即扣分和成功率計算方式同樣。
+                # TODO:異步
+                # TODO:Noesis_path/communication，補齊交流時的 technology，補齊以屬性為主、以ORB為輔
+                dirs_Noesis = TEMPLATE_DIRS["Noesis"] / "communication"
+                for root, dirs, files in os.walk(dirs_Noesis):
+                    for ts in technology :
+                        for t in technology[ts]:
+                            ext, anchor = t.split("/")
+                            idx = find_part_index(dirs, ext)
+                            # try補齊 ext，以ORB為輔
+                            if idx is None:
+                                # 在合適的路徑上建立 ext，依補齊以屬性為主、以ORB為輔
+                                # ORB 參于的地方
+                                if dirs in ["",""]:
+                                    dirs=dirs+f"/({ext})"
+                                    technology_create(dirs)
+                                if any(anchor in p for p in root):
+                                    # 在合適的路徑上建立 anchor，依補齊以屬性為主、以ORB為輔
+                                    # ORB 參于的地方
+                                    if dirs in ["",""]:
+                                        technology_create(dirs+f"/({anchor})")
+                            else:
+                                # try在ext下補齊 anchor，以ORB為輔
+                                if any(anchor in p for p in root):
+                                    # 在合適的路徑上建立 anchor，依補齊以屬性為主、以ORB為輔
+                                    # ORB 參于的地方
+                                    if dirs in ["",""]:
+                                        technology_create(dirs+f"/({anchor})")
 
-            # TODO: 我這一句話，會不會讓對方更想說
-            # 找出用戶的交流資料夾，代表和用戶交談，同時已經區分話題，接著更改資料夾位址就算 延續話題，新位址與目前位址共享前綴
-            # 話題排序(操作路徑):頻率(資料夾檔案數量)、前後詞(同層)、關聯詞(上下層)、資料夾名稱(NER)
-            # 資料夾(類似副檔名):屬性(增加真實性的調味料) 場景、時間、地點、狀態
-            # 流動，看用戶的交流(user/communication)的檔案數量
-            dirs_user = TEMPLATE_DIRS["user"]+"/communication"
-            dirs_attributes = TEMPLATE_DIRS["attributes"]
-            用戶話量 = sum(1 for p in dirs.rglob("*") if p.is_file())
-            # if日常聊天、剛認識、對方能量低:隨機2個技巧
-            if 用戶話量 <:
-                keywords = ["日常聊天", "剛認識", "情緒低"]
-                if any(found(k, path=dirs_attributes) for k in keywords):
-                    if f in all_show():
-                        chosen = random.sample(list(technology.values()), 2)
-                        speaker([func(f) for func in chosen])
-            # if對方開始分享經歷、氣氛變得比較深、有情緒、有故事:技巧 認可、相關故事、開方式提問
-            elif 用戶話量 <:
-                keywords = ["分享經歷", "氣氛變得比較深", "情緒", "故事"]
-                if any(found(k, path=dirs_attributes) for k in keywords):
-                    if f in all_show():
-                        speaker([
-                            technology["技巧"](f),
-                            technology["讚美行為"](f),
-                            technology["引入故事"](f),
-                            technology["開放式提問"](f)
-                        ])
-            # if深夜聊天、曖昧升溫、關係轉折點、對方主動掏心:全套技巧
-            else:
-                keywords = ["深夜聊天", "曖昧升溫", "關係轉折點", "對方主動掏心"]
-                if any(found(k, path=dirs_attributes) for k in keywords):
-                    if f in all_show():
-                        speaker([func(f) for func in technology.values()])
-            # 情境，找交流資料夾中的 情境(keywords)
-
-            def found(keywords, path=dirs_user):
-                for root, dirs, files in os.walk(path):
-                    if any(any(k in f for k in keywords) for f in files):
-                        return True
-                return False
-
-            # 找出話題， path 路徑下的全部檔案，包含更下層的檔案到最下層的檔案
-            def all_show(path=dirs_user):
-                return [p for p in Path(path).rglob("*") if p.is_file()]
-
-            # 造句說給用戶 # 圖片名稱與路徑共享語意，路徑由屬性組成，造句不是生成文字，而是「從屬性路徑中拉出一段」，找話題的四個方法，只負責決定：拉哪一段屬性
-            def speaker(img_path_list):
-                for img_path in img_path_list:
-                    save_path = Path(
-                        TEMPLATE_DIRS["speak"]/img_path/f"{int(time.time())}.jpg")
+                def technology_create(dirs=dirs_Noesis):
+                    if dirs is dirs_Noesis:
+                        save_path=Path(dirs/f"{int(time.time())}.jpg")
+                    else:
+                        save_path=Path(dirs_Noesis/dirs/f"{int(time.time())}.jpg")
                     save_path.parent.mkdir(
                         parents=True, exist_ok=True)  # 沒有資料夾，重建資料夾
-                    cv2.imwrite(str(save_path), img)
+                    cv2.imwrite(str(save_path), None)
 
-            # save_path = Path("/home/user/docs/file.txt")
-            # print("完整路徑:", save_path)
-            # print("檔名:", save_path.name)      # file.txt
-            # print("檔名不含副檔名:", save_path.stem)  # file
-            # print("副檔名:", save_path.suffix)   # .txt
-            # print("資料夾路徑:", save_path.parent)  # /home/user/docs
-            # print("路徑各層:", save_path.parts)    # ('/', 'home', 'user', 'docs', 'file.txt')
 
-        # 世界第一直觀顯示，比世界通用顯示還強了億倍，比占卜還像占卜。找 → 讀寫 → 看
-            # 像占卜找題目，解需求； 像占卜壓縮關鍵詞，誇越多維； 像占卜解壓縮成各種細項，符合不同差異的需求
-            # 列表為dist{}，對稱結構很直觀，方便讀，後面一直堆[]，方便寫
-            # 像即時提示 / 小便條 / 註解
-            # 舒服 UI、UX、音效
+
+            # 主導元
+            def 交流():
+                # TODO:代價:不 幽默。讀取屬性資料夾的同一詞，並找到代價下的圖像，出現在本dirs即扣分和成功率計算方式同樣。
+                # TODO:對話方式不只有看對方訊息，還有自己的想得到的資訊，有此未得到的資訊建立的提問。提問依據回答清晰度改變，預期值(Noesis根據代價計算)。
+                # TODO:同步
+                def extract_semantic_segment(path,choice):
+                    """
+                    choice:接力 / 讚美 / 分享 / 提問 / 轉向 / 相遇
+                    ext: 資料夾(類似副檔名):屬性(增加真實性的調味料) 場景、時間、地點、狀態
+                    anchor: 語意錨點:
+                        過渡句
+                        接力式回應
+                        讚美行為
+                        補充認可
+                        引入故事
+                        關注對方的興趣或重點
+                        開放式提問
+                        換話題
+                        暗示下次相遇
+                    [最前端名稱(路徑重疊最長的):末端的完整路徑(每個檔案)]+find(找到(ext類似副檔名))
+                    """
+                    segments = []
+                    for t in technology[choice]:
+                        ext, anchor = t.split("/")
+                        idx = find_part_index(path, ext)
+                        if idx is None:
+                            continue  
+                        seg = list(path.parts[idx:])
+                        if any(anchor in p for p in seg):
+                            segments.append(seg)
+                    return segments
+
+                # TODO: 我這一句話，會不會讓對方更想說
+                # 找出用戶的交流資料夾，代表和用戶交談，同時已經區分話題，接著更改資料夾位址就算 延續話題，新位址與目前位址共享前綴
+                # 話題排序(操作路徑):頻率(資料夾檔案數量)=高、前後詞(同層)=5、關聯詞(上下層)=3、資料夾名稱(NER)
+                # 資料夾(類似副檔名):屬性(增加真實性的調味料) 場景、時間、地點、狀態
+                # 流動，看用戶的交流(user/communication)的檔案數量
+                dirs_user = TEMPLATE_DIRS["user"]+"/communication"
+                dirs_attributes = TEMPLATE_DIRS["attributes"]
+                用戶話量 = sum(1 for p in dirs.rglob("*") if p.is_file())
+                # if日常聊天、剛認識、對方能量低:隨機2個技巧
+                if 用戶話量 <200:
+                    keywords = ["日常聊天", "剛認識", "情緒低"]
+                    if any(found(k, path=dirs_attributes) for k in keywords):
+                        if f in all_show():
+                            chosen = random.sample(list(technology.values()), 2)
+                            speaker([func(f) for func in chosen])
+                # if對方開始分享經歷、氣氛變得比較深、有情緒、有故事:技巧 認可、相關故事、開方式提問
+                elif 用戶話量 <800:
+                    keywords = ["分享經歷", "氣氛變得比較深", "情緒", "故事"]
+                    if any(found(k, path=dirs_attributes) for k in keywords):
+                        if f in all_show():
+                            speaker([
+                                technology["接力"](f),
+                                technology["讚美"](f),
+                                technology["分享"](f),
+                                technology["提問"](f)
+                            ])
+                # if深夜聊天、曖昧升溫、關係轉折點、對方主動掏心:全套技巧
+                else:
+                    # 主動錯位路徑讓交流更自然
+
+                    keywords = ["深夜聊天", "曖昧升溫", "關係轉折點", "對方主動掏心"]
+                    if any(found(k, path=dirs_attributes) for k in keywords):
+                        if f in all_show():
+                            speaker([func(f) for func in technology.values()])
+
+                # 情境，找交流資料夾中的 情境(keywords)
+                def found(keywords, path=dirs_user):
+                    for root, dirs, files in os.walk(path):
+                        if any(any(k in f for k in keywords) for f in files):
+                            return True
+                    return False
+
+                # 找出話題， path 路徑下的全部檔案，包含更下層的檔案到最下層的檔案
+                def all_show(path=dirs_user):
+                    return [p for p in Path(path).rglob("*") if p.is_file()]
+
+                # 心裡的思緒流動遠快於語言表達，因此即使對話間隔很短，說出口的內容仍可能出現高度跳躍，並不代表思考是斷裂的。
+                # 所以本來想得快，說得慢，不需要讓說的路徑跳躍，本來就跳躍。關鍵是想得多不同步、說話和用戶訊息同步
+                # Noesis 和用戶，觀察異步、交流同步
+                # 造句說給用戶 # 圖片名稱與路徑共享語意，路徑由屬性組成，造句不是生成文字，而是「從屬性路徑中拉出一段」，找話題的四個方法，只負責決定：拉哪一段屬性
+                def speaker(img_path_list):
+                    for img_path in img_path_list:
+                        save_path = Path(
+                            TEMPLATE_DIRS["speak"]/img_path/f"{int(time.time())}.jpg")
+                        save_path.parent.mkdir(
+                            parents=True, exist_ok=True)  # 沒有資料夾，重建資料夾
+                        cv2.imwrite(str(save_path), img)
+
+
+        
 
         def 自習():
-
-            pass
-
+            def 觀察():
+                # TODO:代價:不 真實。讀取屬性資料夾的同一詞，並找到代價下的圖像，出現在本dirs即扣分和成功率計算方式同樣。
+                # TODO:異步
+                # TODO:path
+            def 交流():
+                # TODO:代價:不 真實。讀取屬性資料夾的同一詞，並找到代價下的圖像，出現在本dirs即扣分和成功率計算方式同樣。
+                # TODO:同步
+                # TODO:path
         def 16核():
-            pass
+            def 觀察():
+                # TODO:代價:不 有趣。讀取屬性資料夾的同一詞，並找到代價下的圖像，出現在本dirs即扣分和成功率計算方式同樣。
+                # TODO:異步
+                # TODO:path
+            def 交流():
+                # TODO:代價:不 有趣。讀取屬性資料夾的同一詞，並找到代價下的圖像，出現在本dirs即扣分和成功率計算方式同樣。
+                # TODO:同步
+                # TODO:path
 
+# *** 世界第一直觀顯示，比世界通用顯示還強了億倍，比占卜還像占卜。找 → 讀寫 → 看
+    # 像占卜找題目，解需求； 像占卜壓縮關鍵詞，誇越多維； 像占卜解壓縮成各種細項，符合不同差異的需求
+    # 列表為dist{}，對稱結構很直觀，方便讀，後面一直堆[]，方便寫
+    # 像即時提示 / 小便條 / 註解
+    # 舒服 UI、UX、音效
 
 # *** 光子發射時序以分段、電場以能階變色，光子測距和計算誤差矯正量
 #
