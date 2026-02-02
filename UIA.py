@@ -391,7 +391,14 @@ class State:
                 n._release
         self._trans.setdefault(from_state, {})[tuple(neighbor)] = (to_state, invariably)
         # TODO:*****投票同意增加 neighbor(event) 、不同意增加 invariably  
-        # TODO:*****self對event的投票依據self的全局面性決定，self的全部層級子狀態 的甚麼物件決定 全局面性
+            # TODO:*****self對event的投票依據self的全局面性決定，self的全部層級子狀態 的甚麼物件決定 全局面性
+            # TODO: ORB.ORB
+                # ORB
+                    # def define(self, from_state, neighbor, to_state, invariably=None):
+                    # f,from_state to_state,neighbor in define
+                    # - # f,from_state to_state,invariably in define
+                # ORB.ORB
+                    #
         return self
 
     # 執行轉移 # 左鄰右舍情感熱絡 neighbor(event)
