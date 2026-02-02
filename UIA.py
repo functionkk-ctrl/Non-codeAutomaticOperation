@@ -327,6 +327,7 @@ class StateMgr:
         state_mgr.有趣.代價.transition("有趣", "爆炸")
     """
     def __init__(self):
+        self.node=set()
         self._states = {}
 
     def add(self, name):
@@ -352,6 +353,7 @@ class State:
     def __init__(self, name):
         self.name = name
         self._sub = {}
+        self._release= {}
         self._trans = {}
         self.current = None
 
@@ -376,15 +378,23 @@ class State:
         if name not in self._sub:
             raise ValueError(f"子狀態 '{name}' 不存在")
         self.current = name
+        # 後問候 對 neighbor(_release) 
+        for r in self._release:
+            r.transition(name)
         return self
 
-    def define(self, from_state, event, to_state, invariably=None):
-        # invariably = 不允許轉移的狀態集合
-        self._trans.setdefault(from_state, {})[event] = (to_state, invariably)
+    def define(self, from_state, neighbor, to_state, invariably=None):
+        # neighbor(event) 、invariably 本質上是一樣的，都是誰的子狀態。
+        # 先問候 對 neighbor(event)
+        for n in neighbor:
+            if n:
+                n._release
+        self._trans.setdefault(from_state, {})[tuple(neighbor)] = (to_state, invariably)
+        # TODO:*****投票同意增加 neighbor(event) 、不同意增加 invariably  
+        # TODO:*****self對event的投票依據self的全局面性決定，self的全部層級子狀態 的甚麼物件決定 全局面性
         return self
 
-    # 執行轉移
-    # TODO:有沒有 監聽 event 、invariably，event 、invariably 本質上是一樣的，都是誰的子狀態
+    # 執行轉移 # 左鄰右舍情感熱絡 neighbor(event)
     def transition(self, event):
         if self.current is None:
             return self
@@ -401,6 +411,76 @@ class State:
 
         self.current = to_state
         return self
+    
+class ORB:
+    def __init__(self, source):
+        self.source = source  # 可能是 self、state、neighbor、甚至另一個 ORB
+
+    def describe(self):
+        """
+        從 source 產生一個描述子
+        不規定形式：bit / tuple / frozenset / vector
+        """
+        return self.source._describe()
+class ORB:
+    def __init__(self, source):
+        self.source = source  # 可能是 self、state、neighbor、甚至另一個 ORB
+
+    def describe(self):
+        """
+        從 source 產生一個描述子
+        不規定形式：bit / tuple / frozenset / vector
+        """
+        return self.source._describe()
+class ORB:
+    def __init__(self, source):
+        self.source = source
+
+    def describe(self):
+        if isinstance(self.source, ORB):
+            # TODO:*** # ORB.ORB：描述「描述方式本身」
+            base = self.source.describe()
+            return self._compress(base)
+        else:
+            return self.source._describe()
+
+    def _compress(self, descriptor):
+        """
+        關鍵點：
+        不是壓成更小
+        而是壓成「仍可對齊」的形式
+        """
+        return hash(descriptor)  # 最小示意，你之後一定會換
+class Self(Describable):
+    def __init__(self, substates):
+        self.substates = substates
+        self._orb = ORB(self)
+
+    def _describe(self):
+        # 全部層級子狀態的「一次投影」
+        return tuple(s._describe() for s in self.substates)
+
+    def __getattr__(self, name):
+        # 嘗試把 name 當成一個「描述子視角」
+        candidate = ORB(NameView(name))
+
+        sim = similarity(
+            self._orb.describe(),
+            candidate.describe()
+        )
+
+        if sim > 0.8:
+            return True   # 這個子狀態「被辨識為存在」
+        raise AttributeError(name)
+class NameView(Describable):
+    def __init__(self, name):
+        self.name = name
+
+    def _describe(self):
+        # 名字本身也是一種描述子
+        return tuple(ord(c) for c in self.name)
+
+
 
 
 class InputCommand(QObject):
@@ -1758,12 +1838,12 @@ class Noēsis:
         return feeling
 
     # 有趣元 波紋
-        orb = img_orb("thinking2", wave="wave").orb_group
-        seq = sorted(orb, key=lambda x: x["timestamp"])
-        idx = index_of(seq, key)
-        energy = seq[idx]["energy"]
-        period = seq[idx]["period"]
-        phase = seq[idx]["phase"]
+       # orb = img_orb("thinking2", wave="wave").orb_group
+       # seq = sorted(orb, key=lambda x: x["timestamp"])
+       # idx = index_of(seq, key)
+       # energy = seq[idx]["energy"]
+       # period = seq[idx]["period"]
+       # phase = seq[idx]["phase"]
 
     # 暫定
         # 上層=上層(資料夾)直接代表 攝影下來的真實世界
@@ -1904,7 +1984,7 @@ class Noēsis:
                                         if orb_matches_imwrite(f,path):  # ORB 參于的地方
                                             technology_create(
                                                 dirs_Noesis+f".({ext}).{anchor}")
-                                            # TODO:**********# 有趣元 波紋
+                                            # TODO:************* # 有趣元 波紋
                                             orb = img_orb(
                                                 "thinking2", wave="wave").orb_group
                                             seq = sorted(
