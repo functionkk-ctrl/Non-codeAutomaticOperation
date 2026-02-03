@@ -390,104 +390,53 @@ class State:
             if n:
                 n._release
         self._trans.setdefault(from_state, {})[tuple(neighbor)] = (to_state, invariably)
-        # TODO:*****投票同意增加 neighbor(event) 、不同意增加 invariably  
-            # TODO:*****self對event的投票依據self的全局面性決定，self的全部層級子狀態 的甚麼物件決定 全局面性
-            # TODO: ORB.ORB
-                # ORB
-                    # def define(self, from_state, neighbor, to_state, invariably=None):
-                    # f,from_state to_state,neighbor in define
-                    # - # f,from_state to_state,invariably in define
-                # ORB.ORB
-                    #
         return self
+    
 
     # 執行轉移 # 左鄰右舍情感熱絡 neighbor(event)
-    def transition(self, event):
+    def transition(self, event,tickets=False):
         if self.current is None:
             return self
-
         rule = self._trans.get(self.current, {}).get(event)
         if not rule:
             return self
-
         to_state, invariably = rule
+
+        def walk(self, visited=None):
+            if visited is None:
+                visited = set()
+            if id(self) in visited:
+                return
+            visited.add(id(self))
+            yield self
+            for sub in self._sub.values():
+                yield from sub.walk(visited)
+        # 投票不是由self決定，而是由self.下面的全部層級狀態決定，全局面性
+            # self 原檔,from_state ~ to_state 特徵點,neighbor_event 描述子
+        if tickets:
+            ticket = 0
+            # TODO: ******* 得到 self.之下的全部層級的,from_state ~ to_state 特徵點,neighbor_event 描述子
+            # rule = self._trans.get(self.current, {}).get(event)
+        
+            all_rule=walk(self)
+            from_state,to_state, neighbor, invariably = all_rule
+            # 投票同意增加 neighbor(event) 、不同意增加 invariably 
+            if event in neighbor:
+                ticket += 1
+            if invariably and from_state in invariably:
+                ticket -= 1
+            # 根據票數決定是否轉移
+            if ticket > 0:
+                self.current = to_state
+                return True
+            return False
 
         # 如果當前狀態在不變集合中，忽略
         if invariably and self.current in invariably:
             return self
-
         self.current = to_state
         return self
     
-class ORB:
-    def __init__(self, source):
-        self.source = source  # 可能是 self、state、neighbor、甚至另一個 ORB
-
-    def describe(self):
-        """
-        從 source 產生一個描述子
-        不規定形式：bit / tuple / frozenset / vector
-        """
-        return self.source._describe()
-class ORB:
-    def __init__(self, source):
-        self.source = source  # 可能是 self、state、neighbor、甚至另一個 ORB
-
-    def describe(self):
-        """
-        從 source 產生一個描述子
-        不規定形式：bit / tuple / frozenset / vector
-        """
-        return self.source._describe()
-class ORB:
-    def __init__(self, source):
-        self.source = source
-
-    def describe(self):
-        if isinstance(self.source, ORB):
-            # TODO:*** # ORB.ORB：描述「描述方式本身」
-            base = self.source.describe()
-            return self._compress(base)
-        else:
-            return self.source._describe()
-
-    def _compress(self, descriptor):
-        """
-        關鍵點：
-        不是壓成更小
-        而是壓成「仍可對齊」的形式
-        """
-        return hash(descriptor)  # 最小示意，你之後一定會換
-class Self(Describable):
-    def __init__(self, substates):
-        self.substates = substates
-        self._orb = ORB(self)
-
-    def _describe(self):
-        # 全部層級子狀態的「一次投影」
-        return tuple(s._describe() for s in self.substates)
-
-    def __getattr__(self, name):
-        # 嘗試把 name 當成一個「描述子視角」
-        candidate = ORB(NameView(name))
-
-        sim = similarity(
-            self._orb.describe(),
-            candidate.describe()
-        )
-
-        if sim > 0.8:
-            return True   # 這個子狀態「被辨識為存在」
-        raise AttributeError(name)
-class NameView(Describable):
-    def __init__(self, name):
-        self.name = name
-
-    def _describe(self):
-        # 名字本身也是一種描述子
-        return tuple(ord(c) for c in self.name)
-
-
 
 
 class InputCommand(QObject):
