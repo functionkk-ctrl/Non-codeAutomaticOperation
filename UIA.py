@@ -402,34 +402,30 @@ class State:
             return self
         to_state, invariably = rule
 
-        def walk(self, visited=None):
-            if visited is None:
-                visited = set()
-            if id(self) in visited:
-                return
-            visited.add(id(self))
-            yield self
-            for sub in self._sub.values():
-                yield from sub.walk(visited)
+        def walk(state, neighbor):
+            rule = state._trans.get(state.current, {}).get(neighbor)
+            if rule:
+                yield state, rule
+
+            subs = state.get(state._sub, [])
+            for sub in subs:
+                yield from walk(sub, neighbor)
         # 投票不是由self決定，而是由self.下面的全部層級狀態決定，全局面性
             # self 原檔,from_state ~ to_state 特徵點,neighbor_event 描述子
         if tickets:
             ticket = 0
             # TODO: ******* 得到 self.之下的全部層級的,from_state ~ to_state 特徵點,neighbor_event 描述子
-            # rule = self._trans.get(self.current, {}).get(event)
-        
-            all_rule=walk(self)
-            from_state,to_state, neighbor, invariably = all_rule
-            # 投票同意增加 neighbor(event) 、不同意增加 invariably 
-            if event in neighbor:
-                ticket += 1
-            if invariably and from_state in invariably:
-                ticket -= 1
-            # 根據票數決定是否轉移
-            if ticket > 0:
-                self.current = to_state
-                return True
-            return False
+            for from_state, (to_state, invariably) in walk(self, neighbor):
+                # 投票同意增加 neighbor(event) 、不同意增加 invariably 
+                if event in neighbor:
+                    ticket += 1
+                if invariably and from_state in invariably:
+                    ticket -= 1
+                # 根據票數決定是否轉移
+                if ticket > 0:
+                    self.current = to_state
+                    return True
+                return False
 
         # 如果當前狀態在不變集合中，忽略
         if invariably and self.current in invariably:
