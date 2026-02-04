@@ -89,20 +89,21 @@ firebase_admin.initialize_app(cred, {
 
 def path_all(paths, target=None):
     """
-    依序遍歷 ./a 和 ./b 這兩個目錄，包含到最下層
+    paths 依序遍歷 ./a 和 ./b 這兩個目錄，包含到最下層
         for root, dirs, files in path_all(["./a", "./b"]):
     找到含 target 的檔案或資料夾，返回該根目錄，找不到則回傳 False。
     找不到 target
         if not list(path_all(...)):
+        
     paths, target 皆可list，all(...)target同時都符合
     """
     for path in paths:
         for root, dirs, files in os.walk(path):
             if target:
                 if all(t in dir or t in file
-                       for t in target
-                       for dir in dirs
-                       for file in files):
+                    for t in target
+                    for dir in dirs
+                    for file in files):
                     yield root
             else:
                 yield root, dirs, files
@@ -1950,25 +1951,10 @@ class Noēsis:
                                     technology_create(
                                         root_Noesis_att+f".({ext}).{anchor}")
                                 else:
-                                    # Noesis 理解資料夾
-                                    root_Noesis_att_file=[f for _,_,f in path_all( root_Noesis_att)] # 無法匹配的路徑
-                                    Noesis_att_absorb_file=[f for _,_,f in path_all(TEMPLATE_DIRS["absorb"])] # 吸收ORB的根路徑
-                                    orb_matches_imwrite(Noesis_att_absorb_file,root_Noesis_att_file) # 
-                                    path_all(TEMPLATE_DIRS["thinking"])  # ORB 參于的地方
-                                    print("世界第一直觀顯示thinking2 資料夾")
-                                    # TODO:************* # 路徑 ext anchor
+                                    # 路徑都無法匹配的時候 # Noesis absorb 理解資料夾
+                                    for _,dirs,f in path_all(root_Noesis_att,TEMPLATE_DIRS["absorb"]): 
                                         technology_create(
-                                            dirs_Noesis+f".({ext}).{anchor}")
-                                        # TODO:************* # 有趣元 波紋
-                                        orb = img_orb(
-                                            "thinking2", wave="wave").orb_group
-                                        seq = sorted(
-                                            orb, key=lambda x: x["timestamp"])
-                                        idx = index_of(seq, key)
-                                        energy = seq[idx]["energy"]
-                                        period = seq[idx]["period"]
-                                        phase = seq[idx]["phase"]
-
+                                            dirs+f".({ext}).{anchor}")
                 def technology_create(dirs=dirs_Noesis):
                     if dirs is dirs_Noesis:
                         save_path = Path(dirs/f"{int(time.time())}.jpg")
