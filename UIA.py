@@ -72,6 +72,7 @@ TEMPLATE_DIRS = {
     "thinking": os.path.join(base_path, "thinking"),  # 中轉站
     "thinking2": os.path.join(base_path, "thinking2"),  # 中轉站
     "speak": os.path.join(base_path, "speak"),  # 交流的回覆
+    "absorb": os.path.join(base_path, "absorb"),  # Nosis吸收的知識
 }
 
 MATCH_THRESHOLD = 0.85
@@ -348,12 +349,12 @@ class StateMgr:
             raise AttributeError(f"狀態 '{name}' 不存在")
 
 class State:
-    __slots__ = ("name", "_sub", "_trans", "current")
+    __slots__ = ("name", "_sub","_release", "_trans", "current")
 
     def __init__(self, name):
         self.name = name
         self._sub = {}
-        self._release= {}
+        self._release= []
         self._trans = {}
         self.current = None
 
@@ -387,46 +388,58 @@ class State:
         # neighbor(event) 、invariably 本質上是一樣的，都是誰的子狀態。
         # 先問候 對 neighbor(event)
         for n in neighbor:
-            if n:
-                n._release
-        self._trans.setdefault(from_state, {})[tuple(neighbor)] = (to_state, invariably)
+            n._release.append(self)
+        self._trans.setdefault(from_state, {})[neighbor] = (to_state, invariably)
         return self
     
+    def _trans_get(self, neighbor_event,mode="neighbor"):
+        """
+        # get單個，get[mode]的子部分，反之可擴充[mode]的部分
+            self._trans.setdefault(from_state, {})[mode] = (to_state, invariably)
+        to_state, invariably  = self._trans[self.current].get(neighbor_event)
+        # mode==all ，遍歷。(mode, (to_state, invariably))，用 yield 產生
+        
+        for neighbor, (to_state, invariably) in self._trans[self.current].items():
+            if neighbor == neighbor_event:
+                break
+        """        
+        if mode == "all":
+            for neighbor, (to_state, invariably) in self._trans.get(self.current, {}).items():
+                yield neighbor, (to_state, invariably)
+        else:
+            return self._trans.get(self.current, {}).get(mode)
+    
+    # self之下的全部子狀態
+    def _walk(self):
+            yield self
+            for sub in self._sub.values():
+                yield from sub._walk()
 
     # 執行轉移 # 左鄰右舍情感熱絡 neighbor(event)
     def transition(self, event,tickets=False):
-        if self.current is None:
-            return self
-        rule = self._trans.get(self.current, {}).get(event)
-        if not rule:
-            return self
-        to_state, invariably = rule
-
-        def walk(state, neighbor):
-            rule = state._trans.get(state.current, {}).get(neighbor)
-            if rule:
-                yield state, rule
-
-            subs = state.get(state._sub, [])
-            for sub in subs:
-                yield from walk(sub, neighbor)
+        to_state, invariably = self._trans_get(event)
+        
         # 投票不是由self決定，而是由self.下面的全部層級狀態決定，全局面性
             # self 原檔,from_state ~ to_state 特徵點,neighbor_event 描述子
         if tickets:
-            ticket = 0
-            # TODO: ******* 得到 self.之下的全部層級的,from_state ~ to_state 特徵點,neighbor_event 描述子
-            for from_state, (to_state, invariably) in walk(self, neighbor):
-                # 投票同意增加 neighbor(event) 、不同意增加 invariably 
-                if event in neighbor:
-                    ticket += 1
-                if invariably and from_state in invariably:
-                    ticket -= 1
-                # 根據票數決定是否轉移
-                if ticket > 0:
-                    self.current = to_state
-                    return True
-                return False
-
+            # 投票同意增加 neighbor(event) 、不同意增加 invariably 
+            # neighbor 上層的在下層中有
+            ok = sum(1
+                for walker in self._walk()
+                for neighbor, (to_state, inv) in walker._trans_get(event,"all")
+                if neighbor in event
+            )
+            # invariably 上層的在下層中有
+            not_not = sum(
+                1
+                for walker in self._walk()
+                for neighbor, (to_state, inv) in walker._trans_get(event,"all")
+                if inv and walker.current in invariably
+            )
+            if ok>not_not:
+                self.current = to_state
+                return True
+            return False
         # 如果當前狀態在不變集合中，忽略
         if invariably and self.current in invariably:
             return self
@@ -1682,8 +1695,13 @@ class Noēsis:
         # 提出 資料夾，資料 屬性比對=>提出 條件狀態(客制化 想要的任意用途) 壓縮成=>結果 點 組合成=>資料夾樹圖 回傳=>符合用途 的目標影像
         # key<=資料=>條件狀態("高頻率出現詞")=>結果 點=>key壓縮圖
         # idx = 掃描順序 = 相位 # enumerate 第幾次index 取得原值value，index, value=enumerate()
-
-        # 儲存進 thinking 或用path:log:return回傳 字串
+        """
+        # 儲存進 thinking 或用path:log:字串，在log檔案內的字串的 value 回傳
+        
+        :param a: 小圖
+        :param b: 大圖
+        :param th: 相似度
+        """
         dir_str = "thinking"
         if a == "world" or b == "world":
             dir_str += "{2}"
@@ -1722,7 +1740,7 @@ class Noēsis:
             score = len(orb_group) / len(a_kp) if a_kp else 0  # 波
             if score > th:
                 filename = os.path.relpath(TEMPLATE_DIRS[dir_str], base_path)
-                .replace(os.sep, "_") + ".jpg"
+                    .replace(os.sep, "_") + ".jpg"
                 save_path = os.path.join(TEMPLATE_DIRS[dir_str], filename)
                 cv2.imwrite(save_path, img_matches)  # "img"
             # scores.append(score)
@@ -1932,19 +1950,24 @@ class Noēsis:
                                     technology_create(
                                         root_Noesis_att+f".({ext}).{anchor}")
                                 else:
-                                    for _,_,f in path_all( root_Noesis_att):
-                                        if orb_matches_imwrite(f,path):  # ORB 參于的地方
-                                            technology_create(
-                                                dirs_Noesis+f".({ext}).{anchor}")
-                                            # TODO:************* # 有趣元 波紋
-                                            orb = img_orb(
-                                                "thinking2", wave="wave").orb_group
-                                            seq = sorted(
-                                                orb, key=lambda x: x["timestamp"])
-                                            idx = index_of(seq, key)
-                                            energy = seq[idx]["energy"]
-                                            period = seq[idx]["period"]
-                                            phase = seq[idx]["phase"]
+                                    # Noesis 理解資料夾
+                                    root_Noesis_att_file=[f for _,_,f in path_all( root_Noesis_att)]
+                                    Noesis_att_absorb_file=[f for _,_,f in path_all(TEMPLATE_DIRS["absorb"])]
+                                    orb_matches_imwrite(root_Noesis_att_file,Noesis_att_absorb_file)
+                                    path_all(TEMPLATE_DIRS["thinking"])  # ORB 參于的地方
+                                    print("世界第一直觀顯示thinking2 資料夾")
+                                    # TODO:************* # 路徑 ext anchor
+                                        technology_create(
+                                            dirs_Noesis+f".({ext}).{anchor}")
+                                        # TODO:************* # 有趣元 波紋
+                                        orb = img_orb(
+                                            "thinking2", wave="wave").orb_group
+                                        seq = sorted(
+                                            orb, key=lambda x: x["timestamp"])
+                                        idx = index_of(seq, key)
+                                        energy = seq[idx]["energy"]
+                                        period = seq[idx]["period"]
+                                        phase = seq[idx]["phase"]
 
                 def technology_create(dirs=dirs_Noesis):
                     if dirs is dirs_Noesis:
@@ -2116,4 +2139,6 @@ if __name__ == "__main__":
 
 # self 實體
 # 可能需要考慮安全風險
-# 不明原因關掉黑屏後，才執行透明背景的主程式。不管哪個視窗標題都在，無法拖曳視窗內達成移動視窗，透明背景的視窗無法點擊和輸入，滑鼠被困在視窗內完全不合理(原本是拖曳視窗而已)。
+
+# 觀察情境的特徵和變化的目標，實時看到變化的不變屬性，企圖改變 變化成想要的情境。
+# 應該是你把這些當成教育了，事實上工作時不是單一面，也就是說你不理解簡單的道理
