@@ -1951,9 +1951,9 @@ class Noēsis:
                                         root_Noesis_att+f".({ext}).{anchor}")
                                 else:
                                     # Noesis 理解資料夾
-                                    root_Noesis_att_file=[f for _,_,f in path_all( root_Noesis_att)]
-                                    Noesis_att_absorb_file=[f for _,_,f in path_all(TEMPLATE_DIRS["absorb"])]
-                                    orb_matches_imwrite(root_Noesis_att_file,Noesis_att_absorb_file)
+                                    root_Noesis_att_file=[f for _,_,f in path_all( root_Noesis_att)] # 無法匹配的路徑
+                                    Noesis_att_absorb_file=[f for _,_,f in path_all(TEMPLATE_DIRS["absorb"])] # 吸收ORB的根路徑
+                                    orb_matches_imwrite(Noesis_att_absorb_file,root_Noesis_att_file) # 
                                     path_all(TEMPLATE_DIRS["thinking"])  # ORB 參于的地方
                                     print("世界第一直觀顯示thinking2 資料夾")
                                     # TODO:************* # 路徑 ext anchor
