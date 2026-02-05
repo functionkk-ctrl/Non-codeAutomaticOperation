@@ -66,8 +66,8 @@ TEMPLATE_DIRS = {
     "live_capture": os.path.join(base_path, 'live_capture'),
     "attributes": os.path.join(base_path, "attributes"),
     "world": os.path.join(base_path, "world"),
-    "user": os.path.join(base_path, "user"),
-    "communication": os.path.join(base_path, "communication"),
+    "user": os.path.join(base_path, "user"), # 用戶隱私
+    "communication": os.path.join(base_path, "communication"), # 用戶交流的訊息
     "dark_matter": os.path.join(base_path, "dark_matter"),
     "thinking": os.path.join(base_path, "thinking"),  # 中轉站
     "thinking2": os.path.join(base_path, "thinking2"),  # 中轉站
@@ -89,6 +89,8 @@ firebase_admin.initialize_app(cred, {
 
 def path_all(paths, target=None):
     """
+    yield root, dirs, files
+
     paths 依序遍歷 ./a 和 ./b 這兩個目錄，包含到最下層
         for root, dirs, files in path_all(["./a", "./b"]):
     找到含 target 的檔案或資料夾，返回該根目錄，找不到則回傳 False。
@@ -1837,6 +1839,20 @@ class Noēsis:
         # 並根據經驗、直覺和環境選擇最合適策略，而不是單純回答或處理資訊
         # TODO:# dist 經驗=三元行為;直覺=主導元行為 成功率高的 主導元目的;檔案路徑 環境選擇=主導元代價低的行為
         stm=StateMgr()
+
+        def init_agent(stm, *名稱):
+            stm.add(名稱).add("代價")
+            stm.add(名稱).add("立場")
+            stm.add(名稱).add("目的")
+            stm.add(名稱).add("直覺")
+            stm.add(名稱).add("經驗").add("行動") \
+                .add("成功率").add("成功次數").add("行動次數")
+            stm.add(名稱).add("環境最合適策略")
+            stm.__getattr__(名稱).代價.set("普通")
+
+        init_agent(stm, [有趣,16核,自習])
+
+
         stm.add(有趣).add("代價").add(["不幽默","不有趣", "普通", "幽默", "有趣"])
         stm.add(有趣).add("立場").add("用戶交流時間更長")
         stm.add(有趣).add("目的").add("提高交流的話題連續性和總長度")
@@ -1869,8 +1885,20 @@ class Noēsis:
             .add("行動次數")
         stm.add(自習).add("環境最合適策略")
         stm.自習.代價.set("普通")
-
-        def c(主導,輔助,參照):      
+        dirs_user = TEMPLATE_DIRS["user"]+"/communication"
+        dirs_attributes = TEMPLATE_DIRS["attributes"]
+        dirs_Noesis = TEMPLATE_DIRS["Noesis"] / "communication"
+        # 技巧
+        technology = {
+            "接力": ('場景/過渡句', '時間/過渡句', '地點/過渡句', '狀態/過渡句', '場景/接力式回應', '時間/接力式回應', '地點/接力式回應', '狀態/接力式回應'),
+            "讚美": ('場景/讚美行為', '時間/讚美行為', '地點/讚美行為', '狀態/讚美行為', '場景/補充認可', '時間/補充認可', '地點/補充認可', '狀態/補充認可'),
+            "分享": ('場景/引入故事', '時間/引入故事', '地點/引入故事', '狀態/引入故事', '場景/關注對方的興趣或重點', '時間/關注對方的興趣或重點', '地點/關注對方的興趣或重點', '狀態/關注對方的興趣或重點'),
+            "提問": ('狀態/開放式提問',),
+            "轉向": ('場景/換話題', '時間/換話題', '地點/換話題', '狀態/換話題'),
+            "相遇": ('時間/暗示下次相遇', '狀態/暗示下次相遇'),
+        }
+    def c(主導,輔助,參照):
+            stm=StateMgr()     
             代價值= sum(a in b  
                     for a in stm.用戶.局面.get() 
                     for b in stm.主導.代價.get())
@@ -1914,22 +1942,19 @@ class Noēsis:
                 # 開放式提問:問「感受 / 想法 / 選擇原因」
                 # 自然換話題:用 情緒或價值 當橋
                 # 暗示下次相遇 / 延續:輕、不承諾、不壓迫
-                # 資料夾名稱(類似副檔名)含屬性(增加真實性的調味料): 場景、時間、地點、狀態
+                # 資料夾名稱(類似副
+                # 檔名)含屬性(增加真實性的調味料): 場景、時間、地點、狀態
+        def technology_create(dirs=TEMPLATE_DIRS["dir_str"]):
+            if dirs is TEMPLATE_DIRS["dir_str"]:
+                save_path = Path(dirs/f"{int(time.time())}.jpg")
+            else:
+                save_path = Path(TEMPLATE_DIRS["dir_str"]/dirs /
+                                f"{int(time.time())}.jpg")
+            save_path.parent.mkdir(
+                parents=True, exist_ok=True)  # 沒有資料夾，重建資料夾
+            cv2.imwrite(str(save_path), None)
         def 有趣(self):
-            dirs_user = TEMPLATE_DIRS["user"]+"/communication"
-            dirs_attributes = TEMPLATE_DIRS["attributes"]
-            dirs_Noesis = TEMPLATE_DIRS["Noesis"] / "communication"
-            # 技巧
-            technology = {
-                "接力": ('場景/過渡句', '時間/過渡句', '地點/過渡句', '狀態/過渡句', '場景/接力式回應', '時間/接力式回應', '地點/接力式回應', '狀態/接力式回應'),
-                "讚美": ('場景/讚美行為', '時間/讚美行為', '地點/讚美行為', '狀態/讚美行為', '場景/補充認可', '時間/補充認可', '地點/補充認可', '狀態/補充認可'),
-                "分享": ('場景/引入故事', '時間/引入故事', '地點/引入故事', '狀態/引入故事', '場景/關注對方的興趣或重點', '時間/關注對方的興趣或重點', '地點/關注對方的興趣或重點', '狀態/關注對方的興趣或重點'),
-                "提問": ('狀態/開放式提問',),
-                "轉向": ('場景/換話題', '時間/換話題', '地點/換話題', '狀態/換話題'),
-                "相遇": ('時間/暗示下次相遇', '狀態/暗示下次相遇'),
-            }
             # 參照元
-
             def 觀察():
                 # TODO:代價:不 有趣。讀取屬性資料夾的同一詞，並找到代價下的圖像，出現在本dirs即扣分和成功率計算方式同樣。
                 # TODO:異步
@@ -1938,6 +1963,7 @@ class Noēsis:
                 tlist = list(technology.values()).split("/")
                 root = path_all(dirs_Noesis, tlist)
                 if not root:  # dirs_Noesis 缺少 technology
+                    remove_thinking_file()
                     for ext, anchor in tlist:
                         root_att = list(
                             path_all(TEMPLATE_DIRS["attributes"], *dirs_Noesis))
@@ -1955,18 +1981,8 @@ class Noēsis:
                                     for _,dirs,f in path_all(root_Noesis_att,TEMPLATE_DIRS["absorb"]): 
                                         technology_create(
                                             dirs+f".({ext}).{anchor}")
-                def technology_create(dirs=dirs_Noesis):
-                    if dirs is dirs_Noesis:
-                        save_path = Path(dirs/f"{int(time.time())}.jpg")
-                    else:
-                        save_path = Path(dirs_Noesis/dirs /
-                                         f"{int(time.time())}.jpg")
-                    save_path.parent.mkdir(
-                        parents=True, exist_ok=True)  # 沒有資料夾，重建資料夾
-                    cv2.imwrite(str(save_path), None)
 
             # 主導元
-
             def 交流():
                 # TODO:代價:不 幽默。讀取屬性資料夾的同一詞，並找到代價下的圖像，出現在本dirs即扣分和成功率計算方式同樣。
                 # TODO:對話方式不只有看對方訊息，還有自己的想得到的資訊，有此未得到的資訊建立的提問。提問依據回答清晰度改變，預期值(Noesis根據代價計算)。
@@ -2045,11 +2061,18 @@ class Noēsis:
                 # TODO:代價:不 真實。讀取屬性資料夾的同一詞，並找到代價下的圖像，出現在本dirs即扣分和成功率計算方式同樣。
                 # TODO:異步
                 # TODO:path
+                # TODO: *****
+                orb_matches_imwrite(TEMPLATE_DIRS["communication"]) # 核對屬性
+                if list(path_all(TEMPLATE_DIRS["thinking"],"代價")):
+                    return
+                for _,dir,f in path_all(TEMPLATE_DIRS["thinking"]): # TODO:符合代價要執行，創建資料夾樹
+                    technology_create(dir)
 
             def 交流():
                 # TODO:代價:不 真實。讀取屬性資料夾的同一詞，並找到代價下的圖像，出現在本dirs即扣分和成功率計算方式同樣。
                 # TODO:同步
                 # TODO:path
+                # TODO: *****
 
         def 16核():
             def 觀察():
@@ -2061,6 +2084,9 @@ class Noēsis:
                 # TODO:代價:不 有趣。讀取屬性資料夾的同一詞，並找到代價下的圖像，出現在本dirs即扣分和成功率計算方式同樣。
                 # TODO:同步
                 # TODO:path
+
+
+                # TODO: 問人腦是如何做事的
 
                 # *** 世界第一直觀顯示，比世界通用顯示還強了億倍，比占卜還像占卜。找 → 讀寫 → 看
                 # 像占卜找題目，解需求； 像占卜壓縮關鍵詞，誇越多維； 像占卜解壓縮成各種細項，符合不同差異的需求
