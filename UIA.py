@@ -1840,51 +1840,29 @@ class Noēsis:
         # TODO:# dist 經驗=三元行為;直覺=主導元行為 成功率高的 主導元目的;檔案路徑 環境選擇=主導元代價低的行為
         stm=StateMgr()
 
-        def init_agent(stm, *名稱):
-            stm.add(名稱).add("代價")
-            stm.add(名稱).add("立場")
-            stm.add(名稱).add("目的")
-            stm.add(名稱).add("直覺")
-            stm.add(名稱).add("經驗").add("行動") \
-                .add("成功率").add("成功次數").add("行動次數")
-            stm.add(名稱).add("環境最合適策略")
-            stm.__getattr__(名稱).代價.set("普通")
-
-        init_agent(stm, [有趣,16核,自習])
-
+        def catalog(state):
+            for name in state:
+                stm.add(name).add("代價")
+                stm.add(name).add("立場")
+                stm.add(name).add("目的")
+                stm.add(name).add("直覺")
+                stm.add(name).add("經驗").add(["行動","成功率","成功次數","行動次數"])
+                stm.add(name).add("環境最合適策略")
+                stm.name.代價.set("普通")
+        catalog([有趣,16核,自習])
 
         stm.add(有趣).add("代價").add(["不幽默","不有趣", "普通", "幽默", "有趣"])
         stm.add(有趣).add("立場").add("用戶交流時間更長")
         stm.add(有趣).add("目的").add("提高交流的話題連續性和總長度")
-        stm.add(有趣).add("直覺")
-        stm.add(有趣).add("經驗").add("行動")\
-            .add("成功率")\
-            .add("成功次數")\
-            .add("行動次數")
-        stm.add(有趣).add("環境最合適策略")
-        stm.有趣.代價.set("普通")
 
         stm.add(16核).add("代價").add(["不16核", "普通", "16核"])
         stm.add(16核).add("立場").add("用戶交流時間更長")
         stm.add(16核).add("目的").add("提高交流的話題連續性和總長度")
-        stm.add(16核).add("直覺")
-        stm.add(16核).add("經驗").add("行動")\
-            .add("成功率")\
-            .add("成功次數")\
-            .add("行動次數")
-        stm.add(16核).add("環境最合適策略")
-        stm.16核.代價.set("普通")
 
         stm.add(自習).add("代價").add(["不真實", "普通", "自習"])
         stm.add(自習).add("立場").add("用戶交流時間更長")
         stm.add(自習).add("目的").add("提高交流的話題連續性和總長度")
-        stm.add(自習).add("直覺")
-        stm.add(自習).add("經驗").add("行動")\
-            .add("成功率")\
-            .add("成功次數")\
-            .add("行動次數")
-        stm.add(自習).add("環境最合適策略")
-        stm.自習.代價.set("普通")
+        
         dirs_user = TEMPLATE_DIRS["user"]+"/communication"
         dirs_attributes = TEMPLATE_DIRS["attributes"]
         dirs_Noesis = TEMPLATE_DIRS["Noesis"] / "communication"
