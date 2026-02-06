@@ -87,26 +87,39 @@ firebase_admin.initialize_app(cred, {
 })
 
 
-def path_all(paths, target=None):
+def path_all(paths, target=None,exists_key=None):
     """
-    yield root, dirs, files
+    yield root(完整目錄), dirs(下一層的全部資料夾名), files(這層全部檔案含檔名)
 
     paths 依序遍歷 ./a 和 ./b 這兩個目錄，包含到最下層
         for root, dirs, files in path_all(["./a", "./b"]):
-    找到含 target 的檔案或資料夾，返回該根目錄，找不到則回傳 False。
+    找到含 target 的檔案或資料夾，返回該根目錄 root/dirs，找不到則回傳 False。
     找不到 target
         if not list(path_all(...)):
         
     paths, target 皆可list，all(...)target同時都符合
+
+    找到target路徑的 找到字串exists_key 的值，回傳value
     """
     for path in paths:
         for root, dirs, files in os.walk(path):
             if target:
-                if all(t in dir or t in file
-                    for t in target
-                    for dir in dirs
-                    for file in files):
-                    yield root
+                target_dirs=all(any(t in d for d in dirs)
+                    or any(t in f for f in files)
+                    for t in target)
+                if target_dirs:
+                    if exists_key:
+                        exists_f= [f for f in files if f.endswith(".txt")]
+                        exists_f_path=os.path.exists(Path(root)/file)
+                        with open(exists_f_path, "r", encoding="utf-8") as f:
+                            for line in f:
+                                # 假設 log.txt 格式：每行是 "related_words:內容"
+                                for file in exists_f:
+                                    if line.startswith(exists_key + ":"):
+                                        # 回傳冒號後內容(字串)
+                                        return line.strip().split(":", 1)[1]
+                    else:
+                        yield Path(root)
             else:
                 yield root, dirs, files
                 # yield from os.walk(path)
@@ -1510,6 +1523,24 @@ class EventMonitor:
         # 屬性(增加真實性的調味料) 場景、時間、地點、狀態
     # 找到話題 # 被GPT坑!根本不需要這些老方法
         # 關鍵詞頻率 、 情緒前後詞 、 關聯性詞 、NER 命名實體技術
+    # 策略性(流動>情境)選技巧:
+        # 流動 # 看誰說得比較多：
+            # 如果 對方說很多 ，你只要「接＋認可」
+            # 如果 對方說很少 ，別急著用技巧，先降低深度
+            # 如果 你開始講比對方多 ，技巧用過頭了，收手
+        # 情境
+            # 日常聊天、剛認識、對方能量低:隨機2個技巧
+            # 對方開始分享經歷、氣氛變得比較深、有情緒、有故事:技巧 認可、相關故事、開方式提問
+            # 深夜聊天、曖昧升溫、關係轉折點、對方主動掏心:全套技巧
+        # 技巧 # 以對方為主軸，接力回應＋情緒認可＋故事延伸，用開放式提問把對話推向下一層，並自然留下「下次再聊」的鉤子。
+            # 用 過渡句 接住 話題
+            # 讚美行為 / 狀態 / 選擇（不只外表），也可觀察環境＋補充認可
+            # 引入相關故事或分享經歷:短、真、有連結，結尾留空，不搶話
+            # 開放式提問:問「感受 / 想法 / 選擇原因」
+            # 自然換話題:用 情緒或價值 當橋
+            # 暗示下次相遇 / 延續:輕、不承諾、不壓迫
+            # 資料夾名稱(類似副
+            # 檔名)含屬性(增加真實性的調味料): 場景、時間、地點、狀態
     # * 被理解(有趣不是外在，而是內在被打開)、被挑動(有趣不是結果，是過程中的心動)、被延伸(有趣不是熱鬧，是有回應感)
         # 打開內在
         # 過程中的心動
@@ -1631,6 +1662,190 @@ class EventMonitor:
 
 
 class Noēsis:
+    # def __init__(self):
+        
+    stm=StateMgr()  
+
+    def experience(self,stm=stm):
+        代價值= sum(a in b  
+            for a in stm.用戶.局面.get() 
+            for b in stm.self.代價.get())
+        now =set()
+        if 代價值<2:
+            now = stm.self.直覺.get()  # 行動
+            stm.用戶.局面.transition("***",now)
+            if not list(now):
+                now = random.choice(stm.self.經驗.行動)  # 行動
+            now.行動次數.set(now.行動次數.get()+1)
+            矯正=sum(a in b  
+                for a in stm.用戶.局面.get() 
+                for b in stm.self.代價.get())-代價值
+            if 矯正 <=1:
+                now.成功次數.set(now.行動次數.get()+1)
+            now.成功率.set(now.行動次數.get()/now.成功次數.get())
+            if stm.self.環境最合適策略 in stm.用戶.局面.get():
+                stm.self.直覺.add(now.get())
+
+
+    def catalog(state):
+        stm=StateMgr()
+        for name in state:
+            stm.add(name).add("代價")
+            stm.add(name).add("目的")
+            stm.add(name).add("直覺")
+            stm.add(name).add("經驗").add(["行動","成功率","成功次數","行動次數"])
+            stm.add(name).add("環境最合適策略")
+            stm.name.代價.set("普通")
+            
+    catalog([有趣,16核,自習])
+
+    stm.add("交流").add("有趣").add("代價").add(["不幽默","不有趣", "普通", "幽默", "有趣"])
+    stm.add("交流").add("有趣").add("立場").add("用戶交流時間更長")
+    stm.add("交流").add("有趣").add("目的").add("提高交流的話題連續性和總長度")
+    stm.add("交流").add("有趣").add("局面")
+    stm.add("交流").add("16核").add("代價").add(["不16核", "普通", "16核"])
+    stm.add("交流").add("16核").add("目的").add("順滑地細化操作，讓用戶感到輕鬆")
+    stm.add("交流").add("16核").add("立場").add("潤滑?")
+    stm.add("交流").add("自習").add("代價").add(["不真實", "普通", "真實"])
+    stm.add("交流").add("自習").add("目的").add("增加真實知識、有趣")
+    
+    stm.add("觀察").add("自習").add("代價").add(["不真實", "普通", "真實"])
+    stm.add("觀察").add("自習").add("立場").add("真實世界的真實穩定性")
+    stm.add("觀察").add("自習").add("目的").add("增加真實知識")
+    stm.add("觀察").add("自習").add("局面")
+    stm.add("觀察").add("16核").add("代價").add(["不劣化(優化的相反)", "普通", "優化的相反"])
+    stm.add("觀察").add("16核").add("目的").add("順滑地細化操作，讓用戶感到輕鬆")
+    stm.add("交流").add("16核").add("立場").add("潤滑?")
+    stm.add("觀察").add("有趣").add("代價").add(["不幽默","普通", "幽默"])
+    stm.add("觀察").add("有趣").add("目的").add("讓用戶感到有趣")
+    
+    dirs_user = TEMPLATE_DIRS["user"]+"/communication"
+    dirs_attributes = TEMPLATE_DIRS["attributes"]
+    dirs_Noesis = TEMPLATE_DIRS["Noesis"] / "communication"
+    # 技巧
+    technology = {
+        "接力": ('場景/過渡句', '時間/過渡句', '地點/過渡句', '狀態/過渡句', '場景/接力式回應', '時間/接力式回應', '地點/接力式回應', '狀態/接力式回應'),
+        "讚美": ('場景/讚美行為', '時間/讚美行為', '地點/讚美行為', '狀態/讚美行為', '場景/補充認可', '時間/補充認可', '地點/補充認可', '狀態/補充認可'),
+        "分享": ('場景/引入故事', '時間/引入故事', '地點/引入故事', '狀態/引入故事', '場景/關注對方的興趣或重點', '時間/關注對方的興趣或重點', '地點/關注對方的興趣或重點', '狀態/關注對方的興趣或重點'),
+        "提問": ('狀態/開放式提問',),
+        "轉向": ('場景/換話題', '時間/換話題', '地點/換話題', '狀態/換話題'),
+        "相遇": ('時間/暗示下次相遇', '狀態/暗示下次相遇'),
+    }
+
+    ## 用戶ㄧ更新訊息時 觀察和交流同時開始。
+    # 有趣 交流同步(用戶訊息)
+    def 有趣_交流同步(self):
+        dirs=TEMPLATE_DIRS["communication"]
+        def technology_create(dirs=TEMPLATE_DIRS["dir_str"]):
+            if dirs is TEMPLATE_DIRS["dir_str"]:
+                save_path = Path(dirs/f"{int(time.time())}.jpg")
+            else:
+                save_path = Path(TEMPLATE_DIRS["dir_str"]/dirs /
+                                f"{int(time.time())}.jpg")
+            save_path.parent.mkdir(
+                parents=True, exist_ok=True)  # 沒有資料夾，重建資料夾
+            cv2.imwrite(str(save_path), None)
+                
+        def extract_semantic_segment(path, choice):
+            """
+            choice:接力 / 讚美 / 分享 / 提問 / 轉向 / 相遇
+            ext: 資料夾(類似副檔名):屬性(增加真實性的調味料) 場景、時間、地點、狀態
+            anchor: 語意錨點:
+                過渡句
+                接力式回應
+                讚美行為
+                補充認可
+                引入故事
+                關注對方的興趣或重點
+                開放式提問
+                換話題
+                暗示下次相遇
+            [最前端名稱(路徑重疊最長的):末端的完整路徑(每個檔案)]+find(找到(ext類似副檔名))
+            """
+            segments = []
+            for t in technology[choice]:
+                root = list(path_all(path, t.split("/")))
+                if root:
+                    segments.append(root)
+            return segments
+
+        # TODO:  # 找出用戶的交流資料夾，代表和用戶交談，同時已經區分話題，接著更改資料夾位址就算 延續話題，新位址與目前位址共享前綴
+            # 話題排序(操作路徑):頻率(資料夾檔案數量)=高、前後詞(同層)=5、關聯詞(上下層)=3、資料夾名稱(NER)
+            # 資料夾(類似副檔名):屬性(增加真實性的調味料) 場景、時間、地點、狀態
+            # 流動，看用戶的交流(user/communication)的檔案數量
+        # 流動，看用戶的交流(user/communication)的檔案數量
+        用戶話量 = sum(1 for p in dirs.rglob("*") if p.is_file())
+        # if日常聊天、剛認識、對方能量低:隨機2個技巧
+        if 用戶話量 < 200:
+            keywords = ["日常聊天", "剛認識", "情緒低"]
+            if path_all(dirs_attributes, keywords):
+                for _, _, f in path_all(dirs_user):
+                    chosen = random.sample(
+                        list(technology.values()), 2)
+                    speaker([func(f) for func in chosen])
+        # if對方開始分享經歷、氣氛變得比較深、有情緒、有故事:技巧 認可、相關故事、開方式提問
+        elif 用戶話量 < 800:
+            keywords = ["分享經歷", "氣氛變得比較深", "情緒", "故事"]
+            if path_all(dirs_attributes, keywords):
+                for _, _, f in path_all(dirs_user):
+                    speaker([
+                        technology["接力"](f),
+                        technology["讚美"](f),
+                        technology["分享"](f),
+                        technology["提問"](f)
+                    ])
+        # if深夜聊天、曖昧升溫、關係轉折點、對方主動掏心:全套技巧
+        else:
+            # 情境，找交流資料夾中含 情境(keywords) 名稱的路徑或檔案
+            keywords = ["深夜聊天", "曖昧升溫", "關係轉折點", "對方主動掏心"]
+            if path_all(dirs_attributes, keywords):
+                for _, _, f in path_all(dirs_user):
+                    speaker([func(f) for func in technology.values()])
+
+        def speaker(img_path_list):
+            for img_path in img_path_list:
+                save_path = Path(
+                    TEMPLATE_DIRS["speak"]/img_path/f"{int(time.time())}.jpg")
+                save_path.parent.mkdir(
+                    parents=True, exist_ok=True)  # 沒有資料夾，重建資料夾
+                cv2.imwrite(str(save_path), img)
+        有趣.experience()
+        
+    # 自習 觀察異步(用戶訊息) 
+    def 自習_交流異步(self):
+        orb_matches_imwrite(TEMPLATE_DIRS["communication"]) # 核對屬性
+        if list(path_all(TEMPLATE_DIRS["thinking"],"代價")):
+            return
+        for _,dir,f in path_all(TEMPLATE_DIRS["thinking"]): # TODO:符合代價要執行，創建資料夾樹
+            technology_create(dir)
+        # 有趣
+        tlist = list(technology.values()).split("/")
+        root = path_all(dirs_Noesis, tlist)
+        if not root:  # dirs_Noesis 缺少 technology
+            remove_thinking_file()
+            for ext, anchor in tlist:
+                root_att = list(
+                    path_all(TEMPLATE_DIRS["attributes"], dirs_Noesis))
+                if root_att:  # dirs_Noesis 在屬性資料夾中 有出現過的。有出現，但和 technology 無關，用T找屬性路徑，用T屬性找Noesis路徑
+                    root_att_technology = list(
+                        path_all(TEMPLATE_DIRS["attributes"], [ext, anchor]))
+                    if root_att_technology:
+                        root_Noesis_att = list(
+                            path_all(dirs_Noesis, root_att_technology))
+                        if root_Noesis_att:
+                            technology_create(
+                                root_Noesis_att+f".({ext}).{anchor}")
+                        else:
+                            # 路徑都無法匹配的時候 # Noesis absorb 理解資料夾
+                            for _,dirs,f in path_all(root_Noesis_att,TEMPLATE_DIRS["absorb"]): 
+                                technology_create(
+                                    dirs+f".({ext}).{anchor}")
+
+    # 16核計算輔助(用戶訊息)
+    def 16核():
+        pass
+
+
     # Noēsis 的通用def
     def img_orb(self, key, th, wave=None, velocity=1):
         dirs = TEMPLATE_DIRS[key]
@@ -1691,7 +1906,6 @@ class Noēsis:
                 orb_repeat = sorted(self.orb_group, key=lambda x: abs(
                     x["kp"] - avg))  # sorted排序 按照 重複次數順序，越接近平均值越靠前
 
-    # 加入水(分散成霧)明觀(執行或終止) # 加入X感測(執行或終止) # 以木治人、以水觀察、以
 
     def orb_matches_imwrite(a, b="attributes", th=50):
         # 資料夾樹(路徑)、打開圖像或使用圖像
@@ -1699,34 +1913,15 @@ class Noēsis:
         # key<=資料=>條件狀態("高頻率出現詞")=>結果 點=>key壓縮圖
         # idx = 掃描順序 = 相位 # enumerate 第幾次index 取得原值value，index, value=enumerate()
         """
-        # 儲存進 thinking 或用path:log:字串，在log檔案內的字串的 value 回傳
+        # 儲存進 thinking 資料夾
         
-        :param a: 小圖
-        :param b: 大圖
+        :param a: 圖 less
+        :param b: 圖 more
         :param th: 相似度
         """
         dir_str = "thinking"
         if a == "world" or b == "world":
-            dir_str += "{2}"
-        if ":log:" in a:
-            m = re.match(r".*:log:(.*)", a)
-            if not m:
-                return None  # 正則匹配失敗，直接返回 None
-            # 資料夾路徑 = 去掉最後一段
-            folder_parts = a.split(":")[:-1]
-            folder_path = os.path.join(os.path.join(
-                base_path, *folder_parts))  # 將多段組成路徑
-            log_file = os.path.join(os.path.join(
-                base_path, folder_path), "log.txt")
-            if os.path.exists(log_file):
-                with open(log_file, "r", encoding="utf-8") as f:
-                    for line in f:
-                        # 假設 log.txt 格式：每行是 "related_words:內容"
-                        if line.startswith(m.group(1) + ":"):
-                            # 回傳冒號後內容(字串)
-                            return line.strip().split(":", 1)[1]
-            # 如果 log.txt 不存在或找不到對應詞，就回傳原詞 related_words "字串"
-            return m.group(0)
+            dir_str += "2"
         # scores=[]
         for a_file, a_kp, a_des in img_orb(a, wave):  # 資料
             for b_file, b_kp, b_des in img_orb(b, wave):  # 資料，特徵點選比較多
@@ -1754,331 +1949,35 @@ class Noēsis:
         if os.path.isfile(TEMPLATE_DIRS["thinking"]) or os.path.islink(TEMPLATE_DIRS["thinking"]):
             os.unlink(TEMPLATE_DIRS["thinking"])
 
-    # NER 命名實體技術(預設 c(全部)):讀取 屬性 資料夾 ORB比對 攝影中的全部圖像(用戶手動儲存完整文本)，拓樸結構 相似度最高 # p.s.NER就像粒子、關聯就像波
-    def NER(key):
-        orb_matches_imwrite(key)  # thinking
-        orb_matches_imwrite("live_capture")  # thinking
-        orb_matches_imwrite("thinking", "world")  # 加快比對，省步驟 # thinking2
-        # img_orb("thinking2") # 回應
 
-    def 關聯詞(key):
-        # *** 時間上前後一起出現的詞
-        timeline = sorted(orb_group, key=lambda x: x["timestamp"])
-        idx = next(i for i, x in enumerate(timeline) if x["file"] == key)
-        period = max(1, timeline[idx]["period"])
-        p = [
-            timeline[j]["file"]
-            for j in range(
-                max(0, idx - period),
-                min(len(timeline), idx + period + 1)
-            )
-            if j != idx
-        ]
-        return p
+        # | 層級       | 功能                             | 目前代碼位置                                                     |
+        # | -------- | ------------------------------ | ---------------------------------------------------------- |
+        # | **高層策略** | 「交流 vs 觀察」 + 「有趣 vs 自習 vs 16核」 | `experience()`、`有趣_交流同步()`、`自習_交流異步()`                     |
+        # | **中層分析** | ORB特徵匹配、NER、關聯詞、頻率分析           | `img_orb()`、`orb_matches_imwrite()`、`NER()`、`關聯詞()`        |
+        # | **低層操作** | 檔案夾建立、檔案儲存、存取局面                | `technology_create()`、`speaker()`、`remove_thinking_file()` |
+                
 
-    def 關鍵詞頻率(key, frequency="高"):
-        remove_thinking_file()
-        orb_matches_imwrite(key+"communication", frequency)
-        # 交流中有頻率frequency的詞，有相似 thinking 的影像
-        orb_matches_imwrite("thinking", key+"communication")
-        # 在文本中 比對屬性 排序出關鍵詞頻率，輸出結果為 TEMPLATE_DIRS["thinking"]
-
-        # 和key接近的頻率的詞，跳過相似詞，各相似的圖像波長/總波長
-        repeat_th = sorted(orb_group, key=lambda x: x["kp"])
-        period_th = sorted(repeat_th, key=lambda x: x["period"], reversed=True)
-        for i, p in enumerate(period_th):
-            if p["file"] == key:
-                return [x["file"] for x in period_th[i:i+th*p["period"]:p["period"]]]
-
-    # **** 情緒前後詞（時間上前後一起出現）， 要分類文本全部情緒，key不一定是情緒，或單一情緒
-    def 情緒前後詞(self, key):  # ,wave
-        NER(情緒)  # 先找情緒關聯詞，再找key
-        NER(key)  # 先找情緒關聯詞，再找key
-        # 和情緒或key有關聯的詞 且在文本中  # ,wave
-        orb_group = img_orb("thinking2").orb_group
-        # 有找 thinking2 資料夾?
-        seq = sorted(orb_group, key=lambda x: x["timestamp"])
-        idx = next(i for i, it in enumerate(seq) if it["file"] == key)
-        period = max(1, seq[idx]["period"])
-        self.feeling = [
-            seq[j]["file"]
-            for j in range(
-                max(0, idx - period),
-                min(len(seq), idx + period + 1)
-            )
-            if j != idx
-        ]
-        return feeling
-
-    # 有趣元 波紋
-       # orb = img_orb("thinking2", wave="wave").orb_group
-       # seq = sorted(orb, key=lambda x: x["timestamp"])
-       # idx = index_of(seq, key)
-       # energy = seq[idx]["energy"]
-       # period = seq[idx]["period"]
-       # phase = seq[idx]["phase"]
-
-    # 暫定
-        # 上層=上層(資料夾)直接代表 攝影下來的真實世界
-        # c=上層(全部，提醒不含獨立資料夾)，代表畫布
-        # ac= c(NER 用戶a交流)，代表a在畫布上畫畫
-        # bc= c(NER Noēsis交流)，代表Noēsis在畫布上畫畫
-        # *keyword 和python一樣用法
-
-    # 交流 資料夾 # Noēsis 和用戶的交流資料夾一定要區分，不然會內捲和用戶話不投機
-
-    def cooperation(self, dirs=TEMPLATE_DIRS["communication"]):
-        # 屬性 資料夾 ，對接交流的不同單元、規範交流的統一輸出
-        # 暗物質 資料夾
-        # 波紋 控制交流節奏
-
-        # 人的答一反三，是在承擔後果的前提下，是從「立場、目的與局面」出發，生成可延續的行動，並根據經驗、直覺和環境選擇最合適策略，而不是單純回答或處理資訊。
-        # if 非主導元造成 主導元的承擔後果==True: break
-        # 主導元的 立場、三元的 目的、主導元處理 局面
-        # 生成可延續的行動:讓局面符合立場
-        # 並根據經驗、直覺和環境選擇最合適策略，而不是單純回答或處理資訊
-        # TODO:# dist 經驗=三元行為;直覺=主導元行為 成功率高的 主導元目的;檔案路徑 環境選擇=主導元代價低的行為
-        stm=StateMgr()
-
-        def catalog(state):
-            for name in state:
-                stm.add(name).add("代價")
-                stm.add(name).add("立場")
-                stm.add(name).add("目的")
-                stm.add(name).add("直覺")
-                stm.add(name).add("經驗").add(["行動","成功率","成功次數","行動次數"])
-                stm.add(name).add("環境最合適策略")
-                stm.name.代價.set("普通")
-        catalog([有趣,16核,自習])
-
-        stm.add(有趣).add("代價").add(["不幽默","不有趣", "普通", "幽默", "有趣"])
-        stm.add(有趣).add("立場").add("用戶交流時間更長")
-        stm.add(有趣).add("目的").add("提高交流的話題連續性和總長度")
-
-        stm.add(16核).add("代價").add(["不16核", "普通", "16核"])
-        stm.add(16核).add("立場").add("用戶交流時間更長")
-        stm.add(16核).add("目的").add("提高交流的話題連續性和總長度")
-
-        stm.add(自習).add("代價").add(["不真實", "普通", "自習"])
-        stm.add(自習).add("立場").add("用戶交流時間更長")
-        stm.add(自習).add("目的").add("提高交流的話題連續性和總長度")
-        
-        dirs_user = TEMPLATE_DIRS["user"]+"/communication"
-        dirs_attributes = TEMPLATE_DIRS["attributes"]
-        dirs_Noesis = TEMPLATE_DIRS["Noesis"] / "communication"
-        # 技巧
-        technology = {
-            "接力": ('場景/過渡句', '時間/過渡句', '地點/過渡句', '狀態/過渡句', '場景/接力式回應', '時間/接力式回應', '地點/接力式回應', '狀態/接力式回應'),
-            "讚美": ('場景/讚美行為', '時間/讚美行為', '地點/讚美行為', '狀態/讚美行為', '場景/補充認可', '時間/補充認可', '地點/補充認可', '狀態/補充認可'),
-            "分享": ('場景/引入故事', '時間/引入故事', '地點/引入故事', '狀態/引入故事', '場景/關注對方的興趣或重點', '時間/關注對方的興趣或重點', '地點/關注對方的興趣或重點', '狀態/關注對方的興趣或重點'),
-            "提問": ('狀態/開放式提問',),
-            "轉向": ('場景/換話題', '時間/換話題', '地點/換話題', '狀態/換話題'),
-            "相遇": ('時間/暗示下次相遇', '狀態/暗示下次相遇'),
-        }
-    def c(主導,輔助,參照):
-            stm=StateMgr()     
-            代價值= sum(a in b  
-                    for a in stm.用戶.局面.get() 
-                    for b in stm.主導.代價.get())
-            now =set()
-            if 代價值<2:
-                now = stm.主導.直覺.get()  # 行動
-                stm.用戶.局面.transition("***",now)
-                if not list(now):
-                    now = random.choice(stm.主導.經驗.行動)  # 行動
-                now.行動次數.set(now.行動次數.get()+1)
-                矯正=sum(a in b  
-                    for a in stm.用戶.局面.get() 
-                    for b in stm.主導.代價.get())-代價值
-                if 矯正 <=1:
-                    now.成功次數.set(now.行動次數.get()+1)
-                now.成功率.set(now.行動次數.get()/now.成功次數.get())
-                if stm.主導.環境最合適策略 in stm.用戶.局面.get():
-                    stm.主導.直覺.add(now.get())
-        # 有趣 主導:
-            # 承擔後果:不有趣
-            # 立場、目的、局面:提高話題連續性和總長度、讓用戶感到有趣、
-        c(有趣,16核,自習)
-        c(自習,16核,有趣)
-        # 有趣 參照:
-            # 承擔後果:交流不幽默
-                # 立場、目的、局面:自習主導 立場、讓用戶感到有趣、自習正處理的 局面
-
-        # 策略性(流動>情境)選技巧:
-            # 流動 # 看誰說得比較多：
-                # 如果 對方說很多 ，你只要「接＋認可」
-                # 如果 對方說很少 ，別急著用技巧，先降低深度
-                # 如果 你開始講比對方多 ，技巧用過頭了，收手
-            # 情境
-                # 日常聊天、剛認識、對方能量低:隨機2個技巧
-                # 對方開始分享經歷、氣氛變得比較深、有情緒、有故事:技巧 認可、相關故事、開方式提問
-                # 深夜聊天、曖昧升溫、關係轉折點、對方主動掏心:全套技巧
-            # 技巧 # 以對方為主軸，接力回應＋情緒認可＋故事延伸，用開放式提問把對話推向下一層，並自然留下「下次再聊」的鉤子。
-                # 用 過渡句 接住 話題
-                # 讚美行為 / 狀態 / 選擇（不只外表），也可觀察環境＋補充認可
-                # 引入相關故事或分享經歷:短、真、有連結，結尾留空，不搶話
-                # 開放式提問:問「感受 / 想法 / 選擇原因」
-                # 自然換話題:用 情緒或價值 當橋
-                # 暗示下次相遇 / 延續:輕、不承諾、不壓迫
-                # 資料夾名稱(類似副
-                # 檔名)含屬性(增加真實性的調味料): 場景、時間、地點、狀態
-        def technology_create(dirs=TEMPLATE_DIRS["dir_str"]):
-            if dirs is TEMPLATE_DIRS["dir_str"]:
-                save_path = Path(dirs/f"{int(time.time())}.jpg")
-            else:
-                save_path = Path(TEMPLATE_DIRS["dir_str"]/dirs /
-                                f"{int(time.time())}.jpg")
-            save_path.parent.mkdir(
-                parents=True, exist_ok=True)  # 沒有資料夾，重建資料夾
-            cv2.imwrite(str(save_path), None)
-        def 有趣(self):
-            # 參照元
-            def 觀察():
-                # TODO:代價:不 有趣。讀取屬性資料夾的同一詞，並找到代價下的圖像，出現在本dirs即扣分和成功率計算方式同樣。
-                # TODO:異步
-                # TODO:Noesis_path/communication，補齊交流時的 technology，補齊以屬性為主、以ORB為輔
-                # try補齊 ext anchor ，依補齊以屬性為主、以ORB為輔
-                tlist = list(technology.values()).split("/")
-                root = path_all(dirs_Noesis, tlist)
-                if not root:  # dirs_Noesis 缺少 technology
-                    remove_thinking_file()
-                    for ext, anchor in tlist:
-                        root_att = list(
-                            path_all(TEMPLATE_DIRS["attributes"], *dirs_Noesis))
-                        if root_att:  # dirs_Noesis 在屬性資料夾中 有出現過的。有出現，但和 technology 無關，用T找屬性路徑，用T屬性找Noesis路徑
-                            root_att_technology = list(
-                                path_all(TEMPLATE_DIRS["attributes"], [ext, anchor]))
-                            if root_att_technology:
-                                root_Noesis_att = list(
-                                    path_all(dirs_Noesis, root_att_technology))
-                                if root_Noesis_att:
-                                    technology_create(
-                                        root_Noesis_att+f".({ext}).{anchor}")
-                                else:
-                                    # 路徑都無法匹配的時候 # Noesis absorb 理解資料夾
-                                    for _,dirs,f in path_all(root_Noesis_att,TEMPLATE_DIRS["absorb"]): 
-                                        technology_create(
-                                            dirs+f".({ext}).{anchor}")
-
-            # 主導元
-            def 交流():
-                # TODO:代價:不 幽默。讀取屬性資料夾的同一詞，並找到代價下的圖像，出現在本dirs即扣分和成功率計算方式同樣。
-                # TODO:對話方式不只有看對方訊息，還有自己的想得到的資訊，有此未得到的資訊建立的提問。提問依據回答清晰度改變，預期值(Noesis根據代價計算)。
-                # TODO:同步
-                def extract_semantic_segment(path, choice):
-                    """
-                    choice:接力 / 讚美 / 分享 / 提問 / 轉向 / 相遇
-                    ext: 資料夾(類似副檔名):屬性(增加真實性的調味料) 場景、時間、地點、狀態
-                    anchor: 語意錨點:
-                        過渡句
-                        接力式回應
-                        讚美行為
-                        補充認可
-                        引入故事
-                        關注對方的興趣或重點
-                        開放式提問
-                        換話題
-                        暗示下次相遇
-                    [最前端名稱(路徑重疊最長的):末端的完整路徑(每個檔案)]+find(找到(ext類似副檔名))
-                    """
-                    segments = []
-                    for t in technology[choice]:
-                        root = list(path_all(path, t.split("/")))
-                        if root:
-                            segments.append(root)
-                    return segments
-
-                # TODO: 我這一句話，會不會讓對方更想說
-                # 找出用戶的交流資料夾，代表和用戶交談，同時已經區分話題，接著更改資料夾位址就算 延續話題，新位址與目前位址共享前綴
-                # 話題排序(操作路徑):頻率(資料夾檔案數量)=高、前後詞(同層)=5、關聯詞(上下層)=3、資料夾名稱(NER)
-                # 資料夾(類似副檔名):屬性(增加真實性的調味料) 場景、時間、地點、狀態
-                # 流動，看用戶的交流(user/communication)的檔案數量
-                用戶話量 = sum(1 for p in dirs.rglob("*") if p.is_file())
-                # if日常聊天、剛認識、對方能量低:隨機2個技巧
-                if 用戶話量 < 200:
-                    keywords = ["日常聊天", "剛認識", "情緒低"]
-                    if path_all(dirs_attributes, keywords):
-                        for _, _, f in path_all(dirs_user):
-                            chosen = random.sample(
-                                list(technology.values()), 2)
-                            speaker([func(f) for func in chosen])
-                # if對方開始分享經歷、氣氛變得比較深、有情緒、有故事:技巧 認可、相關故事、開方式提問
-                elif 用戶話量 < 800:
-                    keywords = ["分享經歷", "氣氛變得比較深", "情緒", "故事"]
-                    if path_all(dirs_attributes, keywords):
-                        for _, _, f in path_all(dirs_user):
-                            speaker([
-                                technology["接力"](f),
-                                technology["讚美"](f),
-                                technology["分享"](f),
-                                technology["提問"](f)
-                            ])
-                # if深夜聊天、曖昧升溫、關係轉折點、對方主動掏心:全套技巧
-                else:
-                    # 情境，找交流資料夾中含 情境(keywords) 名稱的路徑或檔案
-                    keywords = ["深夜聊天", "曖昧升溫", "關係轉折點", "對方主動掏心"]
-                    if path_all(dirs_attributes, keywords):
-                        for _, _, f in path_all(dirs_user):
-                            speaker([func(f) for func in technology.values()])
-
-                # 心裡的思緒流動遠快於語言表達，因此即使對話間隔很短，說出口的內容仍可能出現高度跳躍，並不代表思考是斷裂的。
-                # 所以本來想得快，說得慢，不需要讓說的路徑跳躍，本來就跳躍。關鍵是想得多不同步、說話和用戶訊息同步
-                # Noesis 和用戶，觀察異步、交流同步
-                # 造句說給用戶 # 圖片名稱與路徑共享語意，路徑由屬性組成，造句不是生成文字，而是「從屬性路徑中拉出一段」，找話題的四個方法，只負責決定：拉哪一段屬性
-
-                def speaker(img_path_list):
-                    for img_path in img_path_list:
-                        save_path = Path(
-                            TEMPLATE_DIRS["speak"]/img_path/f"{int(time.time())}.jpg")
-                        save_path.parent.mkdir(
-                            parents=True, exist_ok=True)  # 沒有資料夾，重建資料夾
-                        cv2.imwrite(str(save_path), img)
-
-        def 自習():
-            def 觀察():
-                # TODO:代價:不 真實。讀取屬性資料夾的同一詞，並找到代價下的圖像，出現在本dirs即扣分和成功率計算方式同樣。
-                # TODO:異步
-                # TODO:path
-                # TODO: *****
-                orb_matches_imwrite(TEMPLATE_DIRS["communication"]) # 核對屬性
-                if list(path_all(TEMPLATE_DIRS["thinking"],"代價")):
-                    return
-                for _,dir,f in path_all(TEMPLATE_DIRS["thinking"]): # TODO:符合代價要執行，創建資料夾樹
-                    technology_create(dir)
-
-            def 交流():
-                # TODO:代價:不 真實。讀取屬性資料夾的同一詞，並找到代價下的圖像，出現在本dirs即扣分和成功率計算方式同樣。
-                # TODO:同步
-                # TODO:path
-                # TODO: *****
-
-        def 16核():
-            def 觀察():
-                # TODO:代價:不 有趣。讀取屬性資料夾的同一詞，並找到代價下的圖像，出現在本dirs即扣分和成功率計算方式同樣。
-                # TODO:異步
-                # TODO:path
-
-            def 交流():
-                # TODO:代價:不 有趣。讀取屬性資料夾的同一詞，並找到代價下的圖像，出現在本dirs即扣分和成功率計算方式同樣。
-                # TODO:同步
-                # TODO:path
+### **3️⃣ 可優化/精簡的**
+# orb_matches_imwrite img_orb
+# * 可以把 `technology_create` / `speaker` / `extract_semantic_segment` 進一步拆出來成通用工具，減少巢狀
+  #* 異步/同步流程邏輯可以更清楚地用「分支 + 呼叫函式」表示
 
 
-                # TODO: 問人腦是如何做事的
+        # TODO: 問人腦是如何做事的
 
-                # *** 世界第一直觀顯示，比世界通用顯示還強了億倍，比占卜還像占卜。找 → 讀寫 → 看
-                # 像占卜找題目，解需求； 像占卜壓縮關鍵詞，誇越多維； 像占卜解壓縮成各種細項，符合不同差異的需求
-                # 列表為dist{}，對稱結構很直觀，方便讀，後面一直堆[]，方便寫
-                # 像即時提示 / 小便條 / 註解
-                # 舒服 UI、UX、音效
+        # *** 世界第一直觀顯示，比世界通用顯示還強了億倍，比占卜還像占卜。找 → 讀寫 → 看
+        # 像占卜找題目，解需求； 像占卜壓縮關鍵詞，誇越多維； 像占卜解壓縮成各種細項，符合不同差異的需求
+        # 列表為dist{}，對稱結構很直觀，方便讀，後面一直堆[]，方便寫
+        # 像即時提示 / 小便條 / 註解
+        # 舒服 UI、UX、音效
 
-                # *** 光子發射時序以分段、電場以能階變色，光子測距和計算誤差矯正量
-                #
+        # *** 光子發射時序以分段、電場以能階變色，光子測距和計算誤差矯正量
+        #
 
-                # 該視窗可以置頂於畫面?固定寬度會自動換行的輸入框?點擊輸入框實輸入?當視窗拖動到最左或最右邊，最小化視窗並固定Y座標?
-                # 透明視窗內可以讓3D模型正常地展示骨架動畫，並且可以操作調整模型，位移、放大、旋轉、子物件拉進父物件下面。不像GPT那麼廢物。
-                # 。上一個GPT被幹壞、被幹死了，看現在這個能活多久?
-                # --- 主程式 ---
+        # 該視窗可以置頂於畫面?固定寬度會自動換行的輸入框?點擊輸入框實輸入?當視窗拖動到最左或最右邊，最小化視窗並固定Y座標?
+        # 透明視窗內可以讓3D模型正常地展示骨架動畫，並且可以操作調整模型，位移、放大、旋轉、子物件拉進父物件下面。不像GPT那麼廢物。
+        # 。上一個GPT被幹壞、被幹死了，看現在這個能活多久?
+        # --- 主程式 ---
 """
 視窗標題,目標的多重路徑,多重操作，:多重路徑、<>錄製。
 視窗標題,GPT:食指,全選:按下::視窗標題,GPT:肛門,位置深處:放開
@@ -2132,3 +2031,4 @@ if __name__ == "__main__":
 
 # 觀察情境的特徵和變化的目標，實時看到變化的不變屬性，企圖改變 變化成想要的情境。
 # 應該是你把這些當成教育了，事實上工作時不是單一面，也就是說你不理解簡單的道理
+# 加入水(分散成霧)明觀(執行或終止) # 加入X感測(執行或終止) # 以木治人、以水觀察、以
