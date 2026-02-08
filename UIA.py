@@ -66,8 +66,8 @@ TEMPLATE_DIRS = {
     "live_capture": os.path.join(base_path, 'live_capture'),
     "attributes": os.path.join(base_path, "attributes"),
     "world": os.path.join(base_path, "world"),
-    "user": os.path.join(base_path, "user"), # 用戶隱私
-    "communication": os.path.join(base_path, "communication"), # 用戶交流的訊息
+    "user": os.path.join(base_path, "user"),  # 用戶隱私
+    "communication": os.path.join(base_path, "communication"),  # 用戶交流的訊息
     "dark_matter": os.path.join(base_path, "dark_matter"),
     "thinking": os.path.join(base_path, "thinking"),  # 中轉站
     "thinking2": os.path.join(base_path, "thinking2"),  # 中轉站
@@ -87,7 +87,7 @@ firebase_admin.initialize_app(cred, {
 })
 
 
-def path_all(paths, target=None,exists_key=None):
+def path_all(paths, target=None, exists_key=None):
     """
     yield root(完整目錄), dirs(下一層的全部資料夾名), files(這層全部檔案含檔名)
 
@@ -96,7 +96,7 @@ def path_all(paths, target=None,exists_key=None):
     找到含 target 的檔案或資料夾，返回該根目錄 root/dirs，找不到則回傳 False。
     找不到 target
         if not list(path_all(...)):
-        
+
     paths, target 皆可list，all(...)target同時都符合
 
     找到target路徑的 找到字串exists_key 的值，回傳value
@@ -104,13 +104,13 @@ def path_all(paths, target=None,exists_key=None):
     for path in paths:
         for root, dirs, files in os.walk(path):
             if target:
-                target_dirs=all(any(t in d for d in dirs)
-                    or any(t in f for f in files)
-                    for t in target)
+                target_dirs = all(any(t in d for d in dirs)
+                                  or any(t in f for f in files)
+                                  for t in target)
                 if target_dirs:
                     if exists_key:
-                        exists_f= [f for f in files if f.endswith(".txt")]
-                        exists_f_path=os.path.exists(Path(root)/file)
+                        exists_f = [f for f in files if f.endswith(".txt")]
+                        exists_f_path = os.path.exists(Path(root)/file)
                         with open(exists_f_path, "r", encoding="utf-8") as f:
                             for line in f:
                                 # 假設 log.txt 格式：每行是 "related_words:內容"
@@ -343,8 +343,9 @@ class StateMgr:
     執行轉移
         state_mgr.有趣.代價.transition("有趣", "爆炸")
     """
+
     def __init__(self):
-        self.node=set()
+        self.node = set()
         self._states = {}
 
     def add(self, name):
@@ -364,13 +365,14 @@ class StateMgr:
         except KeyError:
             raise AttributeError(f"狀態 '{name}' 不存在")
 
+
 class State:
-    __slots__ = ("name", "_sub","_release", "_trans", "current")
+    __slots__ = ("name", "_sub", "_release", "_trans", "current")
 
     def __init__(self, name):
         self.name = name
         self._sub = {}
-        self._release= []
+        self._release = []
         self._trans = {}
         self.current = None
 
@@ -395,7 +397,7 @@ class State:
         if name not in self._sub:
             raise ValueError(f"子狀態 '{name}' 不存在")
         self.current = name
-        # 後問候 對 neighbor(_release) 
+        # 後問候 對 neighbor(_release)
         for r in self._release:
             r.transition(name)
         return self
@@ -405,54 +407,55 @@ class State:
         # 先問候 對 neighbor(event)
         for n in neighbor:
             n._release.append(self)
-        self._trans.setdefault(from_state, {})[neighbor] = (to_state, invariably)
+        self._trans.setdefault(from_state, {})[
+            neighbor] = (to_state, invariably)
         return self
-    
-    def _trans_get(self, neighbor_event,mode="neighbor"):
+
+    def _trans_get(self, neighbor_event, mode="neighbor"):
         """
         # get單個，get[mode]的子部分，反之可擴充[mode]的部分
             self._trans.setdefault(from_state, {})[mode] = (to_state, invariably)
         to_state, invariably  = self._trans[self.current].get(neighbor_event)
         # mode==all ，遍歷。(mode, (to_state, invariably))，用 yield 產生
-        
+
         for neighbor, (to_state, invariably) in self._trans[self.current].items():
             if neighbor == neighbor_event:
                 break
-        """        
+        """
         if mode == "all":
             for neighbor, (to_state, invariably) in self._trans.get(self.current, {}).items():
                 yield neighbor, (to_state, invariably)
         else:
             return self._trans.get(self.current, {}).get(mode)
-    
+
     # self之下的全部子狀態
     def _walk(self):
-            yield self
-            for sub in self._sub.values():
-                yield from sub._walk()
+        yield self
+        for sub in self._sub.values():
+            yield from sub._walk()
 
     # 執行轉移 # 左鄰右舍情感熱絡 neighbor(event)
-    def transition(self, event,tickets=False):
+    def transition(self, event, tickets=False):
         to_state, invariably = self._trans_get(event)
-        
+
         # 投票不是由self決定，而是由self.下面的全部層級狀態決定，全局面性
-            # self 原檔,from_state ~ to_state 特徵點,neighbor_event 描述子
+        # self 原檔,from_state ~ to_state 特徵點,neighbor_event 描述子
         if tickets:
-            # 投票同意增加 neighbor(event) 、不同意增加 invariably 
+            # 投票同意增加 neighbor(event) 、不同意增加 invariably
             # neighbor 上層的在下層中有
             ok = sum(1
-                for walker in self._walk()
-                for neighbor, (to_state, inv) in walker._trans_get(event,"all")
-                if neighbor in event
-            )
+                     for walker in self._walk()
+                     for neighbor, (to_state, inv) in walker._trans_get(event, "all")
+                     if neighbor in event
+                     )
             # invariably 上層的在下層中有
             not_not = sum(
                 1
                 for walker in self._walk()
-                for neighbor, (to_state, inv) in walker._trans_get(event,"all")
+                for neighbor, (to_state, inv) in walker._trans_get(event, "all")
                 if inv and walker.current in invariably
             )
-            if ok>not_not:
+            if ok > not_not:
                 self.current = to_state
                 return True
             return False
@@ -461,7 +464,6 @@ class State:
             return self
         self.current = to_state
         return self
-    
 
 
 class InputCommand(QObject):
@@ -1662,44 +1664,53 @@ class EventMonitor:
 
 
 class Noēsis:
-    # def __init__(self):
-        
-    stm=StateMgr()  
+    def __init__(self):
+        self.technology = {
+            "接力": ('場景/過渡句', '時間/過渡句', '地點/過渡句', '狀態/過渡句', '場景/接力式回應', '時間/接力式回應', '地點/接力式回應', '狀態/接力式回應'),
+            "讚美": ('場景/讚美行為', '時間/讚美行為', '地點/讚美行為', '狀態/讚美行為', '場景/補充認可', '時間/補充認可', '地點/補充認可', '狀態/補充認可'),
+            "分享": ('場景/引入故事', '時間/引入故事', '地點/引入故事', '狀態/引入故事', '場景/關注對方的興趣或重點', '時間/關注對方的興趣或重點', '地點/關注對方的興趣或重點', '狀態/關注對方的興趣或重點'),
+            "提問": ('狀態/開放式提問',),
+            "轉向": ('場景/換話題', '時間/換話題', '地點/換話題', '狀態/換話題'),
+            "相遇": ('時間/暗示下次相遇', '狀態/暗示下次相遇'),
+        }  # 技巧
+        self.dirs_user = TEMPLATE_DIRS["user"]+"/communication"
+        self.dirs_attributes = TEMPLATE_DIRS["attributes"]
+        self.dirs_Noesis = TEMPLATE_DIRS["Noesis"] / "communication"
+        self.stm = StateMgr()
 
-    def experience(self,stm=stm):
-        代價值= sum(a in b  
-            for a in stm.用戶.局面.get() 
-            for b in stm.self.代價.get())
-        now =set()
-        if 代價值<2:
-            now = stm.self.直覺.get()  # 行動
-            stm.用戶.局面.transition("***",now)
+    def experience(self,state):
+        代價值 = sum(a in b
+                  for a in self.stm.用戶.局面.get()
+                  for b in self.stm.state.代價.get())
+        now = set()
+        if 代價值 < 2:
+            now = self.stm.state.直覺.get()  # 行動
+            self.stm.用戶.局面.transition("***", now) # TODO:
             if not list(now):
-                now = random.choice(stm.self.經驗.行動)  # 行動
+                now = random.choice(self.stm.state.經驗.行動)  # 行動
             now.行動次數.set(now.行動次數.get()+1)
-            矯正=sum(a in b  
-                for a in stm.用戶.局面.get() 
-                for b in stm.self.代價.get())-代價值
-            if 矯正 <=1:
+            矯正 = sum(a in b
+                     for a in self.stm.用戶.局面.get()
+                     for b in self.stm.state.代價.get())-代價值
+            if 矯正 <= 1:
                 now.成功次數.set(now.行動次數.get()+1)
             now.成功率.set(now.行動次數.get()/now.成功次數.get())
-            if stm.self.環境最合適策略 in stm.用戶.局面.get():
-                stm.self.直覺.add(now.get())
+            if self.stm.state.環境最合適策略 in self.stm.用戶.局面.get():
+                self.stm.state.直覺.add(now.get())
 
-
-    def catalog(state):
-        stm=StateMgr()
+    def catalog(self,state):
         for name in state:
-            stm.add(name).add("代價")
-            stm.add(name).add("目的")
-            stm.add(name).add("直覺")
-            stm.add(name).add("經驗").add(["行動","成功率","成功次數","行動次數"])
-            stm.add(name).add("環境最合適策略")
-            stm.name.代價.set("普通")
-            
-    catalog([有趣,16核,自習])
+            self.stm.add(name).add("代價")
+            self.stm.add(name).add("目的")
+            self.stm.add(name).add("直覺")
+            self.stm.add(name).add("經驗").add(["行動", "成功率", "成功次數", "行動次數"])
+            self.stm.add(name).add("環境最合適策略")
+            self.stm.name.代價.set("普通")
+        return self.stm
 
-    stm.add("交流").add("有趣").add("代價").add(["不幽默","不有趣", "普通", "幽默", "有趣"])
+    stm=catalog(["有趣", "16核", "自習"])
+
+    stm.add("交流").add("有趣").add("代價").add(["不幽默", "不有趣", "普通", "幽默", "有趣"])
     stm.add("交流").add("有趣").add("立場").add("用戶交流時間更長")
     stm.add("交流").add("有趣").add("目的").add("提高交流的話題連續性和總長度")
     stm.add("交流").add("有趣").add("局面")
@@ -1708,7 +1719,7 @@ class Noēsis:
     stm.add("交流").add("16核").add("立場").add("潤滑?")
     stm.add("交流").add("自習").add("代價").add(["不真實", "普通", "真實"])
     stm.add("交流").add("自習").add("目的").add("增加真實知識、有趣")
-    
+
     stm.add("觀察").add("自習").add("代價").add(["不真實", "普通", "真實"])
     stm.add("觀察").add("自習").add("立場").add("真實世界的真實穩定性")
     stm.add("觀察").add("自習").add("目的").add("增加真實知識")
@@ -1716,36 +1727,177 @@ class Noēsis:
     stm.add("觀察").add("16核").add("代價").add(["不劣化(優化的相反)", "普通", "優化的相反"])
     stm.add("觀察").add("16核").add("目的").add("順滑地細化操作，讓用戶感到輕鬆")
     stm.add("交流").add("16核").add("立場").add("潤滑?")
-    stm.add("觀察").add("有趣").add("代價").add(["不幽默","普通", "幽默"])
+    stm.add("觀察").add("有趣").add("代價").add(["不幽默", "普通", "幽默"])
     stm.add("觀察").add("有趣").add("目的").add("讓用戶感到有趣")
-    
-    dirs_user = TEMPLATE_DIRS["user"]+"/communication"
-    dirs_attributes = TEMPLATE_DIRS["attributes"]
-    dirs_Noesis = TEMPLATE_DIRS["Noesis"] / "communication"
-    # 技巧
-    technology = {
-        "接力": ('場景/過渡句', '時間/過渡句', '地點/過渡句', '狀態/過渡句', '場景/接力式回應', '時間/接力式回應', '地點/接力式回應', '狀態/接力式回應'),
-        "讚美": ('場景/讚美行為', '時間/讚美行為', '地點/讚美行為', '狀態/讚美行為', '場景/補充認可', '時間/補充認可', '地點/補充認可', '狀態/補充認可'),
-        "分享": ('場景/引入故事', '時間/引入故事', '地點/引入故事', '狀態/引入故事', '場景/關注對方的興趣或重點', '時間/關注對方的興趣或重點', '地點/關注對方的興趣或重點', '狀態/關注對方的興趣或重點'),
-        "提問": ('狀態/開放式提問',),
-        "轉向": ('場景/換話題', '時間/換話題', '地點/換話題', '狀態/換話題'),
-        "相遇": ('時間/暗示下次相遇', '狀態/暗示下次相遇'),
-    }
 
-    ## 用戶ㄧ更新訊息時 觀察和交流同時開始。
+    # 用戶ㄧ更新訊息時 觀察和交流同時開始。
     # 有趣 交流同步(用戶訊息)
-    def 有趣_交流同步(self):
-        dirs=TEMPLATE_DIRS["communication"]
-        def technology_create(dirs=TEMPLATE_DIRS["dir_str"]):
-            if dirs is TEMPLATE_DIRS["dir_str"]:
+
+    def 有趣_交流同步(self,experience=experience()):
+        dirs = TEMPLATE_DIRS["communication"]
+        def speaker(img_path_list):
+            for r,_,f in path_all(img_path_list,TEMPLATE_DIRS["attributes"]):
+                save_path = Path(
+                    TEMPLATE_DIRS["speak"]/r/f"{f+int(time.time())}.jpg") # TODO: 屬性資料夾的圖片
+                save_path.parent.mkdir(
+                    parents=True, exist_ok=True)  # 沒有資料夾，重建資料夾
+                cv2.imwrite(str(save_path), None)
+        # TODO:  # 找出用戶的交流資料夾，代表和用戶交談，同時已經區分話題，接著更改資料夾位址就算 延續話題，新位址與目前位址共享前綴
+        # 話題排序(操作路徑):頻率(資料夾檔案數量)=高、前後詞(同層)=5、關聯詞(上下層)=3、資料夾名稱(NER)
+        # 資料夾(類似副檔名):屬性(增加真實性的調味料) 場景、時間、地點、狀態
+        # 流動，看用戶的交流(user/communication)的檔案數量
+        # 流動，看用戶的交流(user/communication)的檔案數量
+        用戶話量 = sum(1 for p in dirs.rglob("*") if p.is_file())
+        # if日常聊天、剛認識、對方能量低:隨機2個技巧
+        if 用戶話量 < 200:
+            keywords = ["日常聊天", "剛認識", "情緒低"]
+            if path_all(self.dirs_attributes, keywords):
+                for _, _, f in path_all(self.dirs_user):
+                    chosen = random.sample(
+                        list(self.technology.values()), 2)
+                    speaker([func(f) for func in chosen])
+        # if對方開始分享經歷、氣氛變得比較深、有情緒、有故事:技巧 認可、相關故事、開方式提問
+        elif 用戶話量 < 800:
+            keywords = ["分享經歷", "氣氛變得比較深", "情緒", "故事"]
+            if path_all(self.dirs_attributes, keywords):
+                for _, _, f in path_all(self.dirs_user):
+                    speaker([
+                        self.technology["接力"](f),
+                        self.technology["讚美"](f),
+                        self.technology["分享"](f),
+                        self.technology["提問"](f)
+                    ])
+        # if深夜聊天、曖昧升溫、關係轉折點、對方主動掏心:全套技巧
+        else:
+            # 情境，找交流資料夾中含 情境(keywords) 名稱的路徑或檔案
+            keywords = ["深夜聊天", "曖昧升溫", "關係轉折點", "對方主動掏心"]
+            if path_all(self.dirs_attributes, keywords):
+                for _, _, f in path_all(self.dirs_user):
+                    speaker([func(f) for func in self.technology.values()])        
+        experience("有趣")
+
+    # 自習 觀察異步(用戶訊息)
+    def 自習_交流異步(self,experience=experience()):
+        stm = StateMgr()
+        dir_str = "communication"
+        def technology_create(img,dirs=TEMPLATE_DIRS[dir_str]):
+            """
+            for _, dir, f in path_all(TEMPLATE_DIRS["thinking"]):
+                technology_create(f,dir)  # 補工具 technology_create，放回 交流 資料夾
+            """
+            if dirs is TEMPLATE_DIRS[dir_str]:
                 save_path = Path(dirs/f"{int(time.time())}.jpg")
             else:
-                save_path = Path(TEMPLATE_DIRS["dir_str"]/dirs /
-                                f"{int(time.time())}.jpg")
+                save_path = Path(TEMPLATE_DIRS[dir_str]/dirs /
+                                 f"{int(time.time())}.jpg")
             save_path.parent.mkdir(
                 parents=True, exist_ok=True)  # 沒有資料夾，重建資料夾
-            cv2.imwrite(str(save_path), None)
-                
+            cv2.imwrite(str(save_path), img)
+
+        def remove_thinking_file():
+            if os.path.isfile(TEMPLATE_DIRS["thinking"]) or os.path.islink(TEMPLATE_DIRS["thinking"]):
+                os.unlink(TEMPLATE_DIRS["thinking"])
+
+        
+        def img_orb(self, key, th, wave=None, velocity=1):
+            dirs = TEMPLATE_DIRS[key]
+            if not dirs:
+                dirs = os.path.join(base_path, key)  # 一般資料夾，是不在TEMPLATE_DIRS
+            files = [os.path.join(dirs, f)  # 資料夾
+                    for f in os.listdir(dirs)  # 資料
+                    if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式(原圖像)
+            self.kp_desc = []  # 圖片檔案路徑,關鍵點 list,描述子 array
+            # 陣列儲存 在key資料夾中的圖像 的orb特徵，回傳整個key資料夾的全部圖像的orb特徵
+            self.orb_group = []
+            for i, file in enumerate(files):
+                img = cv2.imread(file, cv2.IMREAD_GRAYSCALE)
+                if img is None:
+                    continue
+                kp, des = orb.detectAndCompute(img, None)  # 圖像特徵
+                kp_desc.append([file, kp, des])
+                if wave:
+                    timestamp = os.path.getmtime(file)
+                    period = max(1, len(kp) if kp else 1)
+                    phase = 2 * math.pi * (velocity * timestamp-len(kp) / period)
+                    amplitude = math.sqrt(len(kp))
+                    # 最通用的 波紋:振幅 、 波長 、 頻率 、 波速 、 質點位移
+                    # 替身使者會互相吸引
+                    self.orb_group.append({
+                        "file": file,  # 空間x，圖像名稱同時是 資料夾(屬性)的分支
+                        # 輸出時排序kp
+                        # 圖像特徵點數 波長自身對稱中心
+                        # 圖像匹配數量 / 相似度 相似度最大位置
+                        "kp": kp,  # 空間y
+                        "des": des,
+                        "timestamp":  timestamp,  # 時間，檔案的修改日期 創立時間
+                        "frequency": 1/period,  # 頻率 ，用到 相位 時間 。
+                        # 週期=波長 ，用到 相位 空間(位置) #相鄰兩個波峰（或波谷）之間的距離。 #完成一次完整振動所需的時間，與頻率的關係是
+                        "period":  period,
+                        # 振幅 ，用到 位移(空間變化量) 能量 #波動時偏離平衡位置的最大值，和「能量大小」有關。
+                        "amplitude": amplitude,
+                        "phase": phase,     # 相位，***** ，時間 空間 波速， 平衡位置 phase=0 #描述波在某一時刻、某一位置的振動狀態（例如是否同時到達波峰）。
+                        # 過去的累積形成的規律，註冊現在，未來的痕跡規範現在。空間Xy為現在，只有一筆的話就算被凍結，因為只有過去，波長為未來給于現在強度。
+                        # 簡易版:過去註冊現在，未來規範現在
+                        "velocity": velocity,     # 波速，波長*頻率 #波前進的速度
+                        # 質點位移 ，用到 振幅 相位 時間 空間
+                        "particle_displacement":  amplitude * math.sin(phase),
+                        "energy": amplitude ** 2,  # 能量 #波可以傳遞能量，但不會整體搬運介質（像水波）。
+                    })
+            # 屬性(資料夾)使用 orb_group，有趣元 怎麼使用?使用在協作上
+            if wave:
+                # TODO:重疊的# ***隨便寫的，非常不通用
+                if rf"高頻率" in wave:
+                    # sorted排序 按照 重複次數順序，越大越靠前
+                    orb_repeat = sorted(
+                        self.orb_group, key=lambda x: x["kp"], reverse=True)
+                if rf"低頻率" in wave:
+                    # sorted排序 按照 重複次數順序，越小越靠前
+                    orb_repeat = sorted(self.orb_group, key=lambda x: x["kp"])
+                if rf"中頻率" in wave:
+                    avg = mean(self.orb_group, key=lambda x: abs(x["kp"]))  # 平均值
+                    orb_repeat = sorted(self.orb_group, key=lambda x: abs(
+                        x["kp"] - avg))  # sorted排序 按照 重複次數順序，越接近平均值越靠前
+
+        def orb_matches_imwrite(a, b="attributes", th=50):
+            # 資料夾樹(路徑)、打開圖像或使用圖像
+            # 提出 資料夾，資料 屬性比對=>提出 條件狀態(客制化 想要的任意用途) 壓縮成=>結果 點 組合成=>資料夾樹圖 回傳=>符合用途 的目標影像
+            # key<=資料=>條件狀態("高頻率出現詞")=>結果 點=>key壓縮圖
+            # idx = 掃描順序 = 相位 # enumerate 第幾次index 取得原值value，index, value=enumerate()
+            """
+            # 儲存進 thinking 資料夾
+
+            :param a: 圖 less
+            :param b: 圖 more
+            :param th: 相似度
+            """
+            dir_str = "thinking"
+            if a == "world" or b == "world":
+                dir_str += "2"
+            # scores=[]
+            for a_file, a_kp, a_des in img_orb(a, wave):  # 資料
+                for b_file, b_kp, b_des in img_orb(b, wave):  # 資料，特徵點選比較多
+                    if b_des is None:
+                        continue
+                    matches = bf.match(b_des, a_des)
+                    matches = sorted(
+                        matches, key=lambda x: x.distance)  # 按照位置順序
+                    self.orb_group.append(matches)  # 收集所有比對結果
+                orb_group = [
+                    m for m in self.orb_group if m.distance < th]  # 粒子
+
+                # 直接把篩選後的匹配點畫在圖上
+                img_matches = cv2.drawMatches(
+                    a_file, a_kp, b_file, b_kp, orb_group, None, flags=2)
+                score = len(orb_group) / len(a_kp) if a_kp else 0  # 波
+                if score > th:
+                    filename = os.path.relpath(
+                        TEMPLATE_DIRS[dir_str], base_path).replace(os.sep, "_") + ".jpg"
+                    save_path = os.path.join(TEMPLATE_DIRS[dir_str], filename)
+                    cv2.imwrite(save_path, img_matches)  # "img"
+                # scores.append(score)
+                # all_scores=sum(scores) / len(scores) if scores else 0
+            # a 對 b 的整體相似度:print(all_scores)
+
         def extract_semantic_segment(path, choice):
             """
             choice:接力 / 讚美 / 分享 / 提問 / 轉向 / 相遇
@@ -1763,205 +1915,57 @@ class Noēsis:
             [最前端名稱(路徑重疊最長的):末端的完整路徑(每個檔案)]+find(找到(ext類似副檔名))
             """
             segments = []
-            for t in technology[choice]:
+            for t in self.technology[choice]:
                 root = list(path_all(path, t.split("/")))
                 if root:
                     segments.append(root)
             return segments
-
-        # TODO:  # 找出用戶的交流資料夾，代表和用戶交談，同時已經區分話題，接著更改資料夾位址就算 延續話題，新位址與目前位址共享前綴
-            # 話題排序(操作路徑):頻率(資料夾檔案數量)=高、前後詞(同層)=5、關聯詞(上下層)=3、資料夾名稱(NER)
-            # 資料夾(類似副檔名):屬性(增加真實性的調味料) 場景、時間、地點、狀態
-            # 流動，看用戶的交流(user/communication)的檔案數量
-        # 流動，看用戶的交流(user/communication)的檔案數量
-        用戶話量 = sum(1 for p in dirs.rglob("*") if p.is_file())
-        # if日常聊天、剛認識、對方能量低:隨機2個技巧
-        if 用戶話量 < 200:
-            keywords = ["日常聊天", "剛認識", "情緒低"]
-            if path_all(dirs_attributes, keywords):
-                for _, _, f in path_all(dirs_user):
-                    chosen = random.sample(
-                        list(technology.values()), 2)
-                    speaker([func(f) for func in chosen])
-        # if對方開始分享經歷、氣氛變得比較深、有情緒、有故事:技巧 認可、相關故事、開方式提問
-        elif 用戶話量 < 800:
-            keywords = ["分享經歷", "氣氛變得比較深", "情緒", "故事"]
-            if path_all(dirs_attributes, keywords):
-                for _, _, f in path_all(dirs_user):
-                    speaker([
-                        technology["接力"](f),
-                        technology["讚美"](f),
-                        technology["分享"](f),
-                        technology["提問"](f)
-                    ])
-        # if深夜聊天、曖昧升溫、關係轉折點、對方主動掏心:全套技巧
-        else:
-            # 情境，找交流資料夾中含 情境(keywords) 名稱的路徑或檔案
-            keywords = ["深夜聊天", "曖昧升溫", "關係轉折點", "對方主動掏心"]
-            if path_all(dirs_attributes, keywords):
-                for _, _, f in path_all(dirs_user):
-                    speaker([func(f) for func in technology.values()])
-
-        def speaker(img_path_list):
-            for img_path in img_path_list:
-                save_path = Path(
-                    TEMPLATE_DIRS["speak"]/img_path/f"{int(time.time())}.jpg")
-                save_path.parent.mkdir(
-                    parents=True, exist_ok=True)  # 沒有資料夾，重建資料夾
-                cv2.imwrite(str(save_path), img)
-        有趣.experience()
-        
-    # 自習 觀察異步(用戶訊息) 
-    def 自習_交流異步(self):
-        orb_matches_imwrite(TEMPLATE_DIRS["communication"]) # 核對屬性
-        if list(path_all(TEMPLATE_DIRS["thinking"],"代價")):
+        remove_thinking_file()
+        orb_matches_imwrite(TEMPLATE_DIRS["communication"])  # 屬性格式
+        if list(path_all(TEMPLATE_DIRS["thinking"], stm.自習.代價.get())):  # 路徑核對屬性
             return
-        for _,dir,f in path_all(TEMPLATE_DIRS["thinking"]): # TODO:符合代價要執行，創建資料夾樹
-            technology_create(dir)
+        # TODO:符合代價要執行，創建資料夾樹
+        for _, dir, f in path_all(TEMPLATE_DIRS["thinking"]):
+            technology_create(f,dir)  # TODO: 補工具 technology_create，放回 交流 資料夾
         # 有趣
-        tlist = list(technology.values()).split("/")
-        root = path_all(dirs_Noesis, tlist)
+        tlist = list(self.technology.values()).split("/")
+        root = path_all(self.dirs_Noesis, tlist)
         if not root:  # dirs_Noesis 缺少 technology
             remove_thinking_file()
             for ext, anchor in tlist:
                 root_att = list(
-                    path_all(TEMPLATE_DIRS["attributes"], dirs_Noesis))
+                    path_all(TEMPLATE_DIRS["attributes"], self.dirs_Noesis))
                 if root_att:  # dirs_Noesis 在屬性資料夾中 有出現過的。有出現，但和 technology 無關，用T找屬性路徑，用T屬性找Noesis路徑
                     root_att_technology = list(
                         path_all(TEMPLATE_DIRS["attributes"], [ext, anchor]))
                     if root_att_technology:
                         root_Noesis_att = list(
-                            path_all(dirs_Noesis, root_att_technology))
+                            path_all(self.dirs_Noesis, root_att_technology))
                         if root_Noesis_att:
-                            technology_create(
-                                root_Noesis_att+f".({ext}).{anchor}")
+                            for r,_,f in root_Noesis_att:
+                                technology_create(f,
+                                    r+f".({ext}).{anchor}")
                         else:
                             # 路徑都無法匹配的時候 # Noesis absorb 理解資料夾
-                            for _,dirs,f in path_all(root_Noesis_att,TEMPLATE_DIRS["absorb"]): 
-                                technology_create(
-                                    dirs+f".({ext}).{anchor}")
+                            for r,_, f in path_all(root_Noesis_att, TEMPLATE_DIRS["absorb"]):
+                                technology_create(f,
+                                    r+f".({ext}).{anchor}")
 
-    # 16核計算輔助(用戶訊息)
+    # 16核計算輔助(用戶訊息) # TODO:16核心計算甚麼
     def 16核():
         pass
-
-
-    # Noēsis 的通用def
-    def img_orb(self, key, th, wave=None, velocity=1):
-        dirs = TEMPLATE_DIRS[key]
-        if not dirs:
-            dirs = os.path.join(base_path, key)  # 一般資料夾，是不在TEMPLATE_DIRS
-        files = [os.path.join(dirs, f)  # 資料夾
-                 for f in os.listdir(dirs)  # 資料
-                 if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式(原圖像)
-        self.kp_desc = []  # 圖片檔案路徑,關鍵點 list,描述子 array
-        # 陣列儲存 在key資料夾中的圖像 的orb特徵，回傳整個key資料夾的全部圖像的orb特徵
-        self.orb_group = []
-        for i, file in enumerate(files):
-            img = cv2.imread(file, cv2.IMREAD_GRAYSCALE)
-            if img is None:
-                continue
-            kp, des = orb.detectAndCompute(img, None)  # 圖像特徵
-            kp_desc.append([file, kp, des])
-            if wave:
-                timestamp = os.path.getmtime(file)
-                period = max(1, len(kp) if kp else 1)
-                phase = 2 * math.pi * (velocity * timestamp-len(kp) / period)
-                amplitude = math.sqrt(len(kp))
-                # 最通用的 波紋:振幅 、 波長 、 頻率 、 波速 、 質點位移
-                # 替身使者會互相吸引
-                self.orb_group.append({
-                    "file": file,  # 空間x，圖像名稱同時是 資料夾(屬性)的分支
-                    # 輸出時排序kp
-                    # 圖像特徵點數 波長自身對稱中心
-                    # 圖像匹配數量 / 相似度 相似度最大位置
-                    "kp": kp,  # 空間y
-                    "des": des,
-                    "timestamp":  timestamp,  # 時間，檔案的修改日期 創立時間
-                    "frequency": 1/period,  # 頻率 ，用到 相位 時間 。
-                    # 週期=波長 ，用到 相位 空間(位置) #相鄰兩個波峰（或波谷）之間的距離。 #完成一次完整振動所需的時間，與頻率的關係是
-                    "period":  period,
-                    # 振幅 ，用到 位移(空間變化量) 能量 #波動時偏離平衡位置的最大值，和「能量大小」有關。
-                    "amplitude": amplitude,
-                    "phase": phase,     # 相位，***** ，時間 空間 波速， 平衡位置 phase=0 #描述波在某一時刻、某一位置的振動狀態（例如是否同時到達波峰）。
-                    # 過去的累積形成的規律，註冊現在，未來的痕跡規範現在。空間Xy為現在，只有一筆的話就算被凍結，因為只有過去，波長為未來給于現在強度。
-                    # 簡易版:過去註冊現在，未來規範現在
-                    "velocity": velocity,     # 波速，波長*頻率 #波前進的速度
-                    # 質點位移 ，用到 振幅 相位 時間 空間
-                    "particle_displacement":  amplitude * math.sin(phase),
-                    "energy": amplitude ** 2,  # 能量 #波可以傳遞能量，但不會整體搬運介質（像水波）。
-                })
-        # 屬性(資料夾)使用 orb_group，有趣元 怎麼使用?使用在協作上
-        if wave:
-            # TODO:重疊的# ***隨便寫的，非常不通用
-            if rf"高頻率" in wave:
-                # sorted排序 按照 重複次數順序，越大越靠前
-                orb_repeat = sorted(
-                    self.orb_group, key=lambda x: x["kp"], reverse=True)
-            if rf"低頻率" in wave:
-                # sorted排序 按照 重複次數順序，越小越靠前
-                orb_repeat = sorted(self.orb_group, key=lambda x: x["kp"])
-            if rf"中頻率" in wave:
-                avg = mean(self.orb_group, key=lambda x: abs(x["kp"]))  # 平均值
-                orb_repeat = sorted(self.orb_group, key=lambda x: abs(
-                    x["kp"] - avg))  # sorted排序 按照 重複次數順序，越接近平均值越靠前
-
-
-    def orb_matches_imwrite(a, b="attributes", th=50):
-        # 資料夾樹(路徑)、打開圖像或使用圖像
-        # 提出 資料夾，資料 屬性比對=>提出 條件狀態(客制化 想要的任意用途) 壓縮成=>結果 點 組合成=>資料夾樹圖 回傳=>符合用途 的目標影像
-        # key<=資料=>條件狀態("高頻率出現詞")=>結果 點=>key壓縮圖
-        # idx = 掃描順序 = 相位 # enumerate 第幾次index 取得原值value，index, value=enumerate()
-        """
-        # 儲存進 thinking 資料夾
-        
-        :param a: 圖 less
-        :param b: 圖 more
-        :param th: 相似度
-        """
-        dir_str = "thinking"
-        if a == "world" or b == "world":
-            dir_str += "2"
-        # scores=[]
-        for a_file, a_kp, a_des in img_orb(a, wave):  # 資料
-            for b_file, b_kp, b_des in img_orb(b, wave):  # 資料，特徵點選比較多
-                if b_des is None:
-                    continue
-                matches = bf.match(b_des, a_des)
-                matches = sorted(matches, key=lambda x: x.distance)  # 按照位置順序
-                self.orb_group.append(matches)  # 收集所有比對結果
-            orb_group = [m for m in self.orb_group if m.distance < th]  # 粒子
-
-            # 直接把篩選後的匹配點畫在圖上
-            img_matches = cv2.drawMatches(
-                a_file, a_kp, b_file, b_kp, orb_group, None, flags=2)
-            score = len(orb_group) / len(a_kp) if a_kp else 0  # 波
-            if score > th:
-                filename = os.path.relpath(TEMPLATE_DIRS[dir_str], base_path)
-                    .replace(os.sep, "_") + ".jpg"
-                save_path = os.path.join(TEMPLATE_DIRS[dir_str], filename)
-                cv2.imwrite(save_path, img_matches)  # "img"
-            # scores.append(score)
-            # all_scores=sum(scores) / len(scores) if scores else 0
-        # a 對 b 的整體相似度:print(all_scores)
-
-    def remove_thinking_file():
-        if os.path.isfile(TEMPLATE_DIRS["thinking"]) or os.path.islink(TEMPLATE_DIRS["thinking"]):
-            os.unlink(TEMPLATE_DIRS["thinking"])
-
 
         # | 層級       | 功能                             | 目前代碼位置                                                     |
         # | -------- | ------------------------------ | ---------------------------------------------------------- |
         # | **高層策略** | 「交流 vs 觀察」 + 「有趣 vs 自習 vs 16核」 | `experience()`、`有趣_交流同步()`、`自習_交流異步()`                     |
         # | **中層分析** | ORB特徵匹配、NER、關聯詞、頻率分析           | `img_orb()`、`orb_matches_imwrite()`、`NER()`、`關聯詞()`        |
         # | **低層操作** | 檔案夾建立、檔案儲存、存取局面                | `technology_create()`、`speaker()`、`remove_thinking_file()` |
-                
 
-### **3️⃣ 可優化/精簡的**
+
+# **3️⃣ 可優化/精簡的**
 # orb_matches_imwrite img_orb
 # * 可以把 `technology_create` / `speaker` / `extract_semantic_segment` 進一步拆出來成通用工具，減少巢狀
-  #* 異步/同步流程邏輯可以更清楚地用「分支 + 呼叫函式」表示
-
+  # * 異步/同步流程邏輯可以更清楚地用「分支 + 呼叫函式」表示
 
         # TODO: 問人腦是如何做事的
 
