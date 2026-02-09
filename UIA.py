@@ -1950,8 +1950,14 @@ class Noēsis:
                                 technology_create(f,
                                     r+f".({ext}).{anchor}")
 
-    # 十六核計算輔助(用戶訊息) # TODO:十六核心計算甚麼
-    def 十六核(self,img_orb=self.img_orb):
+    # 十六核計算輔助(用戶訊息) 
+    def 十六核(self,低階, 中階, 高階,img_orb=self.img_orb):
+        def calculate(dir):
+            for layer in [低階, 中階, 高階]:
+                for key, value in layer.items():
+                    for _,_,f in path_all(dir,os.path.join(key, value)):
+                        img_orb(TEMPLATE_DIRS["absorb"],f) 
+
         def 交流():    
             dir=TEMPLATE_DIRS["communication"]
             低階={
@@ -1975,6 +1981,7 @@ class Noēsis:
                 "淺橙": "溝通協作核",
                 "紅棕": "危機處理核",
             }
+            calculate(dir,低階, 中階, 高階)
 
         def 觀察():    
             dir=Path(TEMPLATE_DIRS["absorb"])/"觀察"
@@ -2000,10 +2007,7 @@ class Noēsis:
                 "淺橙": "溝通協作核",
                 "紅棕": "危機處理核",
             }
-        for _, layer in enumerate([低階, 中階, 高階], start=1):
-            for key, value in layer.items():
-                for _,_,f in path_all(dir,os.path.join(key, value)):
-                    img_orb(TEMPLATE_DIRS["absorb"],f) 
+            calculate(dir,低階, 中階, 高階)
             
 
 
