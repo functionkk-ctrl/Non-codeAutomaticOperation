@@ -1439,7 +1439,7 @@ class EventMonitor:
 # === class Noēsis:
     # Noēsis(諾埃西斯）希臘文 νόησις。Perceptive Structural Language(PSL）。自己用 World-Formation Language(WFL）
         # 我正在創建 新社交，因為聊天機器人好像很賺錢。
-    # *** 三元(自習、有趣、16核)的協作，以屬性資料夾 組織全部上層 交流方式可能有很直接的窗口。
+    # *** 三元(自習、有趣、十六核)的協作，以屬性資料夾 組織全部上層 交流方式可能有很直接的窗口。
         # 暫定名稱:無(雜訊、無序)、陰(暗物質、非顯性物質)、陽(顯性物質)
             # 一、趨勢（看「變化」，不看單點）
                 # (陽拓樸)偏移速度變快
@@ -1464,7 +1464,7 @@ class EventMonitor:
                 # 有趣 主導:
                     # 承擔後果:不有趣
                     # 立場、目的、局面:提高話題連續性和總長度、讓用戶感到有趣、
-                # 16核 輔助:
+                # 十六核 輔助:
                     # 承擔後果:劣化(優化的相反)
                     # 立場、目的、局面:有趣主導 立場、目的 順滑地細化操作，讓用戶感到輕鬆、有趣正處理的 局面
                 # 自習 參照:
@@ -1474,7 +1474,7 @@ class EventMonitor:
                 # 自習 主導:
                     # 承擔後果:不真實
                     # 立場、目的、局面:真實世界的真實穩定性、增加真實知識、
-                # 16核 輔助:
+                # 十六核 輔助:
                     # 承擔後果:劣化(優化的相反)
                     # 立場、目的、局面:自習主導 立場、潤滑知識、自習正處理的 局面
                 # 有趣 參照:
@@ -1502,7 +1502,7 @@ class EventMonitor:
                 # 可回朔:交流中提出回朔，即回朔到該版本
                 # 可能多維的運用還能提前處理用戶遇到的問題?
                     # 問題的趨勢
-            # 我的交流 和 Noēsis(諾埃西斯)的三大(自習、有趣、16核)的交流 放在一起互相聯繫
+            # 我的交流 和 Noēsis(諾埃西斯)的三大(自習、有趣、十六核)的交流 放在一起互相聯繫
                 # 新規:用戶訊息為c(整個文本)，Noēsis為a，ac說給用戶聽，ab為Noēsis的理解。ac交流、ab觀察
                 # a對象和b對象交流c內容，((a-c)**2+(b-c)**2)**0.5 為靈感來源，得到a和b的交流c量
                 # 多維a對多維c畫畫得ac，b也畫畫得bc， ac 和 bc 的不相似 得到交流C量
@@ -1595,7 +1595,7 @@ class EventMonitor:
         # *** 預言對 上層命名，參照屬性資料夾(語言辭典)
             # *** 從 上層之間 以互相不重疊的拓樸結構 來命名
 
-    # ===== 16核 =====
+    # ===== 十六核 =====
     # 真正乾淨的 16 核(每核獨立可運作）
         # 主流程決策核 – 決定當下執行哪個任務
         # 數量控制核 – 判斷目前物件數量與目標差距
@@ -1613,7 +1613,7 @@ class EventMonitor:
         # 優化學習核 – 記錄經驗，形成改進策略
         # 溝通 / 協作核 – 與他人協調或教導他人
         # 危機處理核 – 面對突發狀態時介入決策
-    # 16核教程
+    # 十六核教程
         # 低階
         # [橙] 手部執行核
         # [藍] 數量控制核
@@ -1676,7 +1676,9 @@ class Noēsis:
         self.dirs_user = TEMPLATE_DIRS["user"]+"/communication"
         self.dirs_attributes = TEMPLATE_DIRS["attributes"]
         self.dirs_Noesis = TEMPLATE_DIRS["Noesis"] / "communication"
-        self.stm = StateMgr()
+        self.stm=self.catalog
+        self.state=["有趣","自習","十六核"]
+
 
     def experience(self,state):
         代價值 = sum(a in b
@@ -1693,47 +1695,104 @@ class Noēsis:
                      for a in self.stm.用戶.局面.get()
                      for b in self.stm.state.代價.get())-代價值
             if 矯正 <= 1:
-                now.成功次數.set(now.行動次數.get()+1)
-            now.成功率.set(now.行動次數.get()/now.成功次數.get())
+                now.成功次數.set(now.成功次數.get()+1)
+                now.成功率.set(now.行動次數.get()/now.成功次數.get())
             if self.stm.state.環境最合適策略 in self.stm.用戶.局面.get():
                 self.stm.state.直覺.add(now.get())
+    
+    
+    def img_orb(self, key, th, wave=None, velocity=1):
+        dirs = TEMPLATE_DIRS[key]
+        if not dirs:
+            dirs = os.path.join(base_path, key)  # 一般資料夾，是不在TEMPLATE_DIRS
+        files = [os.path.join(dirs, f)  # 資料夾
+                for f in os.listdir(dirs)  # 資料
+                if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式(原圖像)
+        self.kp_desc = []  # 圖片檔案路徑,關鍵點 list,描述子 array
+        # 陣列儲存 在key資料夾中的圖像 的orb特徵，回傳整個key資料夾的全部圖像的orb特徵
+        self.orb_group = []
+        for i, file in enumerate(files):
+            img = cv2.imread(file, cv2.IMREAD_GRAYSCALE)
+            if img is None:
+                continue
+            kp, des = orb.detectAndCompute(img, None)  # 圖像特徵
+            self.kp_desc.append([file, kp, des])
+            if wave:
+                timestamp = os.path.getmtime(file)
+                period = max(1, len(kp) if kp else 1)
+                phase = 2 * math.pi * (velocity * timestamp-len(kp) / period)
+                amplitude = math.sqrt(len(kp))
+                # 最通用的 波紋:振幅 、 波長 、 頻率 、 波速 、 質點位移
+                # 替身使者會互相吸引
+                self.orb_group.append({
+                    "file": file,  # 空間x，圖像名稱同時是 資料夾(屬性)的分支
+                    # 輸出時排序kp
+                    # 圖像特徵點數 波長自身對稱中心
+                    # 圖像匹配數量 / 相似度 相似度最大位置
+                    "kp": kp,  # 空間y
+                    "des": des,
+                    "timestamp":  timestamp,  # 時間，檔案的修改日期 創立時間
+                    "frequency": 1/period,  # 頻率 ，用到 相位 時間 。
+                    # 週期=波長 ，用到 相位 空間(位置) #相鄰兩個波峰（或波谷）之間的距離。 #完成一次完整振動所需的時間，與頻率的關係是
+                    "period":  period,
+                    # 振幅 ，用到 位移(空間變化量) 能量 #波動時偏離平衡位置的最大值，和「能量大小」有關。
+                    "amplitude": amplitude,
+                    "phase": phase,     # 相位，***** ，時間 空間 波速， 平衡位置 phase=0 #描述波在某一時刻、某一位置的振動狀態（例如是否同時到達波峰）。
+                    # 過去的累積形成的規律，註冊現在，未來的痕跡規範現在。空間Xy為現在，只有一筆的話就算被凍結，因為只有過去，波長為未來給于現在強度。
+                    # 簡易版:過去註冊現在，未來規範現在
+                    "velocity": velocity,     # 波速，波長*頻率 #波前進的速度
+                    # 質點位移 ，用到 振幅 相位 時間 空間
+                    "particle_displacement":  amplitude * math.sin(phase),
+                    "energy": amplitude ** 2,  # 能量 #波可以傳遞能量，但不會整體搬運介質（像水波）。
+                })
+        # 屬性(資料夾)使用 orb_group，有趣元 怎麼使用?使用在協作上
+        if wave:
+            # TODO:重疊的# ***隨便寫的，非常不通用
+            if rf"高頻率" in wave:
+                # sorted排序 按照 重複次數順序，越大越靠前
+                orb_repeat = sorted(
+                    self.orb_group, key=lambda x: x["kp"], reverse=True)
+            if rf"低頻率" in wave:
+                # sorted排序 按照 重複次數順序，越小越靠前
+                orb_repeat = sorted(self.orb_group, key=lambda x: x["kp"])
+            if rf"中頻率" in wave:
+                avg = np.mean(self.orb_group, key=lambda x: abs(x["kp"]))  # 平均值
+                orb_repeat = sorted(self.orb_group, key=lambda x: abs(
+                    x["kp"] - avg))  # sorted排序 按照 重複次數順序，越接近平均值越靠前
 
-    def catalog(self,state):
-        for name in state:
-            self.stm.add(name).add("代價")
-            self.stm.add(name).add("目的")
-            self.stm.add(name).add("直覺")
-            self.stm.add(name).add("經驗").add(["行動", "成功率", "成功次數", "行動次數"])
-            self.stm.add(name).add("環境最合適策略")
-            self.stm.name.代價.set("普通")
-        return self.stm
+    def catalog(self):
+        stm=StateMgr()
+        for name in self.state:
+            stm.add(name).add("代價")
+            stm.add(name).add("目的")
+            stm.add(name).add("直覺")
+            stm.add(name).add("經驗").add(["行動", "成功率", "成功次數", "行動次數"])
+            stm.add(name).add("環境最合適策略")
+            stm.name.代價.set("普通")
+        stm.add("交流").add("有趣").add("代價").add(["不幽默", "不有趣", "普通", "幽默", "有趣"])
+        stm.add("交流").add("有趣").add("立場").add("用戶交流時間更長")
+        stm.add("交流").add("有趣").add("目的").add("提高交流的話題連續性和總長度")
+        stm.add("交流").add("有趣").add("局面")
+        stm.add("交流").add("十六核").add("代價").add(["不十六核", "普通", "十六核"])
+        stm.add("交流").add("十六核").add("目的").add("順滑地細化操作，讓用戶感到輕鬆")
+        stm.add("交流").add("十六核").add("立場").add("潤滑?")
+        stm.add("交流").add("自習").add("代價").add(["不真實", "普通", "真實"])
+        stm.add("交流").add("自習").add("目的").add("增加真實知識、有趣")
 
-    stm=catalog(["有趣", "16核", "自習"])
-
-    stm.add("交流").add("有趣").add("代價").add(["不幽默", "不有趣", "普通", "幽默", "有趣"])
-    stm.add("交流").add("有趣").add("立場").add("用戶交流時間更長")
-    stm.add("交流").add("有趣").add("目的").add("提高交流的話題連續性和總長度")
-    stm.add("交流").add("有趣").add("局面")
-    stm.add("交流").add("16核").add("代價").add(["不16核", "普通", "16核"])
-    stm.add("交流").add("16核").add("目的").add("順滑地細化操作，讓用戶感到輕鬆")
-    stm.add("交流").add("16核").add("立場").add("潤滑?")
-    stm.add("交流").add("自習").add("代價").add(["不真實", "普通", "真實"])
-    stm.add("交流").add("自習").add("目的").add("增加真實知識、有趣")
-
-    stm.add("觀察").add("自習").add("代價").add(["不真實", "普通", "真實"])
-    stm.add("觀察").add("自習").add("立場").add("真實世界的真實穩定性")
-    stm.add("觀察").add("自習").add("目的").add("增加真實知識")
-    stm.add("觀察").add("自習").add("局面")
-    stm.add("觀察").add("16核").add("代價").add(["不劣化(優化的相反)", "普通", "優化的相反"])
-    stm.add("觀察").add("16核").add("目的").add("順滑地細化操作，讓用戶感到輕鬆")
-    stm.add("交流").add("16核").add("立場").add("潤滑?")
-    stm.add("觀察").add("有趣").add("代價").add(["不幽默", "普通", "幽默"])
-    stm.add("觀察").add("有趣").add("目的").add("讓用戶感到有趣")
+        stm.add("觀察").add("自習").add("代價").add(["不真實", "普通", "真實"])
+        stm.add("觀察").add("自習").add("立場").add("真實世界的真實穩定性")
+        stm.add("觀察").add("自習").add("目的").add("增加真實知識")
+        stm.add("觀察").add("自習").add("局面")
+        stm.add("觀察").add("十六核").add("代價").add(["不劣化(優化的相反)", "普通", "優化的相反"])
+        stm.add("觀察").add("十六核").add("目的").add("順滑地細化操作，讓用戶感到輕鬆")
+        stm.add("交流").add("十六核").add("立場").add("潤滑?")
+        stm.add("觀察").add("有趣").add("代價").add(["不幽默", "普通", "幽默"])
+        stm.add("觀察").add("有趣").add("目的").add("讓用戶感到有趣")
 
     # 用戶ㄧ更新訊息時 觀察和交流同時開始。
-    # 有趣 交流同步(用戶訊息)
-
-    def 有趣_交流同步(self,experience=experience()):
+        # 有趣 交流同步(用戶訊息)
+    def 有趣_交流同步(self):
+        experience = self.experience
         dirs = TEMPLATE_DIRS["communication"]
         def speaker(img_path_list):
             for r,_,f in path_all(img_path_list,TEMPLATE_DIRS["attributes"]):
@@ -1741,7 +1800,7 @@ class Noēsis:
                     TEMPLATE_DIRS["speak"]/r/f"{f+int(time.time())}.jpg") # TODO: 屬性資料夾的圖片
                 save_path.parent.mkdir(
                     parents=True, exist_ok=True)  # 沒有資料夾，重建資料夾
-                cv2.imwrite(str(save_path), None)
+                cv2.imwrite(str(save_path), f)
         # TODO:  # 找出用戶的交流資料夾，代表和用戶交談，同時已經區分話題，接著更改資料夾位址就算 延續話題，新位址與目前位址共享前綴
         # 話題排序(操作路徑):頻率(資料夾檔案數量)=高、前後詞(同層)=5、關聯詞(上下層)=3、資料夾名稱(NER)
         # 資料夾(類似副檔名):屬性(增加真實性的調味料) 場景、時間、地點、狀態
@@ -1778,14 +1837,14 @@ class Noēsis:
 
     # 自習 觀察異步(用戶訊息)
     def 自習_交流異步(self,experience=experience()):
-        stm = StateMgr()
+        stm = self.stm
         dir_str = "communication"
         def technology_create(img,dirs=TEMPLATE_DIRS[dir_str]):
             """
             for _, dir, f in path_all(TEMPLATE_DIRS["thinking"]):
                 technology_create(f,dir)  # 補工具 technology_create，放回 交流 資料夾
             """
-            if dirs is TEMPLATE_DIRS[dir_str]:
+            if dirs == TEMPLATE_DIRS[dir_str]:
                 save_path = Path(dirs/f"{int(time.time())}.jpg")
             else:
                 save_path = Path(TEMPLATE_DIRS[dir_str]/dirs /
@@ -1798,67 +1857,7 @@ class Noēsis:
             if os.path.isfile(TEMPLATE_DIRS["thinking"]) or os.path.islink(TEMPLATE_DIRS["thinking"]):
                 os.unlink(TEMPLATE_DIRS["thinking"])
 
-        
-        def img_orb(self, key, th, wave=None, velocity=1):
-            dirs = TEMPLATE_DIRS[key]
-            if not dirs:
-                dirs = os.path.join(base_path, key)  # 一般資料夾，是不在TEMPLATE_DIRS
-            files = [os.path.join(dirs, f)  # 資料夾
-                    for f in os.listdir(dirs)  # 資料
-                    if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式(原圖像)
-            self.kp_desc = []  # 圖片檔案路徑,關鍵點 list,描述子 array
-            # 陣列儲存 在key資料夾中的圖像 的orb特徵，回傳整個key資料夾的全部圖像的orb特徵
-            self.orb_group = []
-            for i, file in enumerate(files):
-                img = cv2.imread(file, cv2.IMREAD_GRAYSCALE)
-                if img is None:
-                    continue
-                kp, des = orb.detectAndCompute(img, None)  # 圖像特徵
-                kp_desc.append([file, kp, des])
-                if wave:
-                    timestamp = os.path.getmtime(file)
-                    period = max(1, len(kp) if kp else 1)
-                    phase = 2 * math.pi * (velocity * timestamp-len(kp) / period)
-                    amplitude = math.sqrt(len(kp))
-                    # 最通用的 波紋:振幅 、 波長 、 頻率 、 波速 、 質點位移
-                    # 替身使者會互相吸引
-                    self.orb_group.append({
-                        "file": file,  # 空間x，圖像名稱同時是 資料夾(屬性)的分支
-                        # 輸出時排序kp
-                        # 圖像特徵點數 波長自身對稱中心
-                        # 圖像匹配數量 / 相似度 相似度最大位置
-                        "kp": kp,  # 空間y
-                        "des": des,
-                        "timestamp":  timestamp,  # 時間，檔案的修改日期 創立時間
-                        "frequency": 1/period,  # 頻率 ，用到 相位 時間 。
-                        # 週期=波長 ，用到 相位 空間(位置) #相鄰兩個波峰（或波谷）之間的距離。 #完成一次完整振動所需的時間，與頻率的關係是
-                        "period":  period,
-                        # 振幅 ，用到 位移(空間變化量) 能量 #波動時偏離平衡位置的最大值，和「能量大小」有關。
-                        "amplitude": amplitude,
-                        "phase": phase,     # 相位，***** ，時間 空間 波速， 平衡位置 phase=0 #描述波在某一時刻、某一位置的振動狀態（例如是否同時到達波峰）。
-                        # 過去的累積形成的規律，註冊現在，未來的痕跡規範現在。空間Xy為現在，只有一筆的話就算被凍結，因為只有過去，波長為未來給于現在強度。
-                        # 簡易版:過去註冊現在，未來規範現在
-                        "velocity": velocity,     # 波速，波長*頻率 #波前進的速度
-                        # 質點位移 ，用到 振幅 相位 時間 空間
-                        "particle_displacement":  amplitude * math.sin(phase),
-                        "energy": amplitude ** 2,  # 能量 #波可以傳遞能量，但不會整體搬運介質（像水波）。
-                    })
-            # 屬性(資料夾)使用 orb_group，有趣元 怎麼使用?使用在協作上
-            if wave:
-                # TODO:重疊的# ***隨便寫的，非常不通用
-                if rf"高頻率" in wave:
-                    # sorted排序 按照 重複次數順序，越大越靠前
-                    orb_repeat = sorted(
-                        self.orb_group, key=lambda x: x["kp"], reverse=True)
-                if rf"低頻率" in wave:
-                    # sorted排序 按照 重複次數順序，越小越靠前
-                    orb_repeat = sorted(self.orb_group, key=lambda x: x["kp"])
-                if rf"中頻率" in wave:
-                    avg = mean(self.orb_group, key=lambda x: abs(x["kp"]))  # 平均值
-                    orb_repeat = sorted(self.orb_group, key=lambda x: abs(
-                        x["kp"] - avg))  # sorted排序 按照 重複次數順序，越接近平均值越靠前
-
-        def orb_matches_imwrite(a, b="attributes", th=50):
+        def orb_matches_imwrite(a, b="attributes", th=50,img_orb=self.img_orb):
             # 資料夾樹(路徑)、打開圖像或使用圖像
             # 提出 資料夾，資料 屬性比對=>提出 條件狀態(客制化 想要的任意用途) 壓縮成=>結果 點 組合成=>資料夾樹圖 回傳=>符合用途 的目標影像
             # key<=資料=>條件狀態("高頻率出現詞")=>結果 點=>key壓縮圖
@@ -1951,13 +1950,66 @@ class Noēsis:
                                 technology_create(f,
                                     r+f".({ext}).{anchor}")
 
-    # 16核計算輔助(用戶訊息) # TODO:16核心計算甚麼
-    def 16核():
-        pass
+    # 十六核計算輔助(用戶訊息) # TODO:十六核心計算甚麼
+    def 十六核(self,img_orb=self.img_orb):
+        def 交流():    
+            dir=TEMPLATE_DIRS["communication"]
+            低階={
+                "肌肉記憶" : "動作拆小單元，固定節奏自動執行",
+                "節拍觸發" : "用音樂、聲音或定時器同步核切換",
+                "容錯允許" : "低階核可出錯，高階核最後校正",
+                "減少依賴" : "低階核不等待其他核完成即可動作",
+                "快速感官觸發" : "眼、手感直接更新核狀態",
+                "優先級切換" : "異常核優先，其餘核並行運作",
+                "循環訓練" : "單核熟練 → 多核並行 → 持續 校正",
+            }
+            中階={
+                "灰" :"批次進度核",
+                "淺藍": "趨勢分析核", 
+                "深綠": "策略調整核",
+                "棕" :"環境配置核",
+            }
+            高階={
+                "淺紫": "長期目標核", 
+                "深紫": "優化學習核", 
+                "淺橙": "溝通協作核",
+                "紅棕": "危機處理核",
+            }
+
+        def 觀察():    
+            dir=Path(TEMPLATE_DIRS["absorb"])/"觀察"
+            # 路徑,ORB分析方法
+            低階={
+                "肌肉記憶" : "動作拆小單元，固定節奏自動執行",
+                "節拍觸發" : "用音樂、聲音或定時器同步核切換",
+                "容錯允許" : "低階核可出錯，高階核最後校正",
+                "減少依賴" : "低階核不等待其他核完成即可動作",
+                "快速感官觸發" : "眼、手感直接更新核狀態",
+                "優先級切換" : "異常核優先，其餘核並行運作",
+                "循環訓練" : "單核熟練 → 多核並行 → 持續 校正",
+            }
+            中階={
+                "灰" :"批次進度核",
+                "淺藍": "趨勢分析核", 
+                "深綠": "策略調整核",
+                "棕" :"環境配置核",
+            }
+            高階={
+                "淺紫": "長期目標核", 
+                "深紫": "優化學習核", 
+                "淺橙": "溝通協作核",
+                "紅棕": "危機處理核",
+            }
+        for _, layer in enumerate([低階, 中階, 高階], start=1):
+            for key, value in layer.items():
+                for _,_,f in path_all(dir,os.path.join(key, value)):
+                    img_orb(TEMPLATE_DIRS["absorb"],f) 
+            
+
 
         # | 層級       | 功能                             | 目前代碼位置                                                     |
         # | -------- | ------------------------------ | ---------------------------------------------------------- |
-        # | **高層策略** | 「交流 vs 觀察」 + 「有趣 vs 自習 vs 16核」 | `experience()`、`有趣_交流同步()`、`自習_交流異步()`                     |
+        # | **高層策略** | 「交流 vs 觀察」 + 「有趣 vs 自習 vs 十六核」 | `experience()`、`有趣_交流同步()`、`自習_交流異步()`                     |
         # | **中層分析** | ORB特徵匹配、NER、關聯詞、頻率分析           | `img_orb()`、`orb_matches_imwrite()`、`NER()`、`關聯詞()`        |
         # | **低層操作** | 檔案夾建立、檔案儲存、存取局面                | `technology_create()`、`speaker()`、`remove_thinking_file()` |
 
