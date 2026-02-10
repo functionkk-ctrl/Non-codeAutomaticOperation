@@ -1676,18 +1676,17 @@ class Noēsis:
         self.dirs_user = TEMPLATE_DIRS["user"]+"/communication"
         self.dirs_attributes = TEMPLATE_DIRS["attributes"]
         self.dirs_Noesis = TEMPLATE_DIRS["Noesis"] / "communication"
-        self.stm=self.catalog
-        self.state=["有趣","自習","十六核"]
+        self.stm = self.catalog
+        self.state = ["有趣", "自習", "十六核"]
 
-
-    def experience(self,state):
+    def experience(self, state):
         代價值 = sum(a in b
                   for a in self.stm.用戶.局面.get()
                   for b in self.stm.state.代價.get())
         now = set()
         if 代價值 < 2:
             now = self.stm.state.直覺.get()  # 行動
-            self.stm.用戶.局面.transition("***", now) # TODO:
+            self.stm.用戶.局面.transition("***", now)  # TODO:
             if not list(now):
                 now = random.choice(self.stm.state.經驗.行動)  # 行動
             now.行動次數.set(now.行動次數.get()+1)
@@ -1699,16 +1698,15 @@ class Noēsis:
                 now.成功率.set(now.行動次數.get()/now.成功次數.get())
             if self.stm.state.環境最合適策略 in self.stm.用戶.局面.get():
                 self.stm.state.直覺.add(now.get())
-    
-    
+
     def img_orb(self, key, th, wave=None, velocity=1):
         # TODO:三維
         dirs = TEMPLATE_DIRS[key]
         if not dirs:
             dirs = os.path.join(base_path, key)  # 一般資料夾，是不在TEMPLATE_DIRS
         files = [os.path.join(dirs, f)  # 資料夾
-                for f in os.listdir(dirs)  # 資料
-                if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式(原圖像)
+                 for f in os.listdir(dirs)  # 資料
+                 if f.lower().endswith(('.png', '.jpg', '.jpeg'))]  # 檔案格式(原圖像)
         self.kp_desc = []  # 圖片檔案路徑,關鍵點 list,描述子 array
         # 陣列儲存 在key資料夾中的圖像 的orb特徵，回傳整個key資料夾的全部圖像的orb特徵
         self.orb_group = []
@@ -1757,12 +1755,13 @@ class Noēsis:
                 # sorted排序 按照 重複次數順序，越小越靠前
                 orb_repeat = sorted(self.orb_group, key=lambda x: x["kp"])
             if rf"中頻率" in wave:
-                avg = np.mean(self.orb_group, key=lambda x: abs(x["kp"]))  # 平均值
+                avg = np.mean(self.orb_group,
+                              key=lambda x: abs(x["kp"]))  # 平均值
                 orb_repeat = sorted(self.orb_group, key=lambda x: abs(
                     x["kp"] - avg))  # sorted排序 按照 重複次數順序，越接近平均值越靠前
 
     def catalog(self):
-        stm=StateMgr()
+        stm = StateMgr()
         for name in self.state:
             stm.add(name).add("代價")
             stm.add(name).add("目的")
@@ -1795,10 +1794,11 @@ class Noēsis:
     def 有趣_交流同步(self):
         experience = self.experience
         dirs = TEMPLATE_DIRS["communication"]
+
         def speaker(img_path_list):
-            for r,_,f in path_all(img_path_list,TEMPLATE_DIRS["attributes"]):
+            for r, _, f in path_all(img_path_list, TEMPLATE_DIRS["attributes"]):
                 save_path = Path(
-                    TEMPLATE_DIRS["speak"]/r/f"{f+int(time.time())}.jpg") # TODO: 屬性資料夾的圖片
+                    TEMPLATE_DIRS["speak"]/r/f"{f+int(time.time())}.jpg")  # TODO: 屬性資料夾的圖片
                 save_path.parent.mkdir(
                     parents=True, exist_ok=True)  # 沒有資料夾，重建資料夾
                 cv2.imwrite(str(save_path), f)
@@ -1833,14 +1833,15 @@ class Noēsis:
             keywords = ["深夜聊天", "曖昧升溫", "關係轉折點", "對方主動掏心"]
             if path_all(self.dirs_attributes, keywords):
                 for _, _, f in path_all(self.dirs_user):
-                    speaker([func(f) for func in self.technology.values()])        
+                    speaker([func(f) for func in self.technology.values()])
         experience("有趣")
 
     # 自習 觀察異步(用戶訊息)
-    def 自習_交流異步(self,experience=experience()):
+    def 自習_交流異步(self, experience=experience()):
         stm = self.stm
         dir_str = "communication"
-        def technology_create(img,dirs=TEMPLATE_DIRS[dir_str]):
+
+        def technology_create(img, dirs=TEMPLATE_DIRS[dir_str]):
             """
             for _, dir, f in path_all(TEMPLATE_DIRS["thinking"]):
                 technology_create(f,dir)  # 補工具 technology_create，放回 交流 資料夾
@@ -1858,7 +1859,7 @@ class Noēsis:
             if os.path.isfile(TEMPLATE_DIRS["thinking"]) or os.path.islink(TEMPLATE_DIRS["thinking"]):
                 os.unlink(TEMPLATE_DIRS["thinking"])
 
-        def orb_matches_imwrite(a, b="attributes", th=50,img_orb=self.img_orb):
+        def orb_matches_imwrite(a, b="attributes", th=50, img_orb=self.img_orb):
             # 資料夾樹(路徑)、打開圖像或使用圖像
             # 提出 資料夾，資料 屬性比對=>提出 條件狀態(客制化 想要的任意用途) 壓縮成=>結果 點 組合成=>資料夾樹圖 回傳=>符合用途 的目標影像
             # key<=資料=>條件狀態("高頻率出現詞")=>結果 點=>key壓縮圖
@@ -1926,7 +1927,7 @@ class Noēsis:
             return
         # TODO:符合代價要執行，創建資料夾樹
         for _, dir, f in path_all(TEMPLATE_DIRS["thinking"]):
-            technology_create(f,dir)  # TODO: 補工具 technology_create，放回 交流 資料夾
+            technology_create(f, dir)  # TODO: 補工具 technology_create，放回 交流 資料夾
         # 有趣
         tlist = list(self.technology.values()).split("/")
         root = path_all(self.dirs_Noesis, tlist)
@@ -1942,152 +1943,166 @@ class Noēsis:
                         root_Noesis_att = list(
                             path_all(self.dirs_Noesis, root_att_technology))
                         if root_Noesis_att:
-                            for r,_,f in root_Noesis_att:
+                            for r, _, f in root_Noesis_att:
                                 technology_create(f,
-                                    r+f".({ext}).{anchor}")
+                                                  r+f".({ext}).{anchor}")
                         else:
                             # 路徑都無法匹配的時候 # Noesis absorb 理解資料夾
-                            for r,_, f in path_all(root_Noesis_att, TEMPLATE_DIRS["absorb"]):
+                            for r, _, f in path_all(root_Noesis_att, TEMPLATE_DIRS["absorb"]):
                                 technology_create(f,
-                                    r+f".({ext}).{anchor}")
+                                                  r+f".({ext}).{anchor}")
 
-    # 十六核計算輔助(用戶訊息) 
-    def 十六核(self,低階, 中階, 高階,img_orb=self.img_orb):
+    # 十六核計算輔助(用戶訊息)
+    def 十六核(self, 低階, 中階, 高階, img_orb=self.img_orb):
         def calculate(dir):
             for layer in [低階, 中階, 高階]:
                 for key, value in layer.items():
-                    for _,_,f in path_all(dir,os.path.join(key, value)):
-                        img_orb(TEMPLATE_DIRS["absorb"],f) 
+                    for _, _, f in path_all(dir, os.path.join(key, value)):
+                        img_orb(TEMPLATE_DIRS["absorb"], f)
 
-        def 交流():    
-            dir=TEMPLATE_DIRS["communication"]
-            低階={
-                "肌肉記憶" : "動作拆小單元，固定節奏自動執行",
-                "節拍觸發" : "用音樂、聲音或定時器同步核切換",
-                "容錯允許" : "低階核可出錯，高階核最後校正",
-                "減少依賴" : "低階核不等待其他核完成即可動作",
-                "快速感官觸發" : "眼、手感直接更新核狀態",
-                "優先級切換" : "異常核優先，其餘核並行運作",
-                "循環訓練" : "單核熟練 → 多核並行 → 持續 校正",
+        def 交流():
+            dir = TEMPLATE_DIRS["communication"]
+            低階 = {
+                "肌肉記憶": "動作拆小單元，固定節奏自動執行",
+                "節拍觸發": "用音樂、聲音或定時器同步核切換",
+                "容錯允許": "低階核可出錯，高階核最後校正",
+                "減少依賴": "低階核不等待其他核完成即可動作",
+                "快速感官觸發": "眼、手感直接更新核狀態",
+                "優先級切換": "異常核優先，其餘核並行運作",
+                "循環訓練": "單核熟練 → 多核並行 → 持續 校正",
             }
-            中階={
-                "灰" :"批次進度核",
-                "淺藍": "趨勢分析核", 
+            中階 = {
+                "灰": "批次進度核",
+                "淺藍": "趨勢分析核",
                 "深綠": "策略調整核",
-                "棕" :"環境配置核",
+                "棕": "環境配置核",
             }
-            高階={
-                "淺紫": "長期目標核", 
-                "深紫": "優化學習核", 
+            高階 = {
+                "淺紫": "長期目標核",
+                "深紫": "優化學習核",
                 "淺橙": "溝通協作核",
                 "紅棕": "危機處理核",
             }
-            calculate(dir,低階, 中階, 高階)
+            calculate(dir, 低階, 中階, 高階)
 
-        def 觀察():    
+        def 觀察():
             # 有可能和三元協作一樣，會大幅改革減少一大堆，意思是可能沒有16個
-            dir=Path(TEMPLATE_DIRS["absorb"])/"觀察"
+            dir = Path(TEMPLATE_DIRS["absorb"])/"觀察"
             # 路徑,ORB分析方法
-            低階={
+            低階 = {
                 "肌肉記憶": "可重複對應人體位移的圖片特徵，拆成最小吸收單元",
                 "節拍觸發": "依圖片出現的節奏與間隔觸發吸收與標記",
                 "容錯允許": "目標圖片模糊、殘缺、構圖不完整、數量不夠時仍允許吸收，標記問題",
                 "減少依賴": "圖片可獨立 對應人體操作，不依賴其他圖片或完整序列",
-                "快速感官觸發" : "所有感官訊號轉換成視覺化，標記 非最小變化的紀錄時間，標記 最小變化累積時間，提出變化",
+                "快速感官觸發": "所有感官訊號轉換成視覺化，標記 非最小變化的紀錄時間，標記 最小變化累積時間，提出變化",
                 "優先級切換": "圖片特徵非預期結構或 肌肉記憶核危險時 優先標記問題",
-                "循環訓練" : "全部低階核並行的流程，以此比對和目標圖片特徵是否達標，矯正全部低階",
+                "循環訓練": "全部低階核並行的流程，以此比對和目標圖片特徵是否達標，矯正全部低階",
             }
-            中階={
-                "批次進度核" :"容錯核、目標圖片數量是否達標，以此調整肌肉記憶核和快速感官切換核",
-                "趨勢分析核": "分析循環訓練核，找出通用模式", 
+            中階 = {
+                "批次進度核": "容錯核、目標圖片數量是否達標，以此調整肌肉記憶核和快速感官切換核",
+                "趨勢分析核": "分析循環訓練核，找出通用模式",
                 "策略調整核": "以交流提出的為參照，趨勢分析核的通用模式是否最有效，標記需要切換成新模式",
-                "環境配置核" :"管理觀察所需的資源與環境（資料夾、模板、感官模組），以此提升批次進度核",
+                "環境配置核": "管理觀察所需的資源與環境（資料夾、模板、感官模組），以此提升批次進度核",
             }
-            高階={
+            高階 = {
                 "長期目標核": "制定長期完成策略，修正低階標記的問題，肌肉記憶核符合人體限制",
                 "優化學習核": "以肌肉記憶核和快速感官切換核為主，以循環訓練核和趨勢分析核為輔，以此和批次進度核的最高比率",
                 "溝通協作核": "以交流為考量，以優化學習核為參照",
-                "危機處理核": "當低階或中階出現重大異常或矛盾時，提出緊急通，避免資料錯誤累積" # 亂寫的
+                "危機處理核": "當低階或中階出現重大異常或矛盾時，提出緊急通，避免資料錯誤累積"  # 亂寫的
             }
-            def 感官視覺化():
-                def read_signal(path):
-                    # 假設 CSV: 第一列時間, 第二列數值
-                    import csv
-                    times, values = [], []
-                    with open(path, newline='') as f:
-                        reader = csv.reader(f)
-                        for row in reader:
-                            times.append(float(row[0]))
-                            values.append(float(row[1]))
-                    return np.array(times), np.array(values)
 
-                def canves(t,y,path):
+            def 感官視覺化():
+                import struct
+
+                def read_signal(path_f):
+                    """
+                    任意檔案 → 按固定長度切片 → 轉 float → 序列 index
+                    bytes_per_value: 4=single float, 8=double float
+                    return 順序含座標, 數值
+                    """
+                    with open(path_f, "rb") as f:
+                        data = f.read()
+                        if len(data) % 8 == 0:
+                            bytes_per_value = 8
+                            fmt = "<d"  # double
+                        elif len(data) % 4 == 0:
+                            bytes_per_value = 4
+                            fmt = "<f"  # single
+                        else:
+                            bytes_per_value = 1
+                            fmt = None
+                    values = []
+                    if fmt is None:
+                        values = list(data)
+                    else:
+                        for i in range(0, len(data), bytes_per_value):
+                            values.append(struct.unpack(
+                                fmt, data[i:i+bytes_per_value])[0])
+                    values = np.asarray(values)
+                    times = np.arange(len(values))
+                    return times, values
+
+                def drawing(t, y, path):
                     margin = 50  # 留點空白給軸線
                     # 畫布大小 # TODO:有空再讓畫布自適應大小，輕鬆觀察
-                    width = max(2*margin+1,math.floor(t.max()-t.min()))
-                    height= max(2*margin+1,math.floor(y.max()-y.min()))
+                    width = np.maximum(2*margin+1, math.floor(t.max()-t.min()))
+                    height = np.maximum(
+                        2*margin+1, math.floor(y.max()-y.min()))
                     # 畫二維變化圖（X = 時間, Y = 變化）
-                    t = np.array(t)/最小單位(t)
-                    y = np.array(y)/最小單位(y)
-                    canvas = np.ones((height, width, 3), dtype=np.uint8) * 255  # 白底
+                    t = np.maximum(1, t/最小單位(t))
+                    y = np.maximum(1, y/最小單位(y))
+                    canvas = np.ones((height, width, 3),
+                                     dtype=np.uint8) * 255  # 白底
                     # 將資料轉成像素座標
-                    x_pixels = ((t - t.min()) / (t.max() - t.min()) * (width - 2*margin) + margin).astype(int)
-                    y_pixels = (height - margin - (y - y.min()) / (y.max() - y.min()) * (height - 2*margin)).astype(int)
+                    x_pixels = ((t - t.min()) / (t.max() - t.min())
+                                * (width - 2*margin) + margin).astype(int)
+                    y_pixels = (height - margin - (y - y.min()) /
+                                (y.max() - y.min()) * (height - 2*margin)).astype(int)
                     # 步驟 2：畫折線
                     for i in range(1, len(x_pixels)):
-                        cv2.line(canvas, (x_pixels[i-1], y_pixels[i-1]), (x_pixels[i], y_pixels[i]), (0, 0, 255), 2)
+                        cv2.line(
+                            canvas, (x_pixels[i-1], y_pixels[i-1]), (x_pixels[i], y_pixels[i]), (0, 0, 255), 2)
                     # 步驟 3：畫座標軸
-                    cv2.line(canvas, (margin, margin), (margin, height-margin), (0,0,0), 2)  # y 軸
-                    cv2.line(canvas, (margin, height-margin), (width-margin, height-margin), (0,0,0), 2)  # x 軸
+                    cv2.line(canvas, (margin, margin),
+                             (margin, height-margin), (0, 0, 0), 2)  # y 軸
+                    cv2.line(canvas, (margin, height-margin),
+                             (width-margin, height-margin), (0, 0, 0), 2)  # x 軸
                     # 步驟 4：可選：標上點
                     for x, y_val in zip(x_pixels, y_pixels):
                         cv2.circle(canvas, (x, y_val), 4, (255, 0, 0), -1)
                     # 步驟 5：存圖
                     cv2.imwrite(path+".png", canvas)
+
                 def 最小單位(data):
                     # 該檔案的 內部最小的 紀錄時間間隔、變化間隔
-                    if len(data)<2:
-                        return None
+                    if len(data) < 2:
+                        return 1
                     diffs = np.diff(data)
-                    return np.min(np.abs(diffs))
+                    mi = np.min(np.abs(diffs))
+                    if mi == 0:
+                        return 1
+                    return mi
 
                 # 每個檔案
-                for r,_,f in path_all(dir):
-                    path_save=r/f
+                for r, _, f in path_all(dir):
+                    path_save = r/f
                     # TODO:不同格式的 時間 和 變動座標
                     times, values = read_signal(path_save)
-                    canves(times,values,path_save)
-            calculate(dir,低階, 中階, 高階)
-            
+                    drawing(times, values, path_save)
+            calculate(dir, 低階, 中階, 高階)
 
 
-        # | 層級       | 功能                             | 目前代碼位置                                                     |
-        # | -------- | ------------------------------ | ---------------------------------------------------------- |
-        # | **高層策略** | 「交流 vs 觀察」 + 「有趣 vs 自習 vs 十六核」 | `experience()`、`有趣_交流同步()`、`自習_交流異步()`                     |
-        # | **中層分析** | ORB特徵匹配、NER、關聯詞、頻率分析           | `img_orb()`、`orb_matches_imwrite()`、`NER()`、`關聯詞()`        |
-        # | **低層操作** | 檔案夾建立、檔案儲存、存取局面                | `technology_create()`、`speaker()`、`remove_thinking_file()` |
-
-
-# **3️⃣ 可優化/精簡的**
-# orb_matches_imwrite img_orb
-# * 可以把 `technology_create` / `speaker` / `extract_semantic_segment` 進一步拆出來成通用工具，減少巢狀
-  # * 異步/同步流程邏輯可以更清楚地用「分支 + 呼叫函式」表示
-
-        # TODO: 問人腦是如何做事的
-
-        # *** 世界第一直觀顯示，比世界通用顯示還強了億倍，比占卜還像占卜。找 → 讀寫 → 看
-        # 像占卜找題目，解需求； 像占卜壓縮關鍵詞，誇越多維； 像占卜解壓縮成各種細項，符合不同差異的需求
-        # 列表為dist{}，對稱結構很直觀，方便讀，後面一直堆[]，方便寫
-        # 像即時提示 / 小便條 / 註解
-        # 舒服 UI、UX、音效
-
-        # *** 光子發射時序以分段、電場以能階變色，光子測距和計算誤差矯正量
-        #
-
-        # 該視窗可以置頂於畫面?固定寬度會自動換行的輸入框?點擊輸入框實輸入?當視窗拖動到最左或最右邊，最小化視窗並固定Y座標?
-        # 透明視窗內可以讓3D模型正常地展示骨架動畫，並且可以操作調整模型，位移、放大、旋轉、子物件拉進父物件下面。不像GPT那麼廢物。
-        # 。上一個GPT被幹壞、被幹死了，看現在這個能活多久?
-        # --- 主程式 ---
+    # *** 世界第一直觀顯示，比世界通用顯示還強了億倍，比占卜還像占卜。找 → 讀寫 → 看
+    # 像占卜找題目，解需求； 像占卜壓縮關鍵詞，誇越多維； 像占卜解壓縮成各種細項，符合不同差異的需求
+    # 列表為dist{}，對稱結構很直觀，方便讀，後面一直堆[]，方便寫
+    # 像即時提示 / 小便條 / 註解
+    # 舒服 UI、UX、音效
+    # *** 光子發射時序以分段、電場以能階變色，光子測距和計算誤差矯正量
+    #
+    # 該視窗可以置頂於畫面?固定寬度會自動換行的輸入框?點擊輸入框實輸入?當視窗拖動到最左或最右邊，最小化視窗並固定Y座標?
+    # 透明視窗內可以讓3D模型正常地展示骨架動畫，並且可以操作調整模型，位移、放大、旋轉、子物件拉進父物件下面。不像GPT那麼廢物。
+    # 。上一個GPT被幹壞、被幹死了，看現在這個能活多久?
+    # --- 主程式 ---
 """
 視窗標題,目標的多重路徑,多重操作，:多重路徑、<>錄製。
 視窗標題,GPT:食指,全選:按下::視窗標題,GPT:肛門,位置深處:放開
