@@ -121,7 +121,7 @@ def path_all(paths, target=None, exists_key=None):
                     else:
                         yield Path(root)
             else:
-                yield root, dirs, files
+                yield Path(root), dirs, files
                 # yield from os.walk(path)
         else:
             print(f"警告：路徑 {path} 不是有效的目錄或不存在")
@@ -1702,6 +1702,7 @@ class Noēsis:
     
     
     def img_orb(self, key, th, wave=None, velocity=1):
+        # TODO:三維
         dirs = TEMPLATE_DIRS[key]
         if not dirs:
             dirs = os.path.join(base_path, key)  # 一般資料夾，是不在TEMPLATE_DIRS
@@ -1984,29 +1985,78 @@ class Noēsis:
             calculate(dir,低階, 中階, 高階)
 
         def 觀察():    
+            # 有可能和三元協作一樣，會大幅改革減少一大堆，意思是可能沒有16個
             dir=Path(TEMPLATE_DIRS["absorb"])/"觀察"
             # 路徑,ORB分析方法
             低階={
-                "肌肉記憶" : "動作拆小單元，固定節奏自動執行",
-                "節拍觸發" : "用音樂、聲音或定時器同步核切換",
-                "容錯允許" : "低階核可出錯，高階核最後校正",
-                "減少依賴" : "低階核不等待其他核完成即可動作",
-                "快速感官觸發" : "眼、手感直接更新核狀態",
-                "優先級切換" : "異常核優先，其餘核並行運作",
-                "循環訓練" : "單核熟練 → 多核並行 → 持續 校正",
+                "肌肉記憶": "可重複對應人體位移的圖片特徵，拆成最小吸收單元",
+                "節拍觸發": "依圖片出現的節奏與間隔觸發吸收與標記",
+                "容錯允許": "目標圖片模糊、殘缺、構圖不完整、數量不夠時仍允許吸收，標記問題",
+                "減少依賴": "圖片可獨立 對應人體操作，不依賴其他圖片或完整序列",
+                "快速感官觸發" : "所有感官訊號轉換成視覺化，標記 非最小變化的紀錄時間，標記 最小變化累積時間，提出變化",
+                "優先級切換": "圖片特徵非預期結構或 肌肉記憶核危險時 優先標記問題",
+                "循環訓練" : "全部低階核並行的流程，以此比對和目標圖片特徵是否達標，矯正全部低階",
             }
             中階={
-                "灰" :"批次進度核",
-                "淺藍": "趨勢分析核", 
-                "深綠": "策略調整核",
-                "棕" :"環境配置核",
+                "批次進度核" :"容錯核、目標圖片數量是否達標，以此調整肌肉記憶核和快速感官切換核",
+                "趨勢分析核": "分析循環訓練核，找出通用模式", 
+                "策略調整核": "以交流提出的為參照，趨勢分析核的通用模式是否最有效，標記需要切換成新模式",
+                "環境配置核" :"管理觀察所需的資源與環境（資料夾、模板、感官模組），以此提升批次進度核",
             }
             高階={
-                "淺紫": "長期目標核", 
-                "深紫": "優化學習核", 
-                "淺橙": "溝通協作核",
-                "紅棕": "危機處理核",
+                "長期目標核": "制定長期完成策略，修正低階標記的問題，肌肉記憶核符合人體限制",
+                "優化學習核": "以肌肉記憶核和快速感官切換核為主，以循環訓練核和趨勢分析核為輔，以此和批次進度核的最高比率",
+                "溝通協作核": "以交流為考量，以優化學習核為參照",
+                "危機處理核": "當低階或中階出現重大異常或矛盾時，提出緊急通，避免資料錯誤累積" # 亂寫的
             }
+            def 感官視覺化():
+                def read_signal(path):
+                    # 假設 CSV: 第一列時間, 第二列數值
+                    import csv
+                    times, values = [], []
+                    with open(path, newline='') as f:
+                        reader = csv.reader(f)
+                        for row in reader:
+                            times.append(float(row[0]))
+                            values.append(float(row[1]))
+                    return np.array(times), np.array(values)
+
+                def canves(t,y,path):
+                    margin = 50  # 留點空白給軸線
+                    # 畫布大小 # TODO:有空再讓畫布自適應大小，輕鬆觀察
+                    width = max(2*margin+1,math.floor(t.max()-t.min()))
+                    height= max(2*margin+1,math.floor(y.max()-y.min()))
+                    # 畫二維變化圖（X = 時間, Y = 變化）
+                    t = np.array(t)/最小單位(t)
+                    y = np.array(y)/最小單位(y)
+                    canvas = np.ones((height, width, 3), dtype=np.uint8) * 255  # 白底
+                    # 將資料轉成像素座標
+                    x_pixels = ((t - t.min()) / (t.max() - t.min()) * (width - 2*margin) + margin).astype(int)
+                    y_pixels = (height - margin - (y - y.min()) / (y.max() - y.min()) * (height - 2*margin)).astype(int)
+                    # 步驟 2：畫折線
+                    for i in range(1, len(x_pixels)):
+                        cv2.line(canvas, (x_pixels[i-1], y_pixels[i-1]), (x_pixels[i], y_pixels[i]), (0, 0, 255), 2)
+                    # 步驟 3：畫座標軸
+                    cv2.line(canvas, (margin, margin), (margin, height-margin), (0,0,0), 2)  # y 軸
+                    cv2.line(canvas, (margin, height-margin), (width-margin, height-margin), (0,0,0), 2)  # x 軸
+                    # 步驟 4：可選：標上點
+                    for x, y_val in zip(x_pixels, y_pixels):
+                        cv2.circle(canvas, (x, y_val), 4, (255, 0, 0), -1)
+                    # 步驟 5：存圖
+                    cv2.imwrite(path+".png", canvas)
+                def 最小單位(data):
+                    # 該檔案的 內部最小的 紀錄時間間隔、變化間隔
+                    if len(data)<2:
+                        return None
+                    diffs = np.diff(data)
+                    return np.min(np.abs(diffs))
+
+                # 每個檔案
+                for r,_,f in path_all(dir):
+                    path_save=r/f
+                    # TODO:不同格式的 時間 和 變動座標
+                    times, values = read_signal(path_save)
+                    canves(times,values,path_save)
             calculate(dir,低階, 中階, 高階)
             
 
@@ -2092,3 +2142,29 @@ if __name__ == "__main__":
 # 觀察情境的特徵和變化的目標，實時看到變化的不變屬性，企圖改變 變化成想要的情境。
 # 應該是你把這些當成教育了，事實上工作時不是單一面，也就是說你不理解簡單的道理
 # 加入水(分散成霧)明觀(執行或終止) # 加入X感測(執行或終止) # 以木治人、以水觀察、以
+# 1️⃣ 工作與生產力必備
+    # 桌椅
+    # 電腦
+    # 網路設備
+    # 燈光
+    # 空調
+    # 筆、筆記本
+# 2️⃣ 生活便利
+    # 廁所
+    # 飲水機、杯子
+    # 點心
+    # 咖啡豆
+# 3️⃣ 收納與整理
+    # 櫃子
+    # 垃圾桶
+# 4️⃣ 安全與應急
+    # 急救箱
+    # 滅火器
+    # 緊急出口標示與疏散通道
+# 5️⃣ 氛圍與舒適加分
+    # 時尚壁紙 / 辦公室風格
+    # 綠植
+    # 音響
+# 員工健康與福利
+    # 小型健身區或運動器材（門框式單槓、吊環等）
+    # 冥想 / 安靜區 (隔音、隔板)
