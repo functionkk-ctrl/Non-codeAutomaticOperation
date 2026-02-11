@@ -126,6 +126,48 @@ def path_all(paths, target=None, exists_key=None):
         else:
             print(f"警告：路徑 {path} 不是有效的目錄或不存在")
 
+# TODO:ORB
+def 全能ORB(a,b=None,path=None,count=10):
+    """
+    a : 該圖，return 特徵
+    b: 比對的圖，ab圖相似的拓樸結構圖
+    path:imwrite存放路徑，預設為a的同路徑
+    """
+    orb=cv2.ORB_create()
+    img1=cv2.imread(a)
+    if img1 is None:
+        raise ValueError(f"讀取圖檔失敗: {a}")
+    kp1, desA = orb.detectAndCompute(img1, None)
+    if not b:
+        return kp1, desA
+    img2=cv2.imread(b)
+    if img2 is None:
+        raise ValueError(f"讀取圖檔失敗: {b}")
+    kp2, desB = orb.detectAndCompute(img2, None)
+    matches = bf.match(desA, desB)
+    matches = sorted(matches, key=lambda x: x.distance)
+
+    good_matches = []
+    for m, n in matches:
+        if m.distance < 0.75 * n.distance:  # ratio 可調，0.75 是經典值
+            good_matches.append(m)
+
+    match_percentage = len(good_matches) / len(kp1) * 100
+    print(f"匹配百分比: {match_percentage:.2f}%")
+
+    img_matches = cv2.drawMatches(
+        img1, kp1,
+        img2, kp2,
+        matches[:count], None,
+        matchColor=(0,255,0),
+        singlePointColor=(255,0,0),
+        flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
+    )
+    if path is None:
+        path=path_all(base_path,a)[0]
+    cv2.imwrite(path,img_matches)
+
+
 
 def watchdog():
     while not alive_event.wait(timeout=10):
@@ -1875,8 +1917,8 @@ class Noēsis:
             if a == "world" or b == "world":
                 dir_str += "2"
             # scores=[]
-            for a_file, a_kp, a_des in img_orb(a, wave):  # 資料
-                for b_file, b_kp, b_des in img_orb(b, wave):  # 資料，特徵點選比較多
+            for a_file, a_kp, a_des in img_orb(a, wave="高頻率"):  # 資料
+                for b_file, b_kp, b_des in img_orb(b, wave="高頻率"):  # 資料，特徵點選比較多
                     if b_des is None:
                         continue
                     matches = bf.match(b_des, a_des)
@@ -1953,12 +1995,13 @@ class Noēsis:
                                                   r+f".({ext}).{anchor}")
 
     # 十六核計算輔助(用戶訊息)
-    def 十六核(self, 低階, 中階, 高階, img_orb=self.img_orb):
+    def 十六核(self, 低階, 中階, 高階):
         def calculate(dir):
             for layer in [低階, 中階, 高階]:
                 for key, value in layer.items():
                     for _, _, f in path_all(dir, os.path.join(key, value)):
-                        img_orb(TEMPLATE_DIRS["absorb"], f)
+                        fa=self.img_orb(f,"高頻率")
+                        self.orb_matches_imwrite(TEMPLATE_DIRS["absorb"], fa.get(value))
 
         def 交流():
             dir = TEMPLATE_DIRS["communication"]
@@ -2090,8 +2133,11 @@ class Noēsis:
             def 肌肉記憶():
                 human=[f for _,_,f in path_all(TEMPLATE_DIRS["attributes"],"人體")]
                 for _,_,f in path_all(dir,"視覺化.png"):
-                    self.orb_imwrite(f,human)
-                    # TODO: 最小化單位
+                    # human含關節等細項外觀
+                    for _,_,f2 in path_all("human"):
+                        全能ORB(f,f2,path=)
+                        # TODO:*** 最小單元
+
             calculate(dir, 低階, 中階, 高階)
 
 
