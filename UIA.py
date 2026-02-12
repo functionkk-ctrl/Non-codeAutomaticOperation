@@ -89,17 +89,14 @@ firebase_admin.initialize_app(cred, {
 
 def path_all(paths, target=None, exists_key=None):
     """
-    yield root(完整目錄), dirs(下一層的全部資料夾名), files(這層全部檔案含檔名)
-
-    paths 依序遍歷 ./a 和 ./b 這兩個目錄，包含到最下層
+    # yield root(完整目錄), dirs(下一層的全部資料夾名), files(這層全部檔案含檔名)
+    # paths 依序遍歷 ./a 和 ./b 這兩個目錄，包含到最下層
         for root, dirs, files in path_all(["./a", "./b"]):
-    找到含 target 的檔案或資料夾，返回該根目錄 root/dirs，找不到則回傳 False。
-    找不到 target
+    # 找到含 target 的檔案或資料夾，返回該根目錄 root/dirs，找不到則回傳 False。
+    # 找不到 target
         if not list(path_all(...)):
-
-    paths, target 皆可list，all(...)target同時都符合
-
-    找到target路徑的 找到字串exists_key 的值，回傳value
+    # paths, target 皆可list，all(...)target同時都符合
+    # 找到target路徑的 找到字串exists_key 的值，回傳value
     """
     for path in paths:
         for root, dirs, files in os.walk(path):
@@ -110,14 +107,15 @@ def path_all(paths, target=None, exists_key=None):
                 if target_dirs:
                     if exists_key:
                         exists_f = [f for f in files if f.endswith(".txt")]
-                        exists_f_path = os.path.exists(Path(root)/file)
-                        with open(exists_f_path, "r", encoding="utf-8") as f:
-                            for line in f:
-                                # 假設 log.txt 格式：每行是 "related_words:內容"
-                                for file in exists_f:
-                                    if line.startswith(exists_key + ":"):
-                                        # 回傳冒號後內容(字串)
-                                        return line.strip().split(":", 1)[1]
+                        for file in exists_f:
+                            exists_f_path = os.path.exists(Path(root)/file)
+                            with open(Path(root)/file, "r", encoding="utf-8") as f:
+                                for line in f:
+                                    # 假設 log.txt 格式：每行是 "related_words:內容"
+                                    for file in exists_f:
+                                        if line.startswith(exists_key + ":"):
+                                            # 回傳冒號後內容(字串)
+                                            return line.strip().split(":", 1)[1]
                     else:
                         yield Path(root)
             else:
@@ -126,47 +124,94 @@ def path_all(paths, target=None, exists_key=None):
         else:
             print(f"警告：路徑 {path} 不是有效的目錄或不存在")
 
-# TODO:ORB
-def 全能ORB(a,b=None,path=None,count=10):
+def make_folder(folder_name):
+    """
+    在 base_path 下創建資料夾 folder_name（如果不存在）
+    """
+    folder_path = Path(base_path) / folder_name
+    folder_path.mkdir(parents=True, exist_ok=True)  # 確保父資料夾也創建
+    return folder_path
+
+def make_file(file_path,file_name, content=""):
+    """
+    在 base_path 下創建json文件 file_name，可寫入初始內容 content
+    """
+    with open(make_folder(file_path)/file_name, "w", encoding="utf-8") as f:
+        f.write(content)
+
+import json
+import mediapipe as mp
+
+def 全能ORB(a,b=None,path=None,ratio=0.75,similar=None):
     """
     a : 該圖，return 特徵
-    b: 比對的圖，ab圖相似的拓樸結構圖
-    path:imwrite存放路徑，預設為a的同路徑
+    b: 比對的圖，ab圖相似的拓樸結構圖，儲存在path
+        b="human"，a和人體拓樸結構比對
+        path:imwrite存放路徑，預設為a的同路徑
+        ratio:ab圖相似的拓樸結構圖，去掉 不明顯相似的。0.75 是經典值
+    similar:ab圖相似率要多少，最多100，return bool
     """
-    orb=cv2.ORB_create()
+    if path is None:
+        path=path_all(base_path,a)[0]
+    sift = cv2.SIFT_create()
     img1=cv2.imread(a)
     if img1 is None:
         raise ValueError(f"讀取圖檔失敗: {a}")
-    kp1, desA = orb.detectAndCompute(img1, None)
+    kp1, desA = sift.detectAndCompute(img1, None)
     if not b:
         return kp1, desA
+    elif b=="human":
+        mp_pose = mp.solutions.pose
+        mp_drawing = mp.solutions.drawing_utils
+        pose = mp_pose.Pose(static_image_mode=True)
+        img_rgb = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
+        result = pose.process(img_rgb)
+        if not result.pose_landmarks:
+            raise ValueError("未偵測到人體")
+        # 建立黑底拓樸圖（乾淨骨架）
+        topo_img = np.zeros_like(img1)
+        # 畫骨架
+        mp_drawing.draw_landmarks(
+            topo_img,
+            result.pose_landmarks,
+            mp_pose.POSE_CONNECTIONS,
+            mp_drawing.DrawingSpec(color=(0,255,0), thickness=2, circle_radius=2),
+            mp_drawing.DrawingSpec(color=(255,0,0), thickness=2)
+        )
+        cv2.imwrite(path+ "_人體拓樸.png", topo_img)
+        return path
     img2=cv2.imread(b)
     if img2 is None:
         raise ValueError(f"讀取圖檔失敗: {b}")
-    kp2, desB = orb.detectAndCompute(img2, None)
-    matches = bf.match(desA, desB)
-    matches = sorted(matches, key=lambda x: x.distance)
-
+    kp2, desB = sift.detectAndCompute(img2, None)
+    if desA is None or desB is None:
+        return False if similar is not None else None
+    matches = bf.knnMatch(desA, desB, k=2)
     good_matches = []
-    for m, n in matches:
-        if m.distance < 0.75 * n.distance:  # ratio 可調，0.75 是經典值
-            good_matches.append(m)
-
-    match_percentage = len(good_matches) / len(kp1) * 100
-    print(f"匹配百分比: {match_percentage:.2f}%")
-
+    good_matches = [m for m, n in matches if m.distance < ratio * n.distance]
+    good_matches = sorted(good_matches, key=lambda x: x.distance)
+    src_pts = np.float32([kp1[m.queryIdx].pt for m in good_matches]).reshape(-1,1,2)
+    dst_pts = np.float32([kp2[m.trainIdx].pt for m in good_matches]).reshape(-1,1,2)
+    H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+    if similar is not None:
+        if len(good_matches) < 4:
+            return False
+        if H is None or mask is None:
+            return False 
+        similarity = mask.sum()/ len(good_matches) * 100
+        return similarity>similar
+    matchesMask = mask.ravel().tolist() if mask is not None else None
     img_matches = cv2.drawMatches(
         img1, kp1,
         img2, kp2,
-        matches[:count], None,
+        good_matches, None, # TODO: 完全相同的拓樸結構
         matchColor=(0,255,0),
         singlePointColor=(255,0,0),
+        matchesMask=matchesMask,
         flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
     )
-    if path is None:
-        path=path_all(base_path,a)[0]
-    cv2.imwrite(path,img_matches)
-
+    cv2.imwrite(path+"相似拓樸結構.png",img_matches)
+    return path
 
 
 def watchdog():
@@ -2033,7 +2078,7 @@ class Noēsis:
             dir = Path(TEMPLATE_DIRS["absorb"])/"觀察"
             # 路徑,ORB分析方法
             低階 = {
-                "肌肉記憶": "可重複對應人體位移的圖片特徵，拆成最小吸收單元", # NG
+                "肌肉記憶": "可重複對應人體位移的圖片特徵，拆成最小吸收單元", # OK
                 "節拍觸發": "依圖片出現的節奏與間隔觸發吸收與標記", # NG
                 "容錯允許": "目標圖片模糊、殘缺、構圖不完整、數量不夠時仍允許吸收，標記問題", # NG
                 "減少依賴": "圖片可獨立 對應人體操作，不依賴其他圖片或完整序列", # NG
@@ -2056,7 +2101,6 @@ class Noēsis:
 
             def 感官視覺化():
                 import struct
-
                 def read_signal(path_f):
                     """
                     任意檔案 → 按固定長度切片 → 轉 float → 序列 index
@@ -2084,6 +2128,30 @@ class Noēsis:
                     values = np.asarray(values)
                     times = np.arange(len(values))
                     return times, values
+                def 儲存肌肉記憶(path_vis, json_file=None):
+                    if json_file is None:
+                        json_file = os.path.join(os.path.dirname(path_vis), "肌肉記憶.json")
+
+                    frame_data = {
+                        "file": os.path.basename(path_vis),
+                        "time": time.time()
+                    }
+
+                    # 讀取舊資料
+                    if os.path.exists(json_file):
+                        with open(json_file, "r") as f:
+                            data = json.load(f)
+                    else:
+                        data = {"frames": []}
+
+                    # 累積
+                    data["frames"].append(frame_data)
+
+                    # 寫回 JSON
+                    with open(json_file, "w") as f:
+                        json.dump(data, f, indent=4)
+
+                    return json_file
 
                 def drawing(t, y, path):
                     margin = 50  # 留點空白給軸線
@@ -2114,7 +2182,14 @@ class Noēsis:
                     for x, y_val in zip(x_pixels, y_pixels):
                         cv2.circle(canvas, (x, y_val), 4, (255, 0, 0), -1)
                     # 步驟 5：存圖
-                    cv2.imwrite(path+"視覺化.png", canvas)
+                    cv2.imwrite(path+"_視覺化.png", canvas)
+                    # 儲存時序在 共用文件的 時序
+                    # todo:*****
+                    儲存肌肉記憶()
+                    make_file(path,"肌肉記憶.json",json.dumps({
+                        "time": time.time()  ,
+                        "file": path+"_視覺化.png"
+                    }))
 
                 def 最小單位(data):
                     # 該檔案的 內部最小的 紀錄時間間隔、變化間隔
@@ -2125,19 +2200,40 @@ class Noēsis:
                     if mi == 0:
                         return 1
                     return mi
+
+                
                 # 每個檔案，不同格式的 順序 和 數值
                 for r, _, f in path_all(dir):
                     path_save = r/f
                     times, values = read_signal(path_save)
                     drawing(times, values, path_save)
-            def 肌肉記憶():
-                human=[f for _,_,f in path_all(TEMPLATE_DIRS["attributes"],"人體")]
-                for _,_,f in path_all(dir,"視覺化.png"):
-                    # human含關節等細項外觀
-                    for _,_,f2 in path_all("human"):
-                        全能ORB(f,f2,path=)
-                        # TODO:*** 最小單元
 
+            def 肌肉記憶():
+                mp_pose = mp.solutions.pose
+                pose = mp_pose.Pose(static_image_mode=True)
+                def 抽取骨架向量(img_path):
+                    img = cv2.imread(img_path)
+                    if img is None:
+                        return None
+                    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                    result = pose.process(img_rgb)
+                    if not result.pose_landmarks:
+                        return None
+                    skeleton = np.array([
+                        [lm.x, lm.y, lm.z]
+                        for lm in result.pose_landmarks.landmark
+                    ])
+                    return skeleton  # shape (33,3)
+                # 處理觸覺和視覺。無法處理的 部分是聽覺 味覺 嗅覺 
+                memory = []
+                for _,_,f in path_all(dir,"_視覺化.png"):
+                    # 得到觸覺和視覺的最小單元
+                    全能ORB(f,"human")
+                for _,_,f in path_all(dir,"_人體拓樸.png"):
+                    skeleton = 抽取骨架向量(f)
+                    if skeleton is not None:
+                        memory.append(skeleton)
+                return np.array(memory)  # shape (T,33,3)
             calculate(dir, 低階, 中階, 高階)
 
 
