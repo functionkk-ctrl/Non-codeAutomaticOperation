@@ -1,3 +1,5 @@
+import json
+import mediapipe as mp
 from geographiclib.geodesic import Geodesic
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -60,19 +62,20 @@ Clock.schedule_interval(read_imu, 1/50)
 
 # --- 基礎設定 --- python "D:\Python\Non-codeAutomaticOperation\UIA.py"
 pytesseract.pytesseract.tesseract_cmd = r"C:\Users\USER\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
-base_path = getattr(sys, '_MEIPASS', os.path.dirname(
-    os.path.abspath(__file__)))
+DATA_BASE = Path(getattr(sys, '_MEIPASS', os.path.dirname(
+    os.path.abspath(__file__))))
+base_path = Path.home() / ".your_app_name"      # 可寫
 TEMPLATE_DIRS = {
-    "live_capture": os.path.join(base_path, 'live_capture'),
-    "attributes": os.path.join(base_path, "attributes"),
-    "world": os.path.join(base_path, "world"),
-    "user": os.path.join(base_path, "user"),  # 用戶隱私
-    "communication": os.path.join(base_path, "communication"),  # 用戶交流的訊息
-    "dark_matter": os.path.join(base_path, "dark_matter"),
-    "thinking": os.path.join(base_path, "thinking"),  # 中轉站
-    "thinking2": os.path.join(base_path, "thinking2"),  # 中轉站
-    "speak": os.path.join(base_path, "speak"),  # 交流的回覆
-    "absorb": os.path.join(base_path, "absorb"),  # Nosis吸收的知識
+    "live_capture": DATA_BASE/ 'live_capture',
+    "attributes": DATA_BASE/ "attributes",
+    "world": DATA_BASE/ "world",
+    "user": DATA_BASE/ "user",  # 用戶隱私
+    "communication": DATA_BASE/ "communication",  # 用戶交流的訊息
+    "dark_matter": DATA_BASE/ "dark_matter",
+    "thinking": DATA_BASE/ "thinking",  # 中轉站
+    "thinking2": DATA_BASE/ "thinking2",  # 中轉站
+    "speak": DATA_BASE/ "speak",  # 交流的回覆
+    "absorb": DATA_BASE/ "absorb",  # Nosis吸收的知識
 }
 
 MATCH_THRESHOLD = 0.85
@@ -87,62 +90,77 @@ firebase_admin.initialize_app(cred, {
 })
 
 
-def path_all(paths, target=None, exists_key=None):
+def path_all(paths, target=None):
     """
+    預設排序為時間，由舊到新
     # yield root(完整目錄), dirs(下一層的全部資料夾名), files(這層全部檔案含檔名)
     # paths 依序遍歷 ./a 和 ./b 這兩個目錄，包含到最下層
         for root, dirs, files in path_all(["./a", "./b"]):
     # 找到含 target 的檔案或資料夾，返回該根目錄 root/dirs，找不到則回傳 False。
     # 找不到 target
         if not list(path_all(...)):
-    # paths, target 皆可list，all(...)target同時都符合
-    # 找到target路徑的 找到字串exists_key 的值，回傳value
+    # paths, target =[],[]，all(...)target同時都符合
     """
     for path in paths:
         for root, dirs, files in os.walk(path):
+            root_path = Path(root)
+            # 依建立時間排序
+            dirs.sort(key=lambda d: (root_path/ d).stat().st_ctime)
+            files.sort(key=lambda f: (root_path/ f).stat().st_ctime)
             if target:
-                target_dirs = all(any(t in d for d in dirs)
-                                  or any(t in f for f in files)
-                                  for t in target)
-                if target_dirs:
-                    if exists_key:
-                        exists_f = [f for f in files if f.endswith(".txt")]
-                        for file in exists_f:
-                            exists_f_path = os.path.exists(Path(root)/file)
-                            with open(Path(root)/file, "r", encoding="utf-8") as f:
-                                for line in f:
-                                    # 假設 log.txt 格式：每行是 "related_words:內容"
-                                    for file in exists_f:
-                                        if line.startswith(exists_key + ":"):
-                                            # 回傳冒號後內容(字串)
-                                            return line.strip().split(":", 1)[1]
-                    else:
-                        yield Path(root)
+                target_dirs = all(
+                    any(t in d for d in dirs) or 
+                    any(t in f for f in files)
+                    for t in target)
+                if target_dirs:                           
+                    yield root_path
             else:
-                yield Path(root), dirs, files
-                # yield from os.walk(path)
-        else:
-            print(f"警告：路徑 {path} 不是有效的目錄或不存在")
+                yield root_path, dirs, files
+
 
 def make_folder(folder_name):
     """
     在 base_path 下創建資料夾 folder_name（如果不存在）
     """
-    folder_path = Path(base_path) / folder_name
+    folder_path = base_path / folder_name
     folder_path.mkdir(parents=True, exist_ok=True)  # 確保父資料夾也創建
     return folder_path
 
-def make_file(file_path,file_name, content=""):
-    """
-    在 base_path 下創建json文件 file_name，可寫入初始內容 content
-    """
-    with open(make_folder(file_path)/file_name, "w", encoding="utf-8") as f:
-        f.write(content)
 
-import json
-import mediapipe as mp
+def make_json_content(file_path, file_name,  key, value):
+    """
+    在 base_path 下建立或更新 file_path 文件之下並建立或更新 file_name.json，之內建立或更新內容 key:value
+    """
+    path = make_folder(file_path) / (file_name + ".json")
+    if path.exists():  # 有檔案
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            data = {}
+    else:
+        data = {}
+    data.setdefault(key, [])
+    data[key].append(value)
+    # 寫入（原子寫入比較安全）避免「寫到一半斷電檔案壞掉」。
+    temp_path = path.with_suffix(".tmp")
+    with open(temp_path , "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+    temp_path.replace(path)
 
-def 全能ORB(a,b=None,path=None,ratio=0.75,similar=None):
+def read_json_content(file_path, file_name,  key):
+    path = base_path/file_path / f"{file_name}.json"
+    if path.exists():  # 有檔案
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return []
+        return data[key]
+    else:
+        return []
+
+def 全能ORB(a, b=None, path=None, ratio=0.75, similar=None):
     """
     a : 該圖，return 特徵
     b: 比對的圖，ab圖相似的拓樸結構圖，儲存在path
@@ -152,15 +170,15 @@ def 全能ORB(a,b=None,path=None,ratio=0.75,similar=None):
     similar:ab圖相似率要多少，最多100，return bool
     """
     if path is None:
-        path=path_all(base_path,a)[0]
+        path = path_all(base_path, a)[0]
     sift = cv2.SIFT_create()
-    img1=cv2.imread(a)
+    img1 = cv2.imread(a)
     if img1 is None:
         raise ValueError(f"讀取圖檔失敗: {a}")
     kp1, desA = sift.detectAndCompute(img1, None)
     if not b:
         return kp1, desA
-    elif b=="human":
+    elif b == "human":
         mp_pose = mp.solutions.pose
         mp_drawing = mp.solutions.drawing_utils
         pose = mp_pose.Pose(static_image_mode=True)
@@ -175,12 +193,13 @@ def 全能ORB(a,b=None,path=None,ratio=0.75,similar=None):
             topo_img,
             result.pose_landmarks,
             mp_pose.POSE_CONNECTIONS,
-            mp_drawing.DrawingSpec(color=(0,255,0), thickness=2, circle_radius=2),
-            mp_drawing.DrawingSpec(color=(255,0,0), thickness=2)
+            mp_drawing.DrawingSpec(
+                color=(0, 255, 0), thickness=2, circle_radius=2),
+            mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2)
         )
-        cv2.imwrite(path+ "_人體拓樸.png", topo_img)
+        cv2.imwrite(path + "_人體拓樸.png", topo_img)
         return path
-    img2=cv2.imread(b)
+    img2 = cv2.imread(b)
     if img2 is None:
         raise ValueError(f"讀取圖檔失敗: {b}")
     kp2, desB = sift.detectAndCompute(img2, None)
@@ -190,27 +209,29 @@ def 全能ORB(a,b=None,path=None,ratio=0.75,similar=None):
     good_matches = []
     good_matches = [m for m, n in matches if m.distance < ratio * n.distance]
     good_matches = sorted(good_matches, key=lambda x: x.distance)
-    src_pts = np.float32([kp1[m.queryIdx].pt for m in good_matches]).reshape(-1,1,2)
-    dst_pts = np.float32([kp2[m.trainIdx].pt for m in good_matches]).reshape(-1,1,2)
+    src_pts = np.float32(
+        [kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+    dst_pts = np.float32(
+        [kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
     H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
     if similar is not None:
         if len(good_matches) < 4:
             return False
         if H is None or mask is None:
-            return False 
-        similarity = mask.sum()/ len(good_matches) * 100
-        return similarity>similar
+            return False
+        similarity = mask.sum() / len(good_matches) * 100
+        return similarity > similar
     matchesMask = mask.ravel().tolist() if mask is not None else None
     img_matches = cv2.drawMatches(
         img1, kp1,
         img2, kp2,
-        good_matches, None, # TODO: 完全相同的拓樸結構
-        matchColor=(0,255,0),
-        singlePointColor=(255,0,0),
+        good_matches, None,  # TODO: 完全相同的拓樸結構
+        matchColor=(0, 255, 0),
+        singlePointColor=(255, 0, 0),
         matchesMask=matchesMask,
         flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
     )
-    cv2.imwrite(path+"相似拓樸結構.png",img_matches)
+    cv2.imwrite(path+"相似拓樸結構.png", img_matches)
     return path
 
 
@@ -2045,8 +2066,9 @@ class Noēsis:
             for layer in [低階, 中階, 高階]:
                 for key, value in layer.items():
                     for _, _, f in path_all(dir, os.path.join(key, value)):
-                        fa=self.img_orb(f,"高頻率")
-                        self.orb_matches_imwrite(TEMPLATE_DIRS["absorb"], fa.get(value))
+                        fa = self.img_orb(f, "高頻率")
+                        self.orb_matches_imwrite(
+                            TEMPLATE_DIRS["absorb"], fa.get(value))
 
         def 交流():
             dir = TEMPLATE_DIRS["communication"]
@@ -2078,29 +2100,30 @@ class Noēsis:
             dir = Path(TEMPLATE_DIRS["absorb"])/"觀察"
             # 路徑,ORB分析方法
             低階 = {
-                "肌肉記憶": "可重複對應人體位移的圖片特徵，拆成最小吸收單元", # OK
-                "節拍觸發": "依圖片出現的節奏與間隔觸發吸收與標記", # NG
-                "容錯允許": "目標圖片模糊、殘缺、構圖不完整、數量不夠時仍允許吸收，標記問題", # NG
-                "減少依賴": "圖片可獨立 對應人體操作，不依賴其他圖片或完整序列", # NG
-                "快速感官觸發": "所有感官訊號視覺化，在同路徑下 另存新檔", # OK
-                "優先級切換": "圖片特徵非預期結構或 肌肉記憶核危險時 優先標記問題", # NG
-                "循環訓練": "全部低階核並行的流程，以此比對和目標圖片特徵是否達標，矯正全部低階", # NG
+                "肌肉記憶": "可重複對應人體位移的圖片特徵，拆成最小吸收單元",  # OK
+                "節拍觸發": "依圖片出現的節奏與間隔觸發吸收與標記",  # OK
+                "容錯允許": "目標圖片模糊、殘缺、構圖不完整、數量不夠時仍允許吸收，標記問題",  # NG
+                "減少依賴": "圖片可獨立 對應人體操作，不依賴其他圖片或完整序列",  # NG
+                "快速感官觸發": "所有感官訊號視覺化，在同路徑下 另存新檔",  # OK
+                "優先級切換": "圖片特徵非預期結構或 肌肉記憶核危險時 優先標記問題",  # NG
+                "循環訓練": "全部低階核並行的流程，以此比對和目標圖片特徵是否達標，矯正全部低階",  # NG
             }
             中階 = {
-                "批次進度核": "容錯核、目標圖片數量是否達標，以此調整肌肉記憶核和快速感官切換核", # NG
-                "趨勢分析核": "分析循環訓練核，找出通用模式", # NG
-                "策略調整核": "以交流提出的為參照，趨勢分析核的通用模式是否最有效，標記需要切換成新模式", # NG
-                "環境配置核": "管理觀察所需的資源與環境（資料夾、模板、感官模組），以此提升批次進度核", # NG
+                "批次進度核": "容錯核、目標圖片數量是否達標，以此調整肌肉記憶核和快速感官切換核",  # NG
+                "趨勢分析核": "分析循環訓練核，找出通用模式",  # NG
+                "策略調整核": "以交流提出的為參照，趨勢分析核的通用模式是否最有效，標記需要切換成新模式",  # NG
+                "環境配置核": "管理觀察所需的資源與環境（資料夾、模板、感官模組），以此提升批次進度核",  # NG
             }
             高階 = {
-                "長期目標核": "制定長期完成策略，修正低階標記的問題，肌肉記憶核符合人體限制", # NG
-                "優化學習核": "以肌肉記憶核和快速感官切換核為主，以循環訓練核和趨勢分析核為輔，以此和批次進度核的最高比率", # NG
-                "溝通協作核": "以交流為考量，以優化學習核為參照", # NG
+                "長期目標核": "制定長期完成策略，修正低階標記的問題，肌肉記憶核符合人體限制",  # NG
+                "優化學習核": "以肌肉記憶核和快速感官切換核為主，以循環訓練核和趨勢分析核為輔，以此和批次進度核的最高比率",  # NG
+                "溝通協作核": "以交流為考量，以優化學習核為參照",  # NG
                 "危機處理核": "當低階或中階出現重大異常或矛盾時，提出緊急通，避免資料錯誤累積"  # 亂寫的
             }
 
             def 感官視覺化():
                 import struct
+
                 def read_signal(path_f):
                     """
                     任意檔案 → 按固定長度切片 → 轉 float → 序列 index
@@ -2128,30 +2151,6 @@ class Noēsis:
                     values = np.asarray(values)
                     times = np.arange(len(values))
                     return times, values
-                def 儲存肌肉記憶(path_vis, json_file=None):
-                    if json_file is None:
-                        json_file = os.path.join(os.path.dirname(path_vis), "肌肉記憶.json")
-
-                    frame_data = {
-                        "file": os.path.basename(path_vis),
-                        "time": time.time()
-                    }
-
-                    # 讀取舊資料
-                    if os.path.exists(json_file):
-                        with open(json_file, "r") as f:
-                            data = json.load(f)
-                    else:
-                        data = {"frames": []}
-
-                    # 累積
-                    data["frames"].append(frame_data)
-
-                    # 寫回 JSON
-                    with open(json_file, "w") as f:
-                        json.dump(data, f, indent=4)
-
-                    return json_file
 
                 def drawing(t, y, path):
                     margin = 50  # 留點空白給軸線
@@ -2184,12 +2183,8 @@ class Noēsis:
                     # 步驟 5：存圖
                     cv2.imwrite(path+"_視覺化.png", canvas)
                     # 儲存時序在 共用文件的 時序
-                    # todo:*****
-                    儲存肌肉記憶()
-                    make_file(path,"肌肉記憶.json",json.dumps({
-                        "time": time.time()  ,
-                        "file": path+"_視覺化.png"
-                    }))
+                    make_json_content(path, "肌肉記憶", "time_file", [
+                                      time.time(), path+"_視覺化.png"])
 
                 def 最小單位(data):
                     # 該檔案的 內部最小的 紀錄時間間隔、變化間隔
@@ -2201,7 +2196,6 @@ class Noēsis:
                         return 1
                     return mi
 
-                
                 # 每個檔案，不同格式的 順序 和 數值
                 for r, _, f in path_all(dir):
                     path_save = r/f
@@ -2211,6 +2205,7 @@ class Noēsis:
             def 肌肉記憶():
                 mp_pose = mp.solutions.pose
                 pose = mp_pose.Pose(static_image_mode=True)
+
                 def 抽取骨架向量(img_path):
                     img = cv2.imread(img_path)
                     if img is None:
@@ -2224,18 +2219,44 @@ class Noēsis:
                         for lm in result.pose_landmarks.landmark
                     ])
                     return skeleton  # shape (33,3)
-                # 處理觸覺和視覺。無法處理的 部分是聽覺 味覺 嗅覺 
+                # 處理觸覺和視覺。無法處理的 部分是聽覺 味覺 嗅覺
                 memory = []
-                for _,_,f in path_all(dir,"_視覺化.png"):
+                for _, _, f in path_all(dir, "_視覺化.png"):
                     # 得到觸覺和視覺的最小單元
-                    全能ORB(f,"human")
-                for _,_,f in path_all(dir,"_人體拓樸.png"):
+                    全能ORB(f, "human")
+                for _, _, f in path_all(dir, "_人體拓樸.png"):
                     skeleton = 抽取骨架向量(f)
                     if skeleton is not None:
                         memory.append(skeleton)
-                return np.array(memory)  # shape (T,33,3)
-            calculate(dir, 低階, 中階, 高階)
+                for r, _, f in path_all(dir, "_人體拓樸.png"):
+                    make_json_content(r,f,"time_skeleton",[os.path.getctime(f),memory]) # shape (T,33,3)
 
+            # intent 目標圖片
+            def 節拍觸發(intent):
+                rhythm=[] # 動作幅度,時間
+                time_skeleton=read_json_content(r,"肌肉記憶","time_skeleton")
+                time_file=read_json_content(r,"肌肉記憶","time_file")
+                for i,(r, _, _) in enumerate(path_all(dir, "_人體拓樸.png")):
+                    if i==0:
+                        continue
+                    v=time_skeleton[i][1]-time_skeleton[i-1][1]
+                    t=time_file[i][1]-time_file[i-1][1]
+                    i+=1
+                    # 歐氏距離
+                    speed=np.linalg.norm(v/t)
+                    rhythm.append((speed,time_skeleton[i][0]))
+                # TODO:同一套動作
+                動作筏值=max(r[0])-min(r[0])/4
+                時差筏值=(max(r[0])-min(r[0])/2) / rhythm[:-1][1]-rhythm[0][1]
+                # TODO:小動作，比較極端的動作，而且是一段時間內
+                max=[r[1] for r in rhythm if r[0]>max(rhythm)-動作筏值 and r[1]-r[int(r[1]/時差筏值)]>動作筏值]
+                min=[r[1] for r in rhythm if r[0]<min(rhythm)+動作筏值 and r[1]-r[int(r[1]/時差筏值)]>-動作筏值]
+
+
+                
+                    
+
+            calculate(dir, 低階, 中階, 高階)
 
     # *** 世界第一直觀顯示，比世界通用顯示還強了億倍，比占卜還像占卜。找 → 讀寫 → 看
     # 像占卜找題目，解需求； 像占卜壓縮關鍵詞，誇越多維； 像占卜解壓縮成各種細項，符合不同差異的需求
