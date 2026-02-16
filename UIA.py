@@ -200,7 +200,10 @@ def 全能ORB(a, b=None, path=None, ratio=0.75, similar=None):
         cv2.imwrite(path + "_人體拓樸.png", topo_img)
         return path
     elif str(b):
-        # 物品b，依照全方位攝影的圖像，來畫圖
+        # 物品b，依照全方位攝影的圖像，來畫圖 
+        # 要畫圖或直接比對圖片?
+            # 依據整張圖的特徵變化數量，更改判斷目標的特徵數量需求
+            # 點 線 面(三維轉向) 全點總和/總數量=中心座標 中心位移 =# 目標的圖片中心二維座標和三維轉向
 
         cv2.imwrite(path + "_目標.png", topo_img)
 
@@ -2285,16 +2288,14 @@ class Noēsis:
             def 循環訓練(intent):
                 # 目標圖片模糊、殘缺、構圖不完整、數量不夠時仍允許吸收，標記問題
                 目標=[] 
-                time_skeleton=read_json_content(r,"目標","time_skeleton") 
-                time_file=read_json_content(r,"目標","time_file") 
+                target=read_json_content(r,"肌肉記憶","目標") 
                 for i,(r, _, _) in enumerate(path_all(dir, "_目標.png")):
                     if i==0:
                         continue
-                    v=time_skeleton[i][1]-time_skeleton[i-1][1]
-                    t=time_file[i][1]-time_file[i-1][1]
+                    v=target[i][1]-target[i-1][1]
                     # 歐氏距離
                     speed=np.linalg.norm(v/t)
-                    目標.append((speed,time_skeleton[i][0]))
+                    目標.append((speed,target[i][0]))
 
 
                     
