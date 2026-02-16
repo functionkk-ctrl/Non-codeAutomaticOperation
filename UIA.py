@@ -107,7 +107,7 @@ def path_all(paths, target=None):
             # 依建立時間排序
             dirs.sort(key=lambda d: (root_path/ d).stat().st_ctime)
             files.sort(key=lambda f: (root_path/ f).stat().st_ctime)
-            if target:
+            if isinstance(target, str):
                 target_dirs = all(
                     any(t in d for d in dirs) or 
                     any(t in f for f in files)
@@ -199,6 +199,11 @@ def 全能ORB(a, b=None, path=None, ratio=0.75, similar=None):
         )
         cv2.imwrite(path + "_人體拓樸.png", topo_img)
         return path
+    elif str(b):
+        # 物品b，依照全方位攝影的圖像，來畫圖
+
+        cv2.imwrite(path + "_目標.png", topo_img)
+
     img2 = cv2.imread(b)
     if img2 is None:
         raise ValueError(f"讀取圖檔失敗: {b}")
@@ -2231,29 +2236,67 @@ class Noēsis:
                 for r, _, f in path_all(dir, "_人體拓樸.png"):
                     make_json_content(r,f,"time_skeleton",[os.path.getctime(f),memory]) # shape (T,33,3)
 
-            # intent 目標圖片
-            def 節拍觸發(intent):
-                rhythm=[] # 動作幅度,時間
-                time_skeleton=read_json_content(r,"肌肉記憶","time_skeleton")
-                time_file=read_json_content(r,"肌肉記憶","time_file")
+            def 節拍觸發():
+                """
+                肌肉記憶，是[(動作幅度,時間),,,,]，已經時間排序遞增
+                動作分支，強度低到高到低
+                相似動作， 動作分支互相矯正差距後比對，先時間後強度。是[相似動作[],...,相似動作[],...,相似動作[]]，....是穿插第一到最後相似動作其中的動作分支
+                    獲得相似動作詞的該組時不處理的動作分支，就是互相間的關聯
+                    p.s. 動作分支的上波時下降點和下波時上升點，轉折點不知道用途
+                code:動作分支複製，相似動作全部的子相似動作
+                return 動作分支,相似動作
+                # 給完整的動作分支，算出相似動作互相的關聯
+                    甚麼開始和結束，是甚麼東西用到相似動作的子相似動作，然後該子相似動作的第一時間到最後時間，然後就拿去
+                """
+                肌肉記憶=[] 
+                time_skeleton=read_json_content(r,"肌肉記憶","time_skeleton") 
+                time_file=read_json_content(r,"肌肉記憶","time_file") 
                 for i,(r, _, _) in enumerate(path_all(dir, "_人體拓樸.png")):
                     if i==0:
                         continue
                     v=time_skeleton[i][1]-time_skeleton[i-1][1]
                     t=time_file[i][1]-time_file[i-1][1]
-                    i+=1
                     # 歐氏距離
                     speed=np.linalg.norm(v/t)
-                    rhythm.append((speed,time_skeleton[i][0]))
-                # TODO:同一套動作
-                動作筏值=max(r[0])-min(r[0])/4
-                時差筏值=(max(r[0])-min(r[0])/2) / rhythm[:-1][1]-rhythm[0][1]
-                # TODO:小動作，比較極端的動作，而且是一段時間內
-                max=[r[1] for r in rhythm if r[0]>max(rhythm)-動作筏值 and r[1]-r[int(r[1]/時差筏值)]>動作筏值]
-                min=[r[1] for r in rhythm if r[0]<min(rhythm)+動作筏值 and r[1]-r[int(r[1]/時差筏值)]>-動作筏值]
+                    肌肉記憶.append((speed,time_skeleton[i][0]))
+                動作分支=[]
+                start=[]
+                end=0
+                for i in range(1,len(肌肉記憶)-1):
+                    # 獲得上波+下波
+                    if 肌肉記憶[i-1] < 肌肉記憶[i]  > 肌肉記憶[i+1]:
+                        start.append(i)
+                    elif 肌肉記憶[i-1] > 肌肉記憶[i]  < 肌肉記憶[i+1]:
+                        end=i
+                    elif len(start)>1:
+                        動作分支.append(肌肉記憶[start[0]:end+1])
+                        start.clear()
+                相似動作=[]
+                for i in range(len(動作分支)):
+                    a=動作分支[i] # (動作幅度,時間)，肌肉記憶[start[0]:end+1]
+                    for j in range(len(動作分支)):
+                        b=動作分支[j] # (動作幅度,時間)，肌肉記憶[start[0]:end+1]
+                        sorce=np.sum(1 for aa in a for bb in b if bb[0]*(a[:-1][1]-a[0][1])/ (b[:-1][1]-b[0][1])==aa[0]) # 其實動作強度變化速度和時差有關，並不需要再用時差
+                        if sorce>0.9*len(a):
+                            相似動作.append(b)
+                return 動作分支,相似動作
+            
+            # intent 目標圖片
+            def 循環訓練(intent):
+                # 目標圖片模糊、殘缺、構圖不完整、數量不夠時仍允許吸收，標記問題
+                目標=[] 
+                time_skeleton=read_json_content(r,"目標","time_skeleton") 
+                time_file=read_json_content(r,"目標","time_file") 
+                for i,(r, _, _) in enumerate(path_all(dir, "_目標.png")):
+                    if i==0:
+                        continue
+                    v=time_skeleton[i][1]-time_skeleton[i-1][1]
+                    t=time_file[i][1]-time_file[i-1][1]
+                    # 歐氏距離
+                    speed=np.linalg.norm(v/t)
+                    目標.append((speed,time_skeleton[i][0]))
 
 
-                
                     
 
             calculate(dir, 低階, 中階, 高階)
