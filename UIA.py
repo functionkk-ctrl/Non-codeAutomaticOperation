@@ -78,9 +78,9 @@ TEMPLATE_DIRS = {
     "absorb": DATA_BASE/ "absorb",  # Nosis吸收的知識
 }
 
-MATCH_THRESHOLD = 0.85
+MATCH   _THRESHOLD = 0.85
 LANGS = "eng+chi_sim"
-DEBUG = True
+DEBUG = True    
 bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
 # --- 共用工具 ---
 alive_event = threading.Event()
@@ -165,6 +165,7 @@ def 全能ORB(a, b=None, path=None, ratio=0.75, similar=None):
     a : 該圖，return 特徵
     b: 比對的圖，ab圖相似的拓樸結構圖，儲存在path
         b="human"，a和人體拓樸結構比對
+        b=字串，a中的(b字串)目標完整圖片，含紋理和彩度
         path:imwrite存放路徑，預設為a的同路徑
         ratio:ab圖相似的拓樸結構圖，去掉 不明顯相似的。0.75 是經典值
     similar:ab圖相似率要多少，最多100，return bool
@@ -199,48 +200,47 @@ def 全能ORB(a, b=None, path=None, ratio=0.75, similar=None):
         )
         cv2.imwrite(path + "_人體拓樸.png", topo_img)
         return path
-    elif str(b):
-        # 物品b，依照全方位攝影的圖像，來畫圖 
-        # 要畫圖或直接比對圖片?
-            # 依據整張圖的特徵變化數量，更改判斷目標的特徵數量需求
-            # 點 線 面(三維轉向) 全點總和/總數量=中心座標 中心位移 =# 目標的圖片中心二維座標和三維轉向
+    elif isinstance(b, str):
+        for _,_,f in path_all(TEMPLATE_DIRS["attributes"],b):
+            im2_orb(f,"_目標")
+    else:
+        im2_orb(b)
 
-        cv2.imwrite(path + "_目標.png", topo_img)
-
-    img2 = cv2.imread(b)
-    if img2 is None:
-        raise ValueError(f"讀取圖檔失敗: {b}")
-    kp2, desB = sift.detectAndCompute(img2, None)
-    if desA is None or desB is None:
-        return False if similar is not None else None
-    matches = bf.knnMatch(desA, desB, k=2)
-    good_matches = []
-    good_matches = [m for m, n in matches if m.distance < ratio * n.distance]
-    good_matches = sorted(good_matches, key=lambda x: x.distance)
-    src_pts = np.float32(
-        [kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
-    dst_pts = np.float32(
-        [kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
-    H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
-    if similar is not None:
-        if len(good_matches) < 4:
-            return False
-        if H is None or mask is None:
-            return False
-        similarity = mask.sum() / len(good_matches) * 100
-        return similarity > similar
-    matchesMask = mask.ravel().tolist() if mask is not None else None
-    img_matches = cv2.drawMatches(
-        img1, kp1,
-        img2, kp2,
-        good_matches, None,  # TODO: 完全相同的拓樸結構
-        matchColor=(0, 255, 0),
-        singlePointColor=(255, 0, 0),
-        matchesMask=matchesMask,
-        flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
-    )
-    cv2.imwrite(path+"相似拓樸結構.png", img_matches)
-    return path
+    def im2_orb(b,png="_相似拓樸結構"):
+        img2 = cv2.imread(b) 
+        if img2 is None:
+            raise ValueError(f"讀取圖檔失敗: {b}")
+        kp2, desB = sift.detectAndCompute(img2, None)
+        if desA is None or desB is None:
+            return False if similar is not None else None
+        matches = bf.knnMatch(desA, desB, k=2)
+        good_matches = []
+        good_matches = [m for m, n in matches if m.distance < ratio * n.distance]
+        good_matches = sorted(good_matches, key=lambda x: x.distance)
+        src_pts = np.float32(
+            [kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+        dst_pts = np.float32(
+            [kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+        H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+        if similar is not None:
+            if len(good_matches) < 4:
+                return False
+            if H is None or mask is None:
+                return False
+            similarity = mask.sum() / len(good_matches) * 100
+            return similarity > similar
+        matchesMask = mask.ravel().tolist() if mask is not None else None
+        img_matches = cv2.drawMatches(
+            img1, kp1,
+            img2, kp2,
+            good_matches, None,  # TODO: 完全相同的拓樸結構
+            matchColor=(0, 255, 0),
+            singlePointColor=(255, 0, 0),
+            matchesMask=matchesMask,    
+            flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
+        )
+        cv2.imwrite(path+png+".png", img_matches)
+        return path
 
 
 def watchdog():
@@ -326,7 +326,7 @@ def validate_cache(name, pos, tolerance=10, dir=TEMPLATE_DIRS["img"]):
 def locate_text(keyword, sort=1, num=1, classA=None):
     """找字"""
     # OCR識別文字
-    data = pytesseract.image_to_data(cv2.cvtColor(screenshot(
+    data = pytesseract.image_to_data(c  v2.cvtColor(screenshot(
     ), cv2.COLOR_BGR2GRAY), lang=LANGS, output_type=pytesseract.Output.DICT)
     # 收集匹配點
     pts = [
@@ -994,7 +994,7 @@ class TargetExtractor:
         alpha = mask2
         self.extracted = cv2.merge([b, g, r, alpha])
 
-        # 儲存為透明PNG
+            # 儲存為透明PNG
         os.makedirs(dir, exist_ok=True)  # 沒有就自動建立
         cv2.imwrite(save_path, self.extracted)
         print(f"✅ 已儲存 {save_path}")
@@ -2108,24 +2108,24 @@ class Noēsis:
             dir = Path(TEMPLATE_DIRS["absorb"])/"觀察"
             # 路徑,ORB分析方法
             低階 = {
-                "肌肉記憶": "可重複對應人體位移的圖片特徵，拆成最小吸收單元",  # OK
-                "節拍觸發": "依圖片出現的節奏與間隔觸發吸收與標記",  # OK
-                "容錯允許": "目標圖片模糊、殘缺、構圖不完整、數量不夠時仍允許吸收，標記問題",  # NG
-                "減少依賴": "圖片可獨立 對應人體操作，不依賴其他圖片或完整序列",  # NG
+                "肌肉記憶": "可重複對應人體位移的圖片特徵，拆成最小吸收單元",  # OK，人體
+                "節拍觸發": "依圖片出現的節奏與間隔觸發吸收與標記",  # OK，動作相似,動作分支
+                "容錯允許": "目標圖片模糊、殘缺、構圖不完整、數量不夠時仍允許吸收，標記問題",  # OK，缺少的正常程度,目標進度
+                    "減少依賴": "圖片可獨立 對應人體操作，不依賴其他圖片或完整序列",  # NG，
                 "快速感官觸發": "所有感官訊號視覺化，在同路徑下 另存新檔",  # OK
-                "優先級切換": "圖片特徵非預期結構或 肌肉記憶核危險時 優先標記問題",  # NG
-                "循環訓練": "全部低階核並行的流程，以此比對和目標圖片特徵是否達標，矯正全部低階",  # NG
+                    "優先級切換": "圖片特徵非預期結構或 肌肉記憶核危險時 優先標記問題",  # NG動作危險程度，目標危險程度
+                    "循環訓練": "全部低階核並行的流程，以此比對和目標圖片特徵是否達標，矯正全部低階",  # NG，(資料夾的全部圖片組成一個陣列)return 動作分支,相似動作,動作危險程度,目標進度,目標不像正常程度,目標危險程度
             }
             中階 = {
-                "批次進度核": "容錯核、目標圖片數量是否達標，以此調整肌肉記憶核和快速感官切換核",  # NG
-                "趨勢分析核": "分析循環訓練核，找出通用模式",  # NG
-                "策略調整核": "以交流提出的為參照，趨勢分析核的通用模式是否最有效，標記需要切換成新模式",  # NG
-                "環境配置核": "管理觀察所需的資源與環境（資料夾、模板、感官模組），以此提升批次進度核",  # NG
+                    "批次進度核": "容錯核、目標圖片數量是否達標，以此調整肌肉記憶核和快速感官切換核",  # NG，目標進度曲線優化節拍，降低不像正常程度
+                    "趨勢分析核": "分析循環訓練核，找出通用模式",  # NG，穩定上升型、震盪型、高危阻塞型、低異常高效率型
+                    "策略調整核": "以交流提出的為參照，趨勢分析核的通用模式是否最有效，標記需要切換成新模式",  # NG，要評估「型態 × 目標」的歷史結果。
+                    "環境配置核": "管理觀察所需的資源與環境（資料夾、模板、感官模組），以此提升批次進度核",  # NG，管理資料夾、圖片、感官視覺化。
             }
             高階 = {
-                "長期目標核": "制定長期完成策略，修正低階標記的問題，肌肉記憶核符合人體限制",  # NG
-                "優化學習核": "以肌肉記憶核和快速感官切換核為主，以循環訓練核和趨勢分析核為輔，以此和批次進度核的最高比率",  # NG
-                "溝通協作核": "以交流為考量，以優化學習核為參照",  # NG
+                    "長期目標核": "制定長期完成策略，修正低階標記的問題，肌肉記憶核符合人體限制",  # NG
+                    "優化學習核": "以肌肉記憶核和快速感官切換核為主，以循環訓練核和趨勢分析核為輔，以此和批次進度核的最高比率",  # NG
+                    "溝通協作核": "以交流為考量，以優化學習核為參照",  # NG
                 "危機處理核": "當低階或中階出現重大異常或矛盾時，提出緊急通，避免資料錯誤累積"  # 亂寫的
             }
 
@@ -2284,21 +2284,34 @@ class Noēsis:
                             相似動作.append(b)
                 return 動作分支,相似動作
             
-            # intent 目標圖片
+            # TODO: intent 目標圖片
             def 循環訓練(intent):
                 # 目標圖片模糊、殘缺、構圖不完整、數量不夠時仍允許吸收，標記問題
                 目標=[] 
-                target=read_json_content(r,"肌肉記憶","目標") 
-                for i,(r, _, _) in enumerate(path_all(dir, "_目標.png")):
-                    if i==0:
+                target=read_json_content(r,"肌肉記憶","目標") # 讀取 目標 群
+                for _, _, f in path_all(dir): 
+                    全能ORB(f,target) # 屬性相似拓樸結構圖片另存為_目標，在f的同路徑
+                old_center=None
+                p=None
+                for r, _, f in path_all(dir, "_目標.png"):
+                    kp, des = 全能ORB(f) # TODO:處理操作中的目標f 合不合格
+                    if not kp:
                         continue
-                    v=target[i][1]-target[i-1][1]
-                    # 歐氏距離
-                    speed=np.linalg.norm(v/t)
-                    目標.append((speed,target[i][0]))
-
-
-                    
+                    # TODO:點(detectAndCompute/算出中心座標) 線(polylines) 面(比對出三維轉向) 全點總和/總數量=中心座標 中心位移 =# 目標的圖片中心二維座標和三維轉向
+                        # 有幾個面就有幾層陰影
+                        # 移除原圖的非目標色塊，即便sift缺失紋理和彩度，依舊可以得到完整的目標圖片
+                    pts = np.array([k.pt for k in kp], dtype=np.float32)
+                    if len(pts) == 0:
+                        return
+                    center = pts.mean(axis=0) # 中心座標
+                    if old_center:
+                        v=center-old_center # 位移
+                    old_center=center
+                    for _,_,f2 in path_all(TEMPLATE_DIRS["attributes"],f):
+                        if 全能ORB(f,f2,intent): # 目標f 的全方位的圖像，比較相似的
+                            p=f2 # 檔名
+                            break
+                return center,v,p
 
             calculate(dir, 低階, 中階, 高階)
 
