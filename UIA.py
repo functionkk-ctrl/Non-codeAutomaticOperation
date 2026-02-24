@@ -78,7 +78,7 @@ TEMPLATE_DIRS = {
     "absorb": DATA_BASE/ "absorb",  # Nosis吸收的知識
 }
 
-MATCH   _THRESHOLD = 0.85
+MATCH_THRESHOLD = 0.85
 LANGS = "eng+chi_sim"
 DEBUG = True    
 bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
@@ -90,16 +90,16 @@ firebase_admin.initialize_app(cred, {
 })
 
 
-def path_all(paths, target=None):
+def path_all(paths, target=None,exclude=None):
     """
     預設排序為時間，由舊到新
-    # yield root(完整目錄), dirs(下一層的全部資料夾名), files(這層全部檔案含檔名)
-    # paths 依序遍歷 ./a 和 ./b 這兩個目錄，包含到最下層
-        for root, dirs, files in path_all(["./a", "./b"]):
-    # 找到含 target 的檔案或資料夾，返回該根目錄 root/dirs，找不到則回傳 False。
-    # 找不到 target
+    yield root(完整目錄), dirs(下一層的全部資料夾名), files(這層全部檔案含檔名)
+    paths 依序遍歷 ./a 和 ./b 這兩個目錄，包含到最下層
+        # for root, dirs, files in path_all(["./a", "./b"]):
+    找到含 target 的檔案或資料夾，返回該根目錄 root/dirs，找不到則回傳 False。
+    找不到 target
         if not list(path_all(...)):
-    # paths, target =[],[]，all(...)target同時都符合
+    paths, target, exclude =[],[]，all(...)同時都有target，any(...)任一有exclude
     """
     for path in paths:
         for root, dirs, files in os.walk(path):
@@ -108,6 +108,7 @@ def path_all(paths, target=None):
             dirs.sort(key=lambda d: (root_path/ d).stat().st_ctime)
             files.sort(key=lambda f: (root_path/ f).stat().st_ctime)
             if isinstance(target, str):
+                # TODO: ***排除掉exclude
                 target_dirs = all(
                     any(t in d for d in dirs) or 
                     any(t in f for f in files)
@@ -160,9 +161,10 @@ def read_json_content(file_path, file_name,  key):
     else:
         return []
 
-def 全能ORB(a, b=None, path=None, ratio=0.75, similar=None):
+def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_ratio=None):
     """
-    a : 該圖，return 特徵
+    a : 該圖，return 特徵點,描述子
+        color，return 特徵點(正規化),描述子,顏色度數
     b: 比對的圖，ab圖相似的拓樸結構圖，儲存在path
         b="human"，a和人體拓樸結構比對
         b=字串，a中的(b字串)目標完整圖片，含紋理和彩度
@@ -177,14 +179,29 @@ def 全能ORB(a, b=None, path=None, ratio=0.75, similar=None):
     if img1 is None:
         raise ValueError(f"讀取圖檔失敗: {a}")
     kp1, desA = sift.detectAndCompute(img1, None)
+    if color=="color":
+        hsv = cv2.cvtColor(img1, cv2.COLOR_BGR2HSV)
+        feature_nodes = []
+        for i, k in enumerate(kp1):
+            x, y = int(k.pt[0]), int(k.pt[1])
+            h, s, v = hsv[y, x]
+            h_img, w_img = img1.shape[:2]
+            x_norm = x / w_img
+            y_norm = y / h_img
+            feature_nodes.append({
+                "pos": (x_norm, y_norm),
+                "descriptor": tuple(desA[i]),
+                "color": (int(h), int(s), int(v))
+            })
+        return feature_nodes
     if not b:
         return kp1, desA
     elif b == "human":
         mp_pose = mp.solutions.pose
         mp_drawing = mp.solutions.drawing_utils
         pose = mp_pose.Pose(static_image_mode=True)
-        img_rgb = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
-        result = pose.process(img_rgb)
+        img = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
+        result = pose.process(img)
         if not result.pose_landmarks:
             raise ValueError("未偵測到人體")
         # 建立黑底拓樸圖（乾淨骨架）
@@ -222,6 +239,8 @@ def 全能ORB(a, b=None, path=None, ratio=0.75, similar=None):
         dst_pts = np.float32(
             [kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
         H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+        if similar_ratio:
+            return mask.sum() / len(good_matches) * 100
         if similar is not None:
             if len(good_matches) < 4:
                 return False
@@ -2110,7 +2129,7 @@ class Noēsis:
             低階 = {
                 "肌肉記憶": "可重複對應人體位移的圖片特徵，拆成最小吸收單元",  # OK，人體
                 "節拍觸發": "依圖片出現的節奏與間隔觸發吸收與標記",  # OK，動作相似,動作分支
-                "容錯允許": "目標圖片模糊、殘缺、構圖不完整、數量不夠時仍允許吸收，標記問題",  # OK，缺少的正常程度,目標進度
+                "容錯允許": "目標圖片模糊、殘缺、構圖不完整、數量不夠時仍允許吸收，標記問題",  # OK，新資料比對相似度，缺少的正常程度(_目標.png)1 - similarity,目標進度(_目標完成.png)1 - similarity
                     "減少依賴": "圖片可獨立 對應人體操作，不依賴其他圖片或完整序列",  # NG，
                 "快速感官觸發": "所有感官訊號視覺化，在同路徑下 另存新檔",  # OK
                     "優先級切換": "圖片特徵非預期結構或 肌肉記憶核危險時 優先標記問題",  # NG動作危險程度，目標危險程度
@@ -2231,7 +2250,7 @@ class Noēsis:
                 memory = []
                 for _, _, f in path_all(dir, "_視覺化.png"):
                     # 得到觸覺和視覺的最小單元
-                    全能ORB(f, "human")
+                    全能ORB(f, b="human")
                 for _, _, f in path_all(dir, "_人體拓樸.png"):
                     skeleton = 抽取骨架向量(f)
                     if skeleton is not None:
@@ -2285,15 +2304,59 @@ class Noēsis:
                 return 動作分支,相似動作
             
             def 優先級切換():
-                全能ORB(dir,"危險")
+                全能ORB(dir,b="危險")
                 
-            # TODO: intent 目標圖片
-            def 循環訓練(intent):
-                # 先區分色塊的顏色度數，後ORB，
-                目標=[] 
+            # TODO: intent 目標圖片，從多個圖片中的重疊拓樸結構得到
+            def 容錯允許(intent_ratio=0.75):
+                pd=path_all(dir,"_目標.png")
+                if len(pd):
+                    for r,_,files in path_all(pd):
+                        target=[f for f in files if "_目標.png" in f]
+                        target_danger=[f for f in files if "_目標危險.png" in f]
+                        target_ok=[f for f in files if "_目標完成.png" in f]
+                        for f in files:
+                            sr=全能ORB(f,target,similar_ratio="similar_ratio")
+                            sr_danger=全能ORB(f,target_danger,similar_ratio="similar_ratio")
+                            sr_ok=全能ORB(f,target_ok,similar_ratio="similar_ratio")
+                            make_json_content(r,"肌肉記憶","time_schedule",[sr,sr_danger,sr_ok]) # 目標,危險,進度
+                else:
+                    # 創建目標圖片
+                    for r,_,files in pd:
+                        h,w=cv2.imread(files[0]).shape[:2]
+                        heatmap = np.zeros((h,w,4),dtype=np.uint16) # R,G,B,count
+                        for f in files:
+                            feats = 全能ORB(r/f, color="color") # 得到該圖的特徵點,描述子,顏色度數
+                            if not feats:
+                                continue
+                            # 將正規化座標轉回像素
+                            coords = np.array([
+                                (int(node["pos"][1]*h), int(node["pos"][0]*w), node["color"])
+                                for node in feats
+                            ], dtype=object)
+
+                            y_idx = np.array([c[0] for c in coords])
+                            x_idx = np.array([c[1] for c in coords])
+                            colors = np.array([c[2] for c in coords], dtype=np.float32)
+                            # 累加顏色和計數
+                            heatmap[y_idx, x_idx, :3] += colors
+                            heatmap[y_idx, x_idx, 3] += 1
+                        # 計算平均顏色，避免除零
+                        mask = heatmap[...,3] > 0
+                        fused_img = np.zeros((h,w,3), dtype=np.uint8)
+                        fused_img[mask] = (heatmap[mask,:3]/heatmap[mask,3,None]).astype(np.uint8)
+                        # threshold heatmap 生成核心拓樸
+                        core_mask = heatmap[...,3] >= len(files)*intent_ratio
+                        fused_img[~core_mask] = 0
+                        # 直接輸出
+                        cv2.imwrite(r/"_目標.png", fused_img)
+                        return fused_img
+                                    
+
+            def 趨勢分析():
+                # 各種曲線有運動、缺失的正常、進度、危險
                 target=read_json_content(r,"肌肉記憶","目標") # 讀取 目標 群
                 for _, _, f in path_all(dir): 
-                    全能ORB(f,target) # 屬性相似拓樸結構圖片另存為_目標，在f的同路徑
+                    全能ORB(f,b=target) # 屬性相似拓樸結構圖片另存為_目標，在f的同路徑
                 old_center=None
                 p=None
                 for r, _, f in path_all(dir, "_目標.png"):
@@ -2311,30 +2374,28 @@ class Noēsis:
                         v=center-old_center # 位移
                     old_center=center
                     for _,_,f2 in path_all(TEMPLATE_DIRS["attributes"],f):
-                        if 全能ORB(f,f2,intent): # 目標f 的全方位的圖像，比較相似的
+                        if 全能ORB(f,b=f2,similar=intent): # 目標f 的全方位的圖像，比較相似的
                             p=f2 # 檔名
                             break
                 return center,v,p
+                # 穩定上升型、震盪型、高危阻塞型、低異常高效率型
 
-                def 批次進度核():
-                    # 目標進度曲線優化節拍，降低缺失的正常程度
-                def 環境配置():
-                    # 多張圖片有純環境、不純環境，移除環境和人體就得到目標。人體和目標的正常和危險的圖片。
+            def 批次進度核():
+                # 目標進度曲線優化節拍，降低缺失的正常程度
+            def 環境配置():
+                # 多張圖片有純環境、不純環境，移除環境和人體就得到目標。人體和目標的正常和危險的圖片。
+                # 獲得目標後要完成的有 _目標危險.png、_目標完成.png
 
-                def 趨勢分析():
-                    # 各種曲線有運動、缺失的正常、進度、危險
-                    # 穩定上升型、震盪型、高危阻塞型、低異常高效率型
+            def 策略調整():
+                # 以交流提出的為參照，趨勢分析核的通用模式是否最有效，標記需要切換成新模式
 
-                def 策略調整():
-                    # 以交流提出的為參照，趨勢分析核的通用模式是否最有效，標記需要切換成新模式
+            def 優化學習核():
+                pass
 
-                def 優化學習核():
-                    pass
-
-                def 溝通協作核():
-                    pass
-                def 危機處理核():
-                    # 危險降低時的動作分支
+            def 溝通協作核():
+                pass
+            def 危機處理核():
+                # 危險降低時的動作分支
             calculate(dir, 低階, 中階, 高階)
 
     # *** 世界第一直觀顯示，比世界通用顯示還強了億倍，比占卜還像占卜。找 → 讀寫 → 看
