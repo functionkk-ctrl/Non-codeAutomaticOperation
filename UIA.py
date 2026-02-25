@@ -2129,11 +2129,11 @@ class Noēsis:
             低階 = {
                 "肌肉記憶": "可重複對應人體位移的圖片特徵，拆成最小吸收單元",  # OK，人體
                 "節拍觸發": "依圖片出現的節奏與間隔觸發吸收與標記",  # OK，動作相似,動作分支
-                "容錯允許": "目標圖片模糊、殘缺、構圖不完整、數量不夠時仍允許吸收，標記問題",  # OK，新資料比對相似度，缺少的正常程度(_目標.png)1 - similarity,目標進度(_目標完成.png)1 - similarity
+                "容錯允許": "目標圖片模糊、殘缺、構圖不完整、數量不夠時仍允許吸收，標記問題",  # OK，新資料比對相似度，缺少的正常程度(_目標.png)1 - similarity,目標進度(_目標完成.png)1 - similarity。儲存在 叫time_schedule的Json檔案的time_schedule裡面
                     "減少依賴": "圖片可獨立 對應人體操作，不依賴其他圖片或完整序列",  # NG，
                 "快速感官觸發": "所有感官訊號視覺化，在同路徑下 另存新檔",  # OK
-                    "優先級切換": "圖片特徵非預期結構或 肌肉記憶核危險時 優先標記問題",  # NG動作危險程度，目標危險程度
-                    "循環訓練": "全部低階核並行的流程，以此比對和目標圖片特徵是否達標，矯正全部低階",  # NG，(資料夾的全部圖片組成一個陣列)return 動作分支,相似動作,動作危險程度,目標進度,目標不像正常程度,目標危險程度
+                "優先級切換": "圖片特徵非預期結構或 肌肉記憶核危險時 優先標記問題",  # OK，動作危險程度，目標危險程度。儲存在 叫time_schedule的Json檔案的time_schedule裡面
+                "循環訓練": "全部低階核並行的流程，以此比對和目標圖片特徵是否達標，矯正全部低階",  # OK，儲存在肌肉記憶.Json的time_schedule的 Value，(資料夾的全部圖片組成一個陣列) 動作分支,相似動作,動作危險程度,目標進度,目標不像正常程度,目標危險程度
             }
             中階 = {
                     "批次進度核": "容錯核、目標圖片數量是否達標，以此調整肌肉記憶核和快速感官切換核",  # NG，目標進度曲線優化節拍，降低缺失的正常程度
@@ -2314,29 +2314,49 @@ class Noēsis:
                         target=[f for f in files if "_目標.png" in f]
                         target_danger=[f for f in files if "_目標危險.png" in f]
                         target_ok=[f for f in files if "_目標完成.png" in f]
+                        human_danger=[f for f in files if "_人體動作危險.png" in f]
                         for f in files:
                             sr=全能ORB(f,target,similar_ratio="similar_ratio")
                             sr_danger=全能ORB(f,target_danger,similar_ratio="similar_ratio")
                             sr_ok=全能ORB(f,target_ok,similar_ratio="similar_ratio")
-                            make_json_content(r,"肌肉記憶","time_schedule",[sr,sr_danger,sr_ok]) # 目標,危險,進度
+                            ha_danger=全能ORB(f,human_danger,similar_ratio="similar_ratio")
+                            make_json_content(r,"肌肉記憶","time_schedule",[sr,sr_danger,sr_ok,ha_danger]) # 目標,目標危險,目標進度,動作危險
                 else:
                     # 創建目標圖片
                     for r,_,files in pd:
                         h,w=cv2.imread(files[0]).shape[:2]
                         heatmap = np.zeros((h,w,4),dtype=np.uint16) # R,G,B,count
+
+                        mp_pose = mp.solutions.pose
+                        pose = mp_pose.Pose(static_image_mode=True)
                         for f in files:
                             feats = 全能ORB(r/f, color="color") # 得到該圖的特徵點,描述子,顏色度數
                             if not feats:
                                 continue
+                            # 生成人體 mask
+                            img = cv2.imread(r/f)
+                            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                            result = pose.process(img_rgb)
+                            if result.pose_landmarks:
+                                topo_img = np.zeros((h, w), dtype=np.uint8)
+                                mp.solutions.drawing_utils.draw_landmarks(
+                                    topo_img,
+                                    result.pose_landmarks,
+                                    mp_pose.POSE_CONNECTIONS,
+                                    landmark_drawing_spec=mp.solutions.drawing_utils.DrawingSpec(color=(255,), thickness=2, circle_radius=2)
+                                )
+                                human_mask |= topo_img > 0  # 將人體位置標為 True
                             # 將正規化座標轉回像素
                             coords = np.array([
                                 (int(node["pos"][1]*h), int(node["pos"][0]*w), node["color"])
                                 for node in feats
                             ], dtype=object)
-
                             y_idx = np.array([c[0] for c in coords])
                             x_idx = np.array([c[1] for c in coords])
                             colors = np.array([c[2] for c in coords], dtype=np.float32)
+                            # 過濾掉人體特徵
+                            valid = ~human_mask[y_idx, x_idx]
+                            y_idx, x_idx, colors = y_idx[valid], x_idx[valid], colors[valid]
                             # 累加顏色和計數
                             heatmap[y_idx, x_idx, :3] += colors
                             heatmap[y_idx, x_idx, 3] += 1
@@ -2354,40 +2374,95 @@ class Noēsis:
 
             def 趨勢分析():
                 # 各種曲線有運動、缺失的正常、進度、危險
-                target=read_json_content(r,"肌肉記憶","目標") # 讀取 目標 群
-                for _, _, f in path_all(dir): 
-                    全能ORB(f,b=target) # 屬性相似拓樸結構圖片另存為_目標，在f的同路徑
-                old_center=None
-                p=None
-                for r, _, f in path_all(dir, "_目標.png"):
-                    kp, des = 全能ORB(f) # TODO:處理操作中的目標f 合不合格
-                    if not kp:
-                        continue
-                    # TODO:點(detectAndCompute/算出中心座標) 線(polylines) 面(比對出三維轉向) 全點總和/總數量=中心座標 中心位移 =# 目標的圖片中心二維座標和三維轉向
-                        # 有幾個面就有幾層陰影
-                        # 移除原圖的非目標色塊，即便sift缺失紋理和彩度，依舊可以得到完整的目標圖片
-                    pts = np.array([k.pt for k in kp], dtype=np.float32)
-                    if len(pts) == 0:
-                        return
-                    center = pts.mean(axis=0) # 中心座標
-                    if old_center:
-                        v=center-old_center # 位移
-                    old_center=center
-                    for _,_,f2 in path_all(TEMPLATE_DIRS["attributes"],f):
-                        if 全能ORB(f,b=f2,similar=intent): # 目標f 的全方位的圖像，比較相似的
-                            p=f2 # 檔名
-                            break
-                return center,v,p
+                # 讀取 動作分支,相似動作,動作危險程度,目標進度,目標不像正常程度,目標危險程度
+                節拍=節拍觸發() # 時間順序非時間 讀取 動作分支,相似動作
+                動作分支,相似動作=np.array(節拍[0]),np.array(節拍[1])
+                目標=read_json_content(dir,"肌肉記憶","time_schedule") # 時間順序非時間 讀取 目標,目標危險,目標進度,動作危險
+                目標完整性,目標危險,目標進度,動作危險=np.array(目標[0]),np.array(目標[1]),np.array(目標[2]),np.array(目標[3])
+                
                 # 穩定上升型、震盪型、高危阻塞型、低異常高效率型
 
-            def 批次進度核():
-                # 目標進度曲線優化節拍，降低缺失的正常程度
             def 環境配置():
                 # 多張圖片有純環境、不純環境，移除環境和人體就得到目標。人體和目標的正常和危險的圖片。
-                # 獲得目標後要完成的有 _目標危險.png、_目標完成.png
+                # 獲得目標後要完成的有 _目標危險.png、_目標完成.png。獲得人體後要有 _人體危險.png
+                pass
 
             def 策略調整():
-                # 以交流提出的為參照，趨勢分析核的通用模式是否最有效，標記需要切換成新模式
+                # 分析交流意圖和甚麼型態最有效，趨勢分析該型態，甚麼動作對該型態最有貢獻
+                需求= 分析交流意圖 # 用辭典找真正的意圖?
+                p1=path_all(TEMPLATE_DIRS["Noesis"],TEMPLATE_DIRS["communication"])
+                if len(p1):
+                    for r,dirs話題,files細節 in p1:
+                        # TODO:話題轉成需求意圖(可能多種)
+                        需求=""
+                需求型態= np.分析用到的型態(需求) # TODO:用數學找意圖對應的型態?必定多種np方法，np.array(動作分支,相似動作,目標完整性,目標危險,目標進度,動作危險) 抽取成需求對應的型態曲線
+                現階段=趨勢分析(需求型態) 
+                # 可能有多張圖片
+                建議的最有效動作= np.型態的各種計算方式(需求型態,現階段) # TODO:用數學找np對應的型態?型態的最優解(動作分支,相似動作,目標完整性,目標危險,目標進度,動作危險)
+
+                需求意圖列表 = []
+                for 話題 in話題特徵列表:
+                    # 直接用自訂計算方法匹配對應需求模板
+                    # 可以替換不同數學方法（差分、卷積、矩陣運算等）
+                    idx = np.argmin(np.linalg.norm(對應需求模板 - 話題, axis=1))
+                    需求意圖列表.append(對應需求模板[idx])
+
+
+
+
+                # 分析特定的拓樸結構圖片
+                全能ORB()
+                pd=path_all(dir,"_建議的最有效動作.png")
+                if not len(pd):
+                    # 創建 建議的最有效動作圖片，TODO:不是最有效的話則被移除該圖片
+                    for r,_,files in pd:
+                        h,w=cv2.imread(files[0]).shape[:2]
+                        heatmap = np.zeros((h,w,4),dtype=np.uint16) # R,G,B,count
+
+                        mp_pose = mp.solutions.pose
+                        pose = mp_pose.Pose(static_image_mode=True)
+                        for f in files:
+                            feats = 全能ORB(r/f, color="color") # 得到該圖的特徵點,描述子,顏色度數
+                            if not feats:
+                                continue
+                            # 生成人體 mask
+                            img = cv2.imread(r/f)
+                            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                            result = pose.process(img_rgb)
+                            if result.pose_landmarks:
+                                topo_img = np.zeros((h, w), dtype=np.uint8)
+                                mp.solutions.drawing_utils.draw_landmarks(
+                                    topo_img,
+                                    result.pose_landmarks,
+                                    mp_pose.POSE_CONNECTIONS,
+                                    landmark_drawing_spec=mp.solutions.drawing_utils.DrawingSpec(color=(255,), thickness=2, circle_radius=2)
+                                )
+                                human_mask |= topo_img > 0  # 將人體位置標為 True
+                            # 將正規化座標轉回像素
+                            coords = np.array([
+                                (int(node["pos"][1]*h), int(node["pos"][0]*w), node["color"])
+                                for node in feats
+                            ], dtype=object)
+                            y_idx = np.array([c[0] for c in coords])
+                            x_idx = np.array([c[1] for c in coords])
+                            colors = np.array([c[2] for c in coords], dtype=np.float32)
+                            # 過濾掉人體特徵
+                            valid = ~human_mask[y_idx, x_idx]
+                            y_idx, x_idx, colors = y_idx[valid], x_idx[valid], colors[valid]
+                            # 累加顏色和計數
+                            heatmap[y_idx, x_idx, :3] += colors
+                            heatmap[y_idx, x_idx, 3] += 1
+                        # 計算平均顏色，避免除零
+                        mask = heatmap[...,3] > 0
+                        建議的最有效動作 = np.zeros((h,w,3), dtype=np.uint8)
+                        建議的最有效動作[mask] = (heatmap[mask,:3]/heatmap[mask,3,None]).astype(np.uint8)
+                        # threshold heatmap 生成核心拓樸
+                        core_mask = heatmap[...,3] >= len(files)*intent_ratio
+                        建議的最有效動作[~core_mask] = 0
+                        # 直接輸出
+                        cv2.imwrite(dir/"_建議動作.png",建議的最有效動作)
+                        return 建議的最有效動作
+
 
             def 優化學習核():
                 pass
