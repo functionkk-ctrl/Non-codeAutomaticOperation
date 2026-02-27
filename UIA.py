@@ -1179,6 +1179,7 @@ class TargetExtractor:
         # *** python OCR找到該目標時計算該目標附在其物之上，利用目標的物件名稱紀錄的，計算其物的實際大小
         # *** save_path圖片 重新命名(固定格式有長寬高)，在判斷物體實際大小模式時，在TEMPLATE_DIRS["img"]中找到(固定格式有長寬高)save_path圖片，全部找一次，找到則分析附在何物、計算該物實際大小
         # *** 進入 計算物體實際大小的 計算模式 *** 讀取存檔的圖片
+        pass
     def compute_logic(self):
         frame = screenshot()
         # 全部物件
@@ -2372,40 +2373,58 @@ class Noēsis:
                         return fused_img
                                     
 
-            def 趨勢分析(曲線s,節拍=None):
-                # 各種曲線有運動、缺失的正常、進度、危險
-                # 讀取 動作分支,相似動作,動作危險程度,目標進度,目標不像正常程度,目標危險程度
-                目標=read_json_content(dir,"肌肉記憶","time_schedule") # 時間順序非時間 讀取 目標,目標危險,目標進度,動作危險
-                目標完整性,目標危險,目標進度,動作危險=np.array(目標[0]),np.array(目標[1]),np.array(目標[2]),np.array(目標[3])
-                if 節拍 is None:
-                    節拍=節拍觸發() # 時間順序非時間 讀取 動作分支,相似動作
-                動作分支,相似動作=np.array(節拍[0]),np.array(節拍[1])
-                # TODO:***照原路分析最優解，節拍(動作分之,相似動作)
+            def 趨勢分析(意圖):
+                def 前後詞(paths):
+                    for path in paths:
+                        try:
+                            目標=read_json_content(path,"肌肉記憶","time_schedule") # 時間順序非時間 讀取 目標,目標危險,目標進度,動作危險
+                        except IOError: # TODO: 錯誤時中斷
+                            raise RuntimeError(f"讀取失敗: {path}") 
+                        目標完整性,目標危險,目標進度,動作危險=np.array(目標[0]),np.array(目標[1]),np.array(目標[2]),np.array(目標[3])
+                        節拍=節拍觸發() # 時間順序非時間 讀取 動作分支,相似動作
+                        動作分支,相似動作=np.array(節拍[0]),np.array(節拍[1])
+                        # TODO: # TODO:*****fuck you 精準使用前後詞有需求的
+                        if "fuck you" in path:
+                            yield 目標完整性
+                        elif "fuck you" in path:
+                            yield 目標危險
+                        elif "fuck you" in path:
+                            yield 目標進度
+                        elif "fuck you" in path:
+                            yield 動作危險
+                        elif "fuck you" in path:
+                            yield 動作分支
+                        elif "fuck you" in path:
+                            yield 相似動作
+                        else:
+                            # 如果沒有匹配，全部回傳
+                            yield (
+                                目標完整性,
+                                目標危險,
+                                目標進度,
+                                動作危險,
+                                動作分支,
+                                相似動作
+                            )
                 現階段={} # 需求對應的型態曲線:現階段曲線
-                for 曲線 in 曲線s: 
-                    # TODO:判斷式後面多一行，要對應的曲線
+                # 分析得到最優解 節拍(動作分支,相似動作)。完整的(動作分支,相似動作,目標完整性,目標危險,目標進度,動作危險)
+                for 曲線 in 意圖: 
                     if "不重複" in 曲線:
-                        現階段["不重複"]=(np.unique(np.diff(曲線)))
-
+                        現階段["不重複"]=(np.unique(np.diff(前後詞(曲線))))
                     if "逐漸變化" in 曲線:
-                        現階段["逐漸變化"]=(np.diff(曲線))
-
+                        現階段["逐漸變化"]=(np.diff(前後詞(曲線)))
                     if "累積量" in 曲線:
-                        現階段["累積量"]=(np.cumsum(曲線))
-
+                        現階段["累積量"]=(np.cumsum(前後詞(曲線)))
                     if "平均值" in 曲線:
-                        現階段["平均值"]=(np.mean(曲線))
-
+                        現階段["平均值"]=(np.mean(前後詞(曲線)))
                     if  any(keyword in 曲線 for keyword in ["最大", "最強", "最高", "最佳"]):
-                        現階段["最大"]=(np.max(曲線))
+                        現階段["最大"]=(np.max(前後詞(曲線)))
                         if "順位" in 曲線:
-                            現階段["順位"]=(np.argmax(曲線))
-
+                            現階段["順位"]=(np.argmax(前後詞(曲線)))
                     if "逐漸變化" in 曲線:
-                        現階段["逐漸變化"]=(np.diff(曲線))
-
+                        現階段["逐漸變化"]=(np.diff(前後詞(曲線)))
                     if "逐漸變化" in 曲線:
-                        現階段["逐漸變化"]=(np.diff(曲線))
+                        現階段["逐漸變化"]=(np.diff(前後詞(曲線)))
                 return 現階段
                     
 
@@ -2452,10 +2471,8 @@ class Noēsis:
                                     需求.append(x[0],y[0],y[1]) # 用戶意圖,Noesis和 用戶意圖 差距(寬泛)(並未決定用法)
                 話題,細節,細節的誤差=需求 # path,png
                 # 用數學找意圖對應的型態?必定多種np方法，np.array(動作分支,相似動作,目標完整性,目標危險,目標進度,動作危險) 抽取成需求對應的型態曲線
-                現階段=趨勢分析(話題) # 需求對應的型態曲線:現階段曲線
-                # 可能有多張圖片
-                for a in 現階段:
-                    建議的最有效動作=趨勢分析(a.value,a) # 分析得到最優解 節拍(動作分支,相似動作)。完整的(動作分支,相似動作,目標完整性,目標危險,目標進度,動作危險)
+                建議的最有效動作=趨勢分析(話題) # 需求對應的型態曲線:現階段曲線# 可能有多張圖片
+                return 建議的最有效動作
 
 
 
