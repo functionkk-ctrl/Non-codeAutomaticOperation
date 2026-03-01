@@ -2378,12 +2378,12 @@ class Noēsis:
                     for path in paths:
                         try:
                             目標=read_json_content(path,"肌肉記憶","time_schedule") # 時間順序非時間 讀取 目標,目標危險,目標進度,動作危險
-                        except IOError: # TODO: 錯誤時中斷
+                        except IOError: # 錯誤時中斷
                             raise RuntimeError(f"讀取失敗: {path}") 
                         目標完整性,目標危險,目標進度,動作危險=np.array(目標[0]),np.array(目標[1]),np.array(目標[2]),np.array(目標[3])
                         節拍=節拍觸發() # 時間順序非時間 讀取 動作分支,相似動作
                         動作分支,相似動作=np.array(節拍[0]),np.array(節拍[1])
-                        # TODO: # TODO:*****fuck you 精準使用前後詞有需求的
+                        # TODO:*****fuck you 精準使用前後詞有需求的
                         if "fuck you" in path:
                             yield 目標完整性
                         elif "fuck you" in path:
@@ -2400,11 +2400,23 @@ class Noēsis:
                             # 如果沒有匹配，全部回傳
                             yield (
                                 目標完整性,
+                                    # 放棄甚麼(目標)的甚麼
                                 目標危險,
+                                    # 目標不可以甚麼
                                 目標進度,
+                                    # 更快
+                                    # 穩定
                                 動作危險,
+                                    # 犧牲甚麼(增加危險容許)
+                                    # 動作不可以甚麼、小心甚麼
                                 動作分支,
-                                相似動作
+                                    # 動作中的甚麼
+                                        # 一起
+                                        # 避開
+                                相似動作, # 交談中哪些詞和以上哪些有關聯含方向
+                                    # 動作中的甚麼
+                                        # 一起
+                                        # 避開
                             )
                 現階段={} # 需求對應的型態曲線:現階段曲線
                 # 分析得到最優解 節拍(動作分支,相似動作)。完整的(動作分支,相似動作,目標完整性,目標危險,目標進度,動作危險)
