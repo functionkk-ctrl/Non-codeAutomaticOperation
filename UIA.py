@@ -2374,50 +2374,75 @@ class Noēsis:
                                     
 
             def 趨勢分析(意圖):
+                # 名詞 = 物件
+                # 形容詞 = 性質
+                # 副詞 = 程度
+                # 動詞 = 變化 / 作用
                 def 前後詞(paths):
-                    for path in paths:
-                        try:
-                            目標=read_json_content(path,"肌肉記憶","time_schedule") # 時間順序非時間 讀取 目標,目標危險,目標進度,動作危險
-                        except IOError: # 錯誤時中斷
-                            raise RuntimeError(f"讀取失敗: {path}") 
-                        目標完整性,目標危險,目標進度,動作危險=np.array(目標[0]),np.array(目標[1]),np.array(目標[2]),np.array(目標[3])
-                        節拍=節拍觸發() # 時間順序非時間 讀取 動作分支,相似動作
-                        動作分支,相似動作=np.array(節拍[0]),np.array(節拍[1])
-                        # TODO:*****fuck you 精準使用前後詞有需求的
-                        if "fuck you" in path:
-                            yield 目標完整性
-                        elif "fuck you" in path:
-                            yield 目標危險
-                        elif "fuck you" in path:
-                            yield 目標進度
-                        elif "fuck you" in path:
-                            yield 動作危險
-                        elif "fuck you" in path:
-                            yield 動作分支
-                        elif "fuck you" in path:
-                            yield 相似動作
-                        else:
-                            # 如果沒有匹配，全部回傳
-                            yield (
-                                目標完整性,
-                                    # 放棄甚麼(目標)的甚麼
-                                目標危險,
-                                    # 目標不可以甚麼
-                                目標進度,
+                    for pa in paths:
+                        pal=path_all(pa)
+                        for r,da,_ in len(pal):
+                            path=r/f
+                            try:
+                                目標=read_json_content(path,"肌肉記憶","time_schedule") # 時間順序非時間 讀取 目標,目標危險,目標進度,動作危險
+                            except IOError: # 錯誤時中斷
+                                raise RuntimeError(f"讀取失敗: {path}") 
+                            目標完整性,目標危險,目標進度,動作危險=np.array(目標[0]),np.array(目標[1]),np.array(目標[2]),np.array(目標[3])
+                            節拍=節拍觸發() # 時間順序非時間 讀取 動作分支,相似動作
+                            動作分支,相似動作=np.array(節拍[0]),np.array(節拍[1])
+                            # TODO:*****fuck you(動詞或動名詞) 精準使用前後詞有需求的
+                            for d in da:
+                                if "放棄" in d:
+                                    for _,_,fb細節 in path_all(path/d):
+                                        for f in fb細節: # 要放棄的 
+                                            r.clear(f) # TODO:刪除檔案?
+                                            yield 目標完整性 # TODO: 移除節點 甚麼相似動作，更新 目標完整性，回傳曲線
+                                elif "fuck you" in d:
+                                    yield 目標危險
+                                elif any(["更快","穩定"]) in d:
                                     # 更快
+                                    if "更快" in d:
+                                        for _,_,fb細節 in path_all(path/d):
+                                            for f in fb細節: # 要更快的 
+                                                r.add(f) # TODO:增加檔案?
+                                            yield 目標進度 # TODO: 更新目標進度
                                     # 穩定
-                                動作危險,
-                                    # 犧牲甚麼(增加危險容許)
-                                    # 動作不可以甚麼、小心甚麼
-                                動作分支,
-                                    # 動作中的甚麼
-                                        # 一起
-                                        # 避開
-                                相似動作, # 交談中哪些詞和以上哪些有關聯含方向
-                                    # 動作中的甚麼
-                                        # 一起
-                                        # 避開
-                            )
+                                    if "穩定" in d:
+                                        for _,_,fb細節 in path_all(path/d):
+                                            for f in fb細節: # 要更快的 
+                                                r.add(f) # TODO:增加檔案?
+                                            yield 目標進度 # TODO: 更新目標進度
+                                        yield 目標進度
+                                elif "fuck you" in d:
+                                    yield 動作危險
+                                elif "fuck you" in d:
+                                    yield 動作分支
+                                elif "fuck you" in d:
+                                    yield 相似動作
+                                else:
+                                    # 如果沒有匹配，全部回傳
+                                    yield (
+                                        目標完整性,
+                                            # 放棄甚麼(目標)的甚麼
+                                        目標危險,
+                                            # 目標不可以甚麼、目標甚麼犯法
+                                        目標進度,
+                                            # 更快
+                                            # 穩定
+                                        動作危險,
+                                            # 犧牲甚麼(增加危險容許)
+                                            # 動作不可以甚麼、小心甚麼、避免甚麼
+                                        動作分支,
+                                            # 動作中的甚麼
+                                                # 一起
+                                                # 避開
+                                                # 相關的
+                                        相似動作, # 交談中哪些詞和以上哪些有關聯含方向
+                                            # 動作中的甚麼
+                                                # 一起、合併、同時、順便
+                                                # 避開、跳過、略過
+                                                # 類似的
+                                    )
                 現階段={} # 需求對應的型態曲線:現階段曲線
                 # 分析得到最優解 節拍(動作分支,相似動作)。完整的(動作分支,相似動作,目標完整性,目標危險,目標進度,動作危險)
                 for 曲線 in 意圖: 
