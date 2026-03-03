@@ -1,4 +1,5 @@
 import json
+import shutil
 import mediapipe as mp
 from geographiclib.geodesic import Geodesic
 import firebase_admin
@@ -54,7 +55,7 @@ if platform == 'android':
 def read_imu(dt):
     val = accelerometer.acceleration
     if val:
-    ax, ay, az = val
+        ax, ay, az = val
     print(ax, ay, az)
 
 
@@ -345,7 +346,7 @@ def validate_cache(name, pos, tolerance=10, dir=TEMPLATE_DIRS["img"]):
 def locate_text(keyword, sort=1, num=1, classA=None):
     """找字"""
     # OCR識別文字
-    data = pytesseract.image_to_data(c  v2.cvtColor(screenshot(
+    data = pytesseract.image_to_data(c2v2.cvtColor(screenshot(
     ), cv2.COLOR_BGR2GRAY), lang=LANGS, output_type=pytesseract.Output.DICT)
     # 收集匹配點
     pts = [
@@ -2395,7 +2396,8 @@ class Noēsis:
                                 if "放棄" in d:
                                     for _,_,fb細節 in path_all(path/d):
                                         for f in fb細節: # 要放棄的 
-                                            r.clear(f) # TODO:刪除檔案?
+                                            f.unlink() # TODO:刪除檔案?
+                                            
                                             yield 目標完整性 # TODO: 移除節點 甚麼相似動作，更新 目標完整性，回傳曲線
                                 elif "fuck you" in d:
                                     yield 目標危險
@@ -2405,14 +2407,15 @@ class Noēsis:
                                         for _,_,fb細節 in path_all(path/d):
                                             for f in fb細節: # 要更快的 
                                                 r.add(f) # TODO:增加檔案?
+                                                shutil.copy2(f, r/f)     # 複製內容,路徑還檔案名稱
                                             yield 目標進度 # TODO: 更新目標進度
                                     # 穩定
                                     if "穩定" in d:
                                         for _,_,fb細節 in path_all(path/d):
                                             for f in fb細節: # 要更快的 
                                                 r.add(f) # TODO:增加檔案?
+                                                shutil.copy2(f, r/f)     # 複製內容,路徑還檔案名稱
                                             yield 目標進度 # TODO: 更新目標進度
-                                        yield 目標進度
                                 elif "fuck you" in d:
                                     yield 動作危險
                                 elif "fuck you" in d:
@@ -2579,6 +2582,7 @@ class Noēsis:
                 pass
             def 危機處理核():
                 # 危險降低時的動作分支
+                pass
             calculate(dir, 低階, 中階, 高階)
 
     # *** 世界第一直觀顯示，比世界通用顯示還強了億倍，比占卜還像占卜。找 → 讀寫 → 看
