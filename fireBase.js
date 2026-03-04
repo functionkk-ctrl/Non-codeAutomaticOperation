@@ -1,18 +1,13 @@
-// fireBase.js
-// *** 搜尋地圖
-// *** 全部地址對設定的起點算距離 排序，間距太近的一些地址為一分支，太遠額外安排
+{
+  "rules": {
+    ".read": "auth != null",
 
-// *** 繪製路線圖並記錄指南針方向，旋轉地圖時路線圖與地圖的指南針向量 矯正
-// *** 指南針計算(一維)
-
-// class if() {} class的class
-
-
-
-
-
-
-
-
-//
-// ***** 連結設備，定期上傳資訊給fireBase
+    "$path": {
+      ".write": "auth != null && (
+        root.child('admins').child(auth.uid).val() === true
+        || (!data.exists() && false)
+        || (data.exists() && !newData.exists() ? false : true)
+      )"
+    }
+  }
+}
