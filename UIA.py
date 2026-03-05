@@ -173,6 +173,7 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
         path:imwrite存放路徑，預設為a的同路徑
         ratio:ab圖相似的拓樸結構圖，去掉 不明顯相似的。0.75 是經典值
     similar:ab圖相似率要多少，最多100，return bool
+    similar_ratio:return ab圖相似率，最多100
     """
     if path is None:
         path = path_all(base_path, a)[0]
@@ -2261,7 +2262,7 @@ class Noēsis:
                 for r, _, f in path_all(dir, "_人體拓樸.png"):
                     make_json_content(r,f,"time_skeleton",[os.path.getctime(f),memory]) # shape (T,33,3)
 
-            def 節拍觸發():
+            def 節拍觸發(path=None):
                 """
                 肌肉記憶，是[(動作幅度,時間),,,,]，已經時間排序遞增
                 動作分支，強度低到高到低
@@ -2273,6 +2274,8 @@ class Noēsis:
                 # 給完整的動作分支，算出相似動作互相的關聯
                     甚麼開始和結束，是甚麼東西用到相似動作的子相似動作，然後該子相似動作的第一時間到最後時間，然後就拿去
                 """
+                if path is not None:
+                    dir =path 
                 肌肉記憶=[] 
                 time_skeleton=read_json_content(r,"肌肉記憶","time_skeleton") 
                 time_file=read_json_content(r,"肌肉記憶","time_file") 
@@ -2374,88 +2377,57 @@ class Noēsis:
                         cv2.imwrite(r/"_目標.png", fused_img)
                         return fused_img
                                     
-
+            # 從此處起為交流
             def 趨勢分析(意圖):
                 # 名詞 = 物件 。*.json
                 # 形容詞 = 性質 。folder
                 # 副詞 = 程度 。files
                 # 動詞或動名詞 = 變化 / 作用 。dirs
+                def 路徑語意更新曲線(path_a,fas,path_b,曲線,新增或移除=0):
+                    ruselt=[]
+                    for _,_,fbs in path_all(path_b):
+                        if 新增或移除>0:
+                            ruselt=[fa for fa in fas for fb in fbs if 全能ORB(fa,fb,similar=0.9)] 
+                        else:
+                            ruselt=[fa for fa in fas for fb in fbs if not 全能ORB(fa,fb,similar=0.9)] 
+                    目標=read_json_content(path_a,"肌肉記憶","time_schedule") # 時間順序非時間 讀取 目標,目標危險,目標進度,動作危險
+                    if 目標 is []: 
+                        print(f"讀取失敗: {path_a}") 
+                    目標完整性,目標危險,目標進度,動作危險=np.array(目標[0]),np.array(目標[1]),np.array(目標[2]),np.array(目標[3])
+                    節拍=節拍觸發(r) # 時間順序非時間 讀取 動作分支,相似動作
+                    動作分支,相似動作=np.array(節拍[0]),np.array(節拍[1])
+                    if 曲線 == 相似動作:
+                        # 一起、合併、同時、順便
+                        # 避開、跳過、略過
+                        # 類似的、相似的
+                        for c in 相似動作:
+                            if 全能ORB(path_a,c,similar=0.9):
+                                yield c
+                    yield 曲線
+                
                 def 前後詞(paths):
-                    # 環境核監督得到 人體和目標的常態和危險圖片，由此延伸和路徑語意得到座標或和其他路徑語意的相對差
-                        # 溝通協作核，座標為路徑上全部的資料夾名稱和其目標完整性
-                        # 優化學習核，相對差為語意座標之差，可以選擇一部分或完全比對
-                    def where_first(gerund,動作):
-                        # TODO:儲存 (動作) ，放棄()、增加()、更快()、更穩()、穩定()、禁止()
-                        make_json_content(TEMPLATE_DIRS["speak"],"speaker_where",f"{gerund}",動作)
-                                          
                     for pa in paths:
                         pal=path_all(pa)
                         if len(pal):
-                            for r,da,_ in pal:
-                                path=r
-                                目標=read_json_content(path,"肌肉記憶","time_schedule") # 時間順序非時間 讀取 目標,目標危險,目標進度,動作危險
-                                if 目標 is []: 
-                                    print(f"讀取失敗: {path}") 
-                                目標完整性,目標危險,目標進度,動作危險=np.array(目標[0]),np.array(目標[1]),np.array(目標[2]),np.array(目標[3])
-                                節拍=節拍觸發() # 時間順序非時間 讀取 動作分支,相似動作
-                                動作分支,相似動作=np.array(節拍[0]),np.array(節拍[1])
-                                # TODO:*****fuck you(動詞或動名詞) 精準使用前後詞有需求的
+                            for r,da,fas in pal:
                                 for d in da:
                                     if any(k in d for k in ["放棄", "刪除", "移除", "捨棄"]):
-                                        for _,_,fb細節 in path_all(path/d):
-                                            for f in fb細節: # 要放棄的 
-                                                f.unlink() # TODO:***刪除檔案?
-                                                
-                                                yield 目標完整性 # TODO: 移除節點 甚麼相似動作，更新 目標完整性，回傳曲線
+                                        路徑語意更新曲線(path_a=r,fas=fas,path_b=r/d, 新增或移除=-1, 曲線=[相似動作,目標完整性,目標危險]) # 放棄甚麼(目標)的甚麼
                                     elif any(k in d for k in ["新增", "加入", "增加"]):
-                                        for rb,_,fb細節 in path_all(path/d):
-                                            for f in fb細節: 
-                                                shutil.copy2(rb/f, r/f) # 複製內容,路徑還檔案名稱
-                                        yield 目標危險
+                                        路徑語意更新曲線(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作,目標危險]) # 目標不可以甚麼、目標甚麼犯法
                                     elif any(k in d for k in ["更快", "加速", "穩定", "優化"]):
                                         if any(k in d for k in ["更快", "加速"]):
-                                            for _,_,fb細節 in path_all(path/d):
-                                                for f in fb細節: # 要更快的 
-                                                    r.add(f) # TODO:***增加檔案?
-                                                yield 目標進度 # TODO: 更新目標進度
+                                            路徑語意更新曲線(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作,目標進度]) # 更快 
                                         if any(k in d for k in [ "穩定", "優化"]):
-                                            for _,_,fb細節 in path_all(path/d):
-                                                for f in fb細節: # 要更穩的 
-                                                    r.add(f) # TODO:***增加檔案?
-                                                yield 目標進度 # TODO: 更新目標進度
+                                            路徑語意更新曲線(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作,目標進度]) # 更穩
                                     elif any(k in d for k in ["犯法", "違規", "禁止"]):
-                                        for _,_,fb細節 in path_all(path/d):
-                                                for f in fb細節: # 要禁止的 
-                                                    # TODO:*** 
-                                                yield 動作危險
-                                    elif any(k in d for k in ["fuck you"]):
-                                        yield 動作分支
-                                    elif any(k in d for k in ["fuck you"]):
-                                        yield 相似動作
+                                        路徑語意更新曲線(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作,動作危險]) # 動作不可以甚麼、小心甚麼、避免甚麼
+                                    elif any(k in d for k in ["全部動作", "所有動作"]):
+                                        路徑語意更新曲線(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[動作分支]) 
+                                    elif any(k in d for k in ["一起", "合併", "同時", "順便"]):
+                                        路徑語意更新曲線(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作]) 
                                     else:
-                                        # 如果沒有匹配，全部回傳
-                                        yield (
-                                            目標完整性,
-                                                # 放棄甚麼(目標)的甚麼
-                                            目標危險,
-                                                # 目標不可以甚麼、目標甚麼犯法
-                                            目標進度,
-                                                # 更快
-                                                # 穩定
-                                            動作危險,
-                                                # 犧牲甚麼(增加危險容許)
-                                                # 動作不可以甚麼、小心甚麼、避免甚麼
-                                            動作分支,
-                                                # 動作中的甚麼
-                                                    # 一起
-                                                    # 避開
-                                                    # 相關的
-                                            相似動作, # 交談中哪些詞和以上哪些有關聯含方向
-                                                # 動作中的甚麼
-                                                    # 一起、合併、同時、順便
-                                                    # 避開、跳過、略過
-                                                    # 類似的
-                                        )
+                                        yield ( "無法解析的路徑語意", r/d, fas)
                 # TODO:***減少迴圈
                 # TODO:***真實意圖
                 # 副詞 = 程度 。files
@@ -2591,13 +2563,17 @@ class Noēsis:
 
 
             def 優化學習核():
+                # 環境核監督得到 人體和目標的常態和危險圖片，由此延伸和路徑語意得到座標或和其他路徑語意的相對差
+                # TODO:優化學習核，相對差為語意座標之差，可以選擇一部分或完全比對
                 pass
 
             def 溝通協作核():
-                # TODO:***回覆訊息為其下資料夾名稱，用戶點某個詞會看到該資料夾的圖片，向方便的小說
                 def 情境式對話():
+                    # TODO:***回覆訊息為其下資料夾名稱，用戶點某個詞會看到該資料夾的圖片，向方便的小說
                     # 點擊詞，顯示圖片集
                     pass  
+                # TODO:溝通協作核，座標為路徑上全部的資料夾名稱和其目標完整性
+
                 pass
             def 危機處理核():
                 # 危險降低時的動作分支
