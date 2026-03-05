@@ -2383,7 +2383,7 @@ class Noēsis:
                 # 形容詞 = 性質 。folder
                 # 副詞 = 程度 。files
                 # 動詞或動名詞 = 變化 / 作用 。dirs
-                def 路徑語意更新曲線(path_a,fas,path_b,曲線,新增或移除=0):
+                def 路徑語意轉曲線並更新(path_a,fas,path_b,曲線,新增或移除=0):
                     ruselt=[]
                     for _,_,fbs in path_all(path_b):
                         if 新增或移除>0:
@@ -2394,7 +2394,7 @@ class Noēsis:
                     if 目標 is []: 
                         print(f"讀取失敗: {path_a}") 
                     目標完整性,目標危險,目標進度,動作危險=np.array(目標[0]),np.array(目標[1]),np.array(目標[2]),np.array(目標[3])
-                    節拍=節拍觸發(r) # 時間順序非時間 讀取 動作分支,相似動作
+                    節拍=節拍觸發(path_a) # 時間順序非時間 讀取 動作分支,相似動作
                     動作分支,相似動作=np.array(節拍[0]),np.array(節拍[1])
                     if 曲線 == 相似動作:
                         # 一起、合併、同時、順便
@@ -2406,53 +2406,49 @@ class Noēsis:
                     yield 曲線
                 
                 def 前後詞(paths):
+                    # 精準使用有需要的曲線
                     for pa in paths:
                         pal=path_all(pa)
                         if len(pal):
                             for r,da,fas in pal:
                                 for d in da:
                                     if any(k in d for k in ["放棄", "刪除", "移除", "捨棄"]):
-                                        路徑語意更新曲線(path_a=r,fas=fas,path_b=r/d, 新增或移除=-1, 曲線=[相似動作,目標完整性,目標危險]) # 放棄甚麼(目標)的甚麼
+                                        路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=-1, 曲線=[相似動作,目標完整性,目標危險]) # 放棄甚麼(目標)的甚麼
                                     elif any(k in d for k in ["新增", "加入", "增加"]):
-                                        路徑語意更新曲線(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作,目標危險]) # 目標不可以甚麼、目標甚麼犯法
+                                        路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作,目標危險]) # 目標不可以甚麼、目標甚麼犯法
                                     elif any(k in d for k in ["更快", "加速", "穩定", "優化"]):
                                         if any(k in d for k in ["更快", "加速"]):
-                                            路徑語意更新曲線(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作,目標進度]) # 更快 
+                                            路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作,目標進度]) # 更快 
                                         if any(k in d for k in [ "穩定", "優化"]):
-                                            路徑語意更新曲線(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作,目標進度]) # 更穩
+                                            路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作,目標進度]) # 更穩
                                     elif any(k in d for k in ["犯法", "違規", "禁止"]):
-                                        路徑語意更新曲線(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作,動作危險]) # 動作不可以甚麼、小心甚麼、避免甚麼
+                                        路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作,動作危險]) # 動作不可以甚麼、小心甚麼、避免甚麼
                                     elif any(k in d for k in ["全部動作", "所有動作"]):
-                                        路徑語意更新曲線(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[動作分支]) 
+                                        路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[動作分支]) 
                                     elif any(k in d for k in ["一起", "合併", "同時", "順便"]):
-                                        路徑語意更新曲線(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作]) 
+                                        路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作]) 
                                     else:
                                         yield ( "無法解析的路徑語意", r/d, fas)
-                # TODO:***減少迴圈
-                # TODO:***真實意圖
-                # 副詞 = 程度 。files
-                # TODO: 曲線圖篩選圖片(read_json_content)最符合需求
-                # TODO: ***絕對差為座標，相對差為關係，有座標才能計算關係
-                現階段={} # 需求對應的型態曲線:現階段曲線
+                最佳建議={} # 需求對應的型態曲線:現階段曲線
                 # 分析得到最優解 節拍(動作分支,相似動作)。完整的(動作分支,相似動作,目標完整性,目標危險,目標進度,動作危險)
                 for 曲線 in 意圖: 
                     if "不重複" in 曲線:
-                        現階段["不重複"]=(np.unique(np.diff(前後詞(曲線))))
+                        最佳建議["不重複"]=(np.unique(np.diff(前後詞(曲線))))
                     if "逐漸變化" in 曲線:
-                        現階段["逐漸變化"]=(np.diff(前後詞(曲線)))
+                        最佳建議["逐漸變化"]=(np.diff(前後詞(曲線)))
                     if "累積量" in 曲線:
-                        現階段["累積量"]=(np.cumsum(前後詞(曲線)))
+                        最佳建議["累積量"]=(np.cumsum(前後詞(曲線)))
                     if "平均值" in 曲線:
-                        現階段["平均值"]=(np.mean(前後詞(曲線)))
+                        最佳建議["平均值"]=(np.mean(前後詞(曲線)))
                     if  any(keyword in 曲線 for keyword in ["最大", "最強", "最高", "最佳"]):
-                        現階段["最大"]=(np.max(前後詞(曲線)))
+                        最佳建議["最大"]=(np.max(前後詞(曲線)))
                         if "順位" in 曲線:
-                            現階段["順位"]=(np.argmax(前後詞(曲線)))
+                            最佳建議["順位"]=(np.argmax(前後詞(曲線)))
                     if "逐漸變化" in 曲線:
-                        現階段["逐漸變化"]=(np.diff(前後詞(曲線)))
+                        最佳建議["逐漸變化"]=(np.diff(前後詞(曲線)))
                     if "逐漸變化" in 曲線:
-                        現階段["逐漸變化"]=(np.diff(前後詞(曲線)))
-                return 現階段
+                        最佳建議["逐漸變化"]=(np.diff(前後詞(曲線)))
+                return 最佳建議
                     
 
             def 環境配置():
@@ -2462,20 +2458,20 @@ class Noēsis:
 
             def 策略調整():
                 # 以用戶(b)為準，這樣才可以靈活更新
-                def 雙方正規化分析誤差主因(a,b,ratio):
+                def 雙方正規化分析誤差主因(a,b,ratio=0.9):
                     p=np.sort([
                         全能ORB(aa,bb,similar_ratio=ratio) 
                         for aa in a
                         for bb in b
                     ])
-                    min=match.floor(len(p)*0.1)
-                    降頻=p[:min]
+                    low_cut=math.floor(len(p)*0.1)
+                    降頻=p[:low_cut]
                     if 降頻:
                         升頻=[]
                         for r,_,_ in path_all(b,a):
                             for r2,_,f in path_all(r,a):
                                 pp=全能ORB(f,a,similar_ratio=ratio)
-                                if pp>len(p)-min>0:
+                                if pp>len(p)-low_cut>0:
                                     升頻.append([r2,f])
                         return 升頻
                 需求=[]
@@ -2484,7 +2480,7 @@ class Noēsis:
                 nc=path_all(TEMPLATE_DIRS["Noesis"],TEMPLATE_DIRS["communication"]) # 聆聽用戶訊息
                 if len(nc):
                     for r,dirs話題,files細節 in nc:
-                        # TODO:話題轉成需求意圖(可能多種)，直接或間接
+                        # 話題轉成需求意圖(可能多種)，直接或間接
                             # 目標行為矯正，得到意圖的不同
                                 # 正規化矯正，分析行為的降頻，之後才是判斷降頻主因。
                                 # 降頻同時哪個行為升頻，這就是主因，不過主因高機率是內部資訊，需要各種深入方法提取
@@ -2495,86 +2491,27 @@ class Noēsis:
                                 for _,_,cf in bfl: # 用戶的實際行為
                                     x=雙方正規化分析誤差主因(cf,_目標完成png) # 用戶真正的意圖
                                     y=雙方正規化分析誤差主因(cf,files細節) # Noesis和用戶的意圖的差距
-                                    需求.append(x[0],y[0],y[1]) # 用戶意圖,Noesis和 用戶意圖 差距(寬泛)(並未決定用法)
-                話題,細節,細節的誤差=需求 # path,png
+                                    需求.append([x[0],y[0],y[1]]) # 用戶意圖,Noesis和 用戶意圖 差距(寬泛)(並未決定用法)
+                話題,細節,細節的誤差=需求 # path,png # 溝通協作核 和 優化學習核 可以用
                 # 用數學找意圖對應的型態?必定多種np方法，np.array(動作分支,相似動作,目標完整性,目標危險,目標進度,動作危險) 抽取成需求對應的型態曲線
                 建議的最有效動作=趨勢分析(話題) # 需求對應的型態曲線:現階段曲線# 可能有多張圖片
-                return 建議的最有效動作
-
-
-
-
-
-
-
-
-                # 分析特定的拓樸結構圖片
-                全能ORB()
-                pd=path_all(dir,"_建議的最有效動作.png")
-                if not len(pd):
-                    # 創建 建議的最有效動作圖片，TODO:不是最有效的話則被移除該圖片
-                    for r,_,files in pd:
-                        h,w=cv2.imread(files[0]).shape[:2]
-                        heatmap = np.zeros((h,w,4),dtype=np.uint16) # R,G,B,count
-
-                        mp_pose = mp.solutions.pose
-                        pose = mp_pose.Pose(static_image_mode=True)
-                        for f in files:
-                            feats = 全能ORB(r/f, color="color") # 得到該圖的特徵點,描述子,顏色度數
-                            if not feats:
-                                continue
-                            # 生成人體 mask
-                            img = cv2.imread(r/f)
-                            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                            result = pose.process(img_rgb)
-                            if result.pose_landmarks:
-                                topo_img = np.zeros((h, w), dtype=np.uint8)
-                                mp.solutions.drawing_utils.draw_landmarks(
-                                    topo_img,
-                                    result.pose_landmarks,
-                                    mp_pose.POSE_CONNECTIONS,
-                                    landmark_drawing_spec=mp.solutions.drawing_utils.DrawingSpec(color=(255,), thickness=2, circle_radius=2)
-                                )
-                                human_mask |= topo_img > 0  # 將人體位置標為 True
-                            # 將正規化座標轉回像素
-                            coords = np.array([
-                                (int(node["pos"][1]*h), int(node["pos"][0]*w), node["color"])
-                                for node in feats
-                            ], dtype=object)
-                            y_idx = np.array([c[0] for c in coords])
-                            x_idx = np.array([c[1] for c in coords])
-                            colors = np.array([c[2] for c in coords], dtype=np.float32)
-                            # 過濾掉人體特徵
-                            valid = ~human_mask[y_idx, x_idx]
-                            y_idx, x_idx, colors = y_idx[valid], x_idx[valid], colors[valid]
-                            # 累加顏色和計數
-                            heatmap[y_idx, x_idx, :3] += colors
-                            heatmap[y_idx, x_idx, 3] += 1
-                        # 計算平均顏色，避免除零
-                        mask = heatmap[...,3] > 0
-                        建議的最有效動作 = np.zeros((h,w,3), dtype=np.uint8)
-                        建議的最有效動作[mask] = (heatmap[mask,:3]/heatmap[mask,3,None]).astype(np.uint8)
-                        # threshold heatmap 生成核心拓樸
-                        core_mask = heatmap[...,3] >= len(files)*intent_ratio
-                        建議的最有效動作[~core_mask] = 0
-                        # 直接輸出
-                        cv2.imwrite(dir/"_建議動作.png",建議的最有效動作)
-                        return 建議的最有效動作
-
+                return 建議的最有效動作,細節,細節的誤差
 
             def 優化學習核():
                 # 環境核監督得到 人體和目標的常態和危險圖片，由此延伸和路徑語意得到座標或和其他路徑語意的相對差
                 # TODO:優化學習核，相對差為語意座標之差，可以選擇一部分或完全比對
-                pass
+                # 以誰為準?
+                策略調整() # todo:怎麼用?
 
+            # 副詞 = 程度 。files
             def 溝通協作核():
                 def 情境式對話():
-                    # TODO:***回覆訊息為其下資料夾名稱，用戶點某個詞會看到該資料夾的圖片，向方便的小說
-                    # 點擊詞，顯示圖片集
+                    # TODO:***回覆訊息為其下資料夾名稱，用戶點某個詞會看到該資料夾的圖片，像方便的小說
+                        # 點擊詞，顯示圖片集
                     pass  
                 # TODO:溝通協作核，座標為路徑上全部的資料夾名稱和其目標完整性
+                策略調整()
 
-                pass
             def 危機處理核():
                 # 危險降低時的動作分支
                 pass
