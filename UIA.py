@@ -124,7 +124,7 @@ def make_folder(folder_name):
     """
     在 base_path 下創建資料夾 folder_name（如果不存在）
     """
-    folder_path = base_path / folder_name
+    folder_path = base_path / str(folder_name)
     folder_path.mkdir(parents=True, exist_ok=True)  # 確保父資料夾也創建
     return folder_path
 
@@ -1935,12 +1935,8 @@ class Noēsis:
         dirs = TEMPLATE_DIRS["communication"]
 
         def speaker(img_path_list):
-            for r, _, f in path_all(img_path_list, TEMPLATE_DIRS["attributes"]):
-                save_path = Path(
-                    TEMPLATE_DIRS["speak"]/r/f"{f+int(time.time())}.jpg")  # TODO: 屬性資料夾的圖片
-                save_path.parent.mkdir(
-                    parents=True, exist_ok=True)  # 沒有資料夾，重建資料夾
-                cv2.imwrite(str(save_path), f)
+            for r, _, f in path_all(img_path_list, TEMPLATE_DIRS["attributes"]):                       
+                cv2.imwrite(make_folder(TEMPLATE_DIRS["speak"]/r/f"{f+int(time.time())}.jpg"), f) # TODO: 屬性資料夾的圖片
         # TODO:  # 找出用戶的交流資料夾，代表和用戶交談，同時已經區分話題，接著更改資料夾位址就算 延續話題，新位址與目前位址共享前綴
         # 話題排序(操作路徑):頻率(資料夾檔案數量)=高、前後詞(同層)=5、關聯詞(上下層)=3、資料夾名稱(NER)
         # 資料夾(類似副檔名):屬性(增加真實性的調味料) 場景、時間、地點、狀態
@@ -2491,20 +2487,105 @@ class Noēsis:
                                 for _,_,cf in bfl: # 用戶的實際行為
                                     x=雙方正規化分析誤差主因(cf,_目標完成png) # 用戶真正的意圖
                                     y=雙方正規化分析誤差主因(cf,files細節) # Noesis和用戶的意圖的差距
-                                    需求.append([x[0],y[0],y[1]]) # 用戶意圖,Noesis和 用戶意圖 差距(寬泛)(並未決定用法)
+                                    需求.append([x[0],y[0],y[1]]) # 用戶意圖,Noesis和 用戶意圖 差距(寬泛)
                 話題,細節,細節的誤差=需求 # path,png # 溝通協作核 和 優化學習核 可以用
                 # 用數學找意圖對應的型態?必定多種np方法，np.array(動作分支,相似動作,目標完整性,目標危險,目標進度,動作危險) 抽取成需求對應的型態曲線
                 建議的最有效動作=趨勢分析(話題) # 需求對應的型態曲線:現階段曲線# 可能有多張圖片
-                return 建議的最有效動作,細節,細節的誤差
+                return r,建議的最有效動作,細節,細節的誤差
+
+            def 學習者意願(
+                是否空閒=True,
+                精力=1.0,        # 0~1
+                飢餓=0.0,        # 0~1
+                睡意=0.0,        # 0~1
+                心情=0.5,        # -1 ~ 1
+                關係=0.5,        # 0~1
+                難度=0.5,        # 0~1
+                已學習時間=0     # 秒
+            ):
+                """
+                回傳 0~1 的學習意願權重
+                """
+                # TODO:調整參數
+                # 時序排程，有空閒?
+                # 精力，想吃飯或睡覺?
+                # 心情，和用戶關係
+                # 世界限制，學習內容太難，無法繼續學習，有邊際效益
+                # 1 時序排程：是否有空
+                if not 是否空閒:
+                    return 0.0
+
+                # 2 精力因素
+                energy_factor = max(0, 精力 - 0.5 * 飢餓 - 0.5 * 睡意)
+
+                # 3 心情 + 關係
+                mood_factor = (心情 + 1) / 2
+                relation_factor = 關係
+
+                # 4 世界限制：難度過高
+                difficulty_factor = 1 / (1 + math.exp(4 * (難度 - 0.7)))
+                # 難度 >0.7 開始快速下降
+
+                # 5 邊際效益（學太久效率下降）
+                fatigue_factor = math.exp(-已學習時間 / 3600)
+                # 1 小時衰減
+
+                # 綜合權重
+                weight = (
+                    energy_factor *
+                    mood_factor *
+                    relation_factor *
+                    difficulty_factor *
+                    fatigue_factor
+                )
+
+                # 限制在 0~1
+                weight = max(0.0, min(1.0, weight))
+
+                return weight
 
             def 優化學習核():
                 # 環境核監督得到 人體和目標的常態和危險圖片，由此延伸和路徑語意得到座標或和其他路徑語意的相對差
-                # TODO:優化學習核，相對差為語意座標之差，可以選擇一部分或完全比對
-                # 以誰為準?
-                策略調整() # todo:怎麼用?
+                學習行為詞 = [
+                    # 1. 日常操作行為
+                    "先看看","先翻翻書","再複習一下","再過一遍","做一下題","寫寫作業","練練手",
+                    "順手做筆記","隨便記一下","查一下","找資料","想想","反思一下","試著做","試一試",
+                    # 2. 學習狀態
+                    "今天有點懶","不太想學","專心一點","集中一下","亂七八糟","記不住","搞不懂",
+                    "慢慢來","一步步學","還可以","進步了","有點懂了",
+                    # 3. 互動策略
+                    "你教我","示範一下","怎麼做","我自己試","自己練習","先看看範例","先模仿一下",
+                    "你幫我看看","幫我檢查","再練一次","多做幾遍",
+                    # 4. 心態與動機
+                    "趕快完成","把它搞定","不懂就問","問問看","算了","暫時放一放","努力一下","繼續試",
+                    "想通了","領悟了"
+                ]
+                # 先假設用戶訊息為真，用戶的行為和目標差，學習者的行為和目標差，兩者之差為距離，以用戶的學習行為詞為幅度調整**2，學習者的行為
+                    # **2 調整幅度以學習者意願調整，例如學習者沒空、肚子餓、雙方關係惡劣
+                # 以交流為準，以觀察為參照
+                c學習=path_all(TEMPLATE_DIRS["communication"],學習行為詞)
+                if len(c學習):
+                    for r,dirs,files in c學習:
+                        x,y=[],[]
+                        for ra,das,fas in path_all(TEMPLATE_DIRS["absorb"],"_目標完成".png):
+                            x=[全能ORB(f,"_目標完成".png) for f in fas]
+                            for rb,dbs,fbs in path_all(TEMPLATE_DIRS["communication"],ra):
+                                y=[全能ORB(f,f2) for f in fas for f2 in fbs]
+                        path,建議的最有效動作,細節,細節的誤差=策略調整() 
+                        z=細節的誤差
+                        # 語意距離
+                        E = math.sqrt(x*x + y*y + z*z)
+                        motivation = 學習者意願()
+                        # 行為更新
+                        Δaction = motivation * E
+                        shutil.copy2(path, TEMPLATE_DIRS["absorb"]/Δaction)
+
 
             # 副詞 = 程度 。files
             def 溝通協作核():
+                """
+                以用戶為主，將自己的行為模式和意義輸出至 TEMPLATE_DIRS["speak"]
+                """
                 def 情境式對話():
                     # TODO:***回覆訊息為其下資料夾名稱，用戶點某個詞會看到該資料夾的圖片，像方便的小說
                         # 點擊詞，顯示圖片集
