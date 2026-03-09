@@ -2137,14 +2137,14 @@ class Noēsis:
             }
             中階 = {
                 "批次進度核": "容錯核、目標圖片數量是否達標，以此調整肌肉記憶核和快速感官切換核",  # NG，目標進度曲線優化節拍，降低缺失的正常程度
-                    "趨勢分析核": "分析循環訓練核，找出通用模式",  # NG，穩定上升型、震盪型、高危阻塞型、低異常高效率型
-                    "策略調整核": "以交流提出的為參照，趨勢分析核的通用模式是否最有效，標記需要切換成新模式",  # NG，要評估「型態 × 目標」的歷史結果。
+                "趨勢分析": "分析循環訓練核，找出通用模式",  # OK，穩定上升型、震盪型、高危阻塞型、低異常高效率型
+                "策略調整": "以交流提出的為參照，趨勢分析核的通用模式是否最有效，標記需要切換成新模式",  # OK
                     "環境配置核": "管理觀察所需的資源與環境（資料夾、模板、感官模組），以此提升批次進度核",  # NG，管理資料夾、圖片、感官視覺化。
             }
             高階 = {
                     "長期目標核": "制定長期完成策略，修正低階標記的問題，肌肉記憶核符合人體限制",  # NG
-                    "優化學習核": "以肌肉記憶核和快速感官切換核為主，以循環訓練核和趨勢分析核為輔，以此和批次進度核的最高比率",  # NG
-                    "溝通協作核": "以交流為考量，以優化學習核為參照",  # NG
+                    "優化學習": "以肌肉記憶核和快速感官切換核為主，以循環訓練核和趨勢分析核為輔，以此和批次進度核的最高比率",  # NG
+                    "溝通協作": "以交流為考量，以優化學習核為參照",  # NG
                 "危機處理核": "當低階或中階出現重大異常或矛盾時，提出緊急通，避免資料錯誤累積"  # 亂寫的
             }
 
@@ -2544,7 +2544,7 @@ class Noēsis:
 
                 return weight
 
-            def 優化學習核():
+            def 優化學習():
                 # 環境核監督得到 人體和目標的常態和危險圖片，由此延伸和路徑語意得到座標或和其他路徑語意的相對差
                 學習行為詞 = [
                     # 1. 日常操作行為
@@ -2571,27 +2571,46 @@ class Noēsis:
                             x=[全能ORB(f,"_目標完成".png) for f in fas]
                             for rb,dbs,fbs in path_all(TEMPLATE_DIRS["communication"],ra):
                                 y=[全能ORB(f,f2) for f in fas for f2 in fbs]
-                        path,建議的最有效動作,細節,細節的誤差=策略調整() 
-                        z=細節的誤差
-                        # 語意距離
-                        E = math.sqrt(x*x + y*y + z*z)
-                        motivation = 學習者意願()
-                        # 行為更新
-                        Δaction = motivation * E
-                        shutil.copy2(path, TEMPLATE_DIRS["absorb"]/Δaction)
+                    path,建議的最有效動作,細節,細節的誤差=策略調整() 
+                    z=細節的誤差
+                    # 語意距離
+                    E = math.sqrt(x*x + y*y + z*z)
+                    motivation = 學習者意願()
+                    # 行為更新
+                    Δaction = motivation * E
+                    shutil.copy2(path, TEMPLATE_DIRS["absorb"]/Δaction)
 
 
             # 副詞 = 程度 。files
-            def 溝通協作核():
+            def 溝通協作():
                 """
-                以用戶為主，將自己的行為模式和意義輸出至 TEMPLATE_DIRS["speak"]，還有 同意含失誤，不同意含做不到
+                以用戶為主，將自己的行為模式和意義輸出至 TEMPLATE_DIRS["speak"]，還有 同意含失誤，不同意含做不到；還有 真實含無幫助，不真實含演練
                 """
-                def 情境式對話():
+                def 情境式對話(path_data,floder_name):
                     # TODO:***回覆訊息為其下資料夾名稱，用戶點某個詞會看到該資料夾的圖片，像方便的小說
                         # 點擊詞，顯示圖片集
-                    pass  
-                # TODO:溝通協作核，座標為路徑上全部的資料夾名稱和其目標完整性
-                策略調整()
+                    shutil.copy2(path_data, TEMPLATE_DIRS["speak"]/floder_name/path_data[-1].name)
+                協作行為詞=[ # TODO:口語化的
+                    "確認", "提問", "建議", "回饋"
+                ]
+                c協作=path_all(TEMPLATE_DIRS["communication"],協作行為詞)
+                if len(c協作):
+                    for root,dirs,files in c協作:
+                        理解=path_all(TEMPLATE_DIRS["absorb"],dirs)
+                        if not len(理解): # TODO:懂不懂
+                            情境式對話(dirs,"不懂")
+                        else:
+                            for ra,das,fas in 理解:
+                                # TODO:同不同意
+                                # TODO:真不真實 
+                                # TODO:有幫助沒幫助 
+                                # TODO:演練還是實戰
+
+
+
+
+                       
+            策略調整() # TODO:溝通協作核，座標為路徑上全部的資料夾名稱和其目標完整性
 
             def 危機處理核():
                 # 危險降低時的動作分支
