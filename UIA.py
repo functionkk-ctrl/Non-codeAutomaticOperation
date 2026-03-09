@@ -2584,33 +2584,46 @@ class Noēsis:
             # 副詞 = 程度 。files
             def 溝通協作():
                 """
-                以用戶為主，將自己的行為模式和意義輸出至 TEMPLATE_DIRS["speak"]，還有 同意含失誤，不同意含做不到；還有 真實含無幫助，不真實含演練
+                溝通 以用戶策略(訊息)為主，將自己覺得可以做到的行為模式和意義輸出至 TEMPLATE_DIRS["speak"]
+                    符合意義的最有效行為
+                協作依照溝通結果 調整策略，說自己感覺，除了懂不懂以外，還有 同意含失誤，不同意含做不到；還有 真實含無幫助，不真實含演練
                 """
-                def 情境式對話(path_data,floder_name):
+                def 情境式對話(path_dir,floder_name):
                     # TODO:***回覆訊息為其下資料夾名稱，用戶點某個詞會看到該資料夾的圖片，像方便的小說
                         # 點擊詞，顯示圖片集
-                    shutil.copy2(path_data, TEMPLATE_DIRS["speak"]/floder_name/path_data[-1].name)
+                    # TODO:***符合用戶策略中表達的意義的最有效行為
+                    策略調整() 
+                    if path_dir.is_dirs(): 
+                        shutil.copytree(path_dir, TEMPLATE_DIRS["speak"]/make_folder(floder_name)/path_dir)
+
+                def 偏好程度(path1,path2,偏好名稱,target=None):
+                    # path2的path1的target比率
+                    if target is None: 
+                        協作1=path1
+                    else:
+                        協作1=path_all(path1,target) # path1中找target
+                    if len(協作1):
+                        for root,dirs,files in 協作1: # path1中找target
+                            偏好=path_all(path2,root) # 偏好不偏好 # path2中找path1的root
+                            if not len(偏好): 
+                                情境式對話(root,f"不{偏好名稱}")
+                            else:
+                                偏好關聯物= [dd for _,d,_ in 偏好 for _,dd,_ in path_all(d,dirs)] # d(2)中找dirs(1)
+                                偏好程度=len(偏好關聯物)/len(dirs) # path2有相關的數量/path1完整關聯(dirs)的數量
+                                情境式對話(root+f"{偏好名稱}{偏好程度:.2f}%",f"{偏好名稱}") # TODO:dir覆蓋率改成file相似度，有需要嗎?
+                                return 偏好
+
                 協作行為詞=[ # TODO:口語化的
                     "確認", "提問", "建議", "回饋"
                 ]
-                c協作=path_all(TEMPLATE_DIRS["communication"],協作行為詞)
-                if len(c協作):
-                    for root,dirs,files in c協作:
-                        理解=path_all(TEMPLATE_DIRS["absorb"],dirs)
-                        if not len(理解): # TODO:懂不懂
-                            情境式對話(dirs,"不懂")
-                        else:
-                            for ra,das,fas in 理解:
-                                # TODO:同不同意
-                                # TODO:真不真實 
-                                # TODO:有幫助沒幫助 
-                                # TODO:演練還是實戰
+                理解,理解程度=偏好程度(TEMPLATE_DIRS["communication"],TEMPLATE_DIRS["absorb"], "理解",target=協作行為詞) # TODO:懂不懂
+                for r,_,_ in 理解:
+                    真實,真實程度=偏好程度(r,TEMPLATE_DIRS["本地版本world"], "真實") # TODO:真實含無幫助，不真實含演練
+                    for r2,_,_ in 真實:
+                        同意,同意程度=偏好程度(r2,TEMPLATE_DIRS["本地版本world"], "_目標完成".png) # TODO:同意含失誤，不同意含做不到 # 反向路徑[::-1]代表dirs親戚也同意
+                return 理解程度,真實程度,同意程度
 
 
-
-
-                       
-            策略調整() # TODO:溝通協作核，座標為路徑上全部的資料夾名稱和其目標完整性
 
             def 危機處理核():
                 # 危險降低時的動作分支
