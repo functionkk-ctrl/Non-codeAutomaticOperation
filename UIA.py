@@ -2590,8 +2590,9 @@ class Noēsis:
                 """
                 def 情境式對話(path_dir,floder_name):
                     # TODO:***回覆訊息為其下資料夾名稱，用戶點某個詞會看到該資料夾的圖片，像方便的小說(動態圖片，可調每次撥放幾張圖)
-                        # 點擊詞，顯示圖片集
-                    # TODO:***符合用戶策略中表達的意義的最有效行為
+                        # QML (path_dir=root詞,path_dir的files圖片)
+                        # 點擊回覆對話框中的詞，上方顯示圖片集循環撥放一部分
+                    # TODO:******符合用戶策略中表達的意義的最有效行為
                     策略調整() 
                     if path_dir.is_dirs(): 
                         shutil.copytree(path_dir, TEMPLATE_DIRS["speak"]/make_folder(floder_name)/path_dir)
@@ -2610,19 +2611,23 @@ class Noēsis:
                             else:
                                 偏好關聯物= [dd for _,d,_ in 偏好 for _,dd,_ in path_all(d,dirs)] # d(2)中找dirs(1)
                                 偏好程度=len(偏好關聯物)/len(dirs) # path2有相關的數量/path1完整關聯(dirs)的數量
-                                情境式對話(root+f"{偏好名稱}{偏好程度:.2f}%",f"{偏好名稱}") # TODO:dir覆蓋率改成file相似度，有需要嗎?
+                                情境式對話(root,f"{偏好名稱}/{偏好程度:.2f}%") # TODO:dir覆蓋率改成file相似度，有需要嗎?
                                 return 偏好
 
                 協作行為詞=[ # TODO:口語化的
-                    "確認", "提問", "建議", "回饋"
+                    "確認", "提問", "建議", "回饋", "報告","聯絡","商量", "協助", "合作", "討論", "交流", "分享", "協商", "協調", "配合", "支持", "參與"
                 ]
-                理解,理解程度=偏好程度(TEMPLATE_DIRS["communication"],TEMPLATE_DIRS["absorb"], "理解",target=協作行為詞) # TODO:懂不懂
+                理解=偏好程度(TEMPLATE_DIRS["communication"],TEMPLATE_DIRS["absorb"], "理解",target=協作行為詞) # TODO:懂不懂
                 for r,_,_ in 理解:
-                    真實,真實程度=偏好程度(r,TEMPLATE_DIRS["本地版本world"], "真實") # TODO:***真實含無幫助，不真實含演練
+                    真實=偏好程度(r,TEMPLATE_DIRS["本地版本world"], "真實") 
                     for r2,_,_ in 真實:
-                        同意,同意程度=偏好程度(r2,TEMPLATE_DIRS["本地版本world"], "_目標完成".png) # TODO:***同意含失誤，不同意含做不到 # 反向路徑[::-1]代表dirs親戚也同意
-                return 理解程度,真實程度,同意程度
+                        偏好程度(r2,TEMPLATE_DIRS["world"], "無幫助",target="_目標完成.png") # 真實含無幫助
+                        偏好程度(r2,TEMPLATE_DIRS["world"], "演練") # 不真實含演練
 
+                        同意=偏好程度(r2,TEMPLATE_DIRS["本地版本world"], "_目標完成".png) 
+                        for r3,_,_ in 同意:
+                            偏好程度(r3,TEMPLATE_DIRS["world"], "失誤",target="_目標.png") # 同意含失誤
+                            偏好程度(r3,TEMPLATE_DIRS["world"], "做不到") # 不同意含做不到
 
 
             def 危機處理核():

@@ -121,6 +121,18 @@ Window {
         color: "white"
         font.pixelSize: 16
     }
+    // 顯示回覆用戶的文本
+    Text {
+        id:dialogue
+        text: "輸出內容: " + userInput // TODO:***回報 和 回應
+        anchors.top: inputBox.bottom
+        anchors.left: inputBox.left
+        color: "white"
+        font.pixelSize: 16
+        // TODO:***打開路徑下的所有圖片
+        // TODO:***點擊某個詞，顯示該詞對應路徑下的圖片集
+        // TODO:***動態圖片：每次撥放幾張圖，循環撥放
+    }
     // ***讀取到模型，卻看不見
     Button {
         id: animButton
