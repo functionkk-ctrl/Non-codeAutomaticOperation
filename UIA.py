@@ -2499,19 +2499,15 @@ class Noēsis:
                 需求=[]
                 # 分析交流意圖和甚麼型態最有效，趨勢分析該型態，甚麼動作對該型態最有貢獻
                 # 需求= 分析交流意圖 # 用辭典找真正的意圖?
-                nc=path_all(TEMPLATE_DIRS["Noesis"],TEMPLATE_DIRS["communication"]) # 聆聽用戶訊息
+                nc=path_all(TEMPLATE_DIRS["Noesis"],TEMPLATE_DIRS["communication"],target="_目標完成".png) # 聆聽用戶訊息
                 if len(nc):
-                    for r,dirs話題,files細節 in nc:
-                        # 話題轉成需求意圖(可能多種)，直接或間接
-                            # 目標行為矯正，得到意圖的不同
-                                # 正規化矯正，分析行為的降頻，之後才是判斷降頻主因。
-                                # 降頻同時哪個行為升頻，這就是主因，不過主因高機率是內部資訊，需要各種深入方法提取
-                                # 我猜是直接從內部分析全面完整的意圖，以我剛剛說的正規化矯正得到的意圖為舉例，所有行為(話題)的降低均從內部分析升頻資訊，同樣的話題(連接動作)有可能完全沒有上升的內部資訊
-                        for _,_,理想目標 in path_all(r,"_目標完成.png"): # 用戶的理想目標，等於意圖?
+                    for r,files細節 in nc:
+                        for _,_,理想目標 in path_all(r): # 用戶的理想目標，等於意圖?
                             # 用戶實際行為和理想行為的差距
                             bfl= path_all(TEMPLATE_DIRS["live_capture"]) 
                             if len(bfl):
                                 for _,_,cf in bfl: # 用戶的實際行為
+                                    # TODO:修改到這邊，不確定如何修正行為
                                     x=雙方正規化分析誤差主因(cf,理想目標) # 用戶真正的意圖
                                     y=雙方正規化分析誤差主因(cf,files細節) # Noesis和用戶的意圖的差距
                                     需求.append([x[0],y[0],y[1]]) # 用戶意圖,Noesis和 用戶意圖 差距(寬泛) # TODO:看真正意圖修改這邊的動作
