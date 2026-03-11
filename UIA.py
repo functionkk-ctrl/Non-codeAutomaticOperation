@@ -105,17 +105,21 @@ def path_all(paths, target=None,exclude=None):
     for path in paths:
         for root, dirs, files in os.walk(path):
             root_path = Path(root)
+            # TODO: ***排除掉 exclude
+            if exclude:
+                dirs = [d for d in dirs if not any(e in d for e in exclude)]
+                files = [f for f in files if not any(e in f for e in exclude)]
             # 依建立時間排序
             dirs.sort(key=lambda d: (root_path/ d).stat().st_ctime)
             files.sort(key=lambda f: (root_path/ f).stat().st_ctime)
             if isinstance(target, str):
-                # TODO: ***排除掉exclude
                 target_dirs = all(
                     any(t in d for d in dirs) or 
                     any(t in f for f in files)
                     for t in target)
                 if target_dirs:                           
-                    yield root_path
+                    files=[f for f in files for t in target if t in f]
+                    yield root_path,files # 得到每個target檔案
             else:
                 yield root_path, dirs, files
 
@@ -173,7 +177,7 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
         path:imwrite存放路徑，預設為a的同路徑
         ratio:ab圖相似的拓樸結構圖，去掉 不明顯相似的。0.75 是經典值
     similar:ab圖相似率要多少，最多100，return bool
-    similar_ratio:return ab圖相似率，最多100
+    similar_ratio:return ab圖相似率，最多100%
     """
     if path is None:
         path = path_all(base_path, a)[0]
@@ -2454,22 +2458,44 @@ class Noēsis:
 
             def 策略調整():
                 # 以用戶(b)為準，這樣才可以靈活更新
-                def 雙方正規化分析誤差主因(a,b,ratio=0.9):
-                    p=np.sort([
-                        全能ORB(aa,bb,similar_ratio=ratio) 
-                        for aa in a
-                        for bb in b
+                def 雙方正規化分析誤差主因(ass,bs,ratio=0.7):
+                    """
+                    ass:觀測動作.png
+                    bs:對照的目標完成.png
+                    ratio:目標進度區間，最大為1，小則剛開始，大則快結束
+                    return 降頻動作,動作降頻時目標進度,降頻動作的真正目標,降頻動作的真正目標進度
+
+                    圖片集，同時間 此處降頻(目標進度變化率)，他處升頻(目標進度變化率)
+                        下降的時間段，找到在所有資料夾的同時間，有升頻
+                    """
+                    進度狀態=np.sort([
+                        (全能ORB(a,b,similar_ratio=ratio), a, b) 
+                        for a in ass
+                        for b in bs
                     ])
-                    low_cut=math.floor(len(p)*0.1)
-                    降頻=p[:low_cut]
-                    if 降頻:
-                        升頻=[]
-                        for r,_,_ in path_all(b,a):
-                            for r2,_,f in path_all(r,a):
-                                pp=全能ORB(f,a,similar_ratio=ratio)
-                                if pp>len(p)-low_cut>0:
-                                    升頻.append([r2,f])
-                        return 升頻
+                    low_cut=math.floor(len(進度狀態)*0.1)
+                    進度變化=np.sort(np.diff([x[0],x[1],x[2]] for x in 進度狀態)) # TODO:***只計算x[0]為進度變化
+                    降頻=進度變化[:low_cut]
+                    for t in read_json_content(TEMPLATE_DIRS["live_capture"],"肌肉記憶","time_file"): # time,png
+                        if 降頻[1].name == t[1]: 
+                            推測升頻動作=[] # 尋找升頻動作
+                            for r,_,目標 in path_all(TEMPLATE_DIRS["user"],"_目標完成".png):
+                                真正目標= (aa for aa in 目標 if "_目標完成" in aa) 
+                                zxc=read_json_content(r,"肌肉記憶","time_file") # time,png
+                                for i in range(4,len(zxc)):
+                                    if t -zxc[i][0]<1: # 相近的時間段落
+                                        推測升頻動作=zxc[i-4:i+5]                               
+                                # TODO:升頻? # 進度變化平均上升?
+                                進度狀態2=np.sort([全能ORB(目標,真正目標,similar_ratio=ratio)]) # 該層的進度變化率
+                                進度變化2_all=np.mean(np.diff([x[0],x[1],x[2]] for x in 進度狀態2)) # 只計算x[0]為進度變化
+                                進度變化2純淨=np.mean(np.diff([x[0],x[1],x[2]] for x in 進度狀態2 if not x in zxc)) # 只計算x[0]為進度變化
+                                if 進度變化2_all > 進度變化2純淨:
+                                    升頻動作= (aa for aa in 目標 for bb in 推測升頻動作[1] if aa in bb) # 字串轉圖片
+                                    # 計算雙方理想誤差 # TODO:如何矯正?
+                                    # 觀測動作ass和目標bs的差距，回傳 降頻動作的目標進度值,ass實際目標進度值
+                                    降頻動作的真正目標進度=np.max([全能ORB(升頻動作,真正目標,similar_ratio=ratio)])
+                                    # 降頻動作,動作降頻時目標進度,降頻動作的真正目標,降頻動作的真正目標進度
+                                    return 降頻[1],降頻[0],升頻動作,降頻動作的真正目標進度 # png,float,png,float
                 需求=[]
                 # 分析交流意圖和甚麼型態最有效，趨勢分析該型態，甚麼動作對該型態最有貢獻
                 # 需求= 分析交流意圖 # 用辭典找真正的意圖?
@@ -2481,13 +2507,14 @@ class Noēsis:
                                 # 正規化矯正，分析行為的降頻，之後才是判斷降頻主因。
                                 # 降頻同時哪個行為升頻，這就是主因，不過主因高機率是內部資訊，需要各種深入方法提取
                                 # 我猜是直接從內部分析全面完整的意圖，以我剛剛說的正規化矯正得到的意圖為舉例，所有行為(話題)的降低均從內部分析升頻資訊，同樣的話題(連接動作)有可能完全沒有上升的內部資訊
-                        for _,_,_目標完成png in path_all(r,"_目標完成.png"): # 用戶的理想目標，等於意圖?
-                            bfl= path_all(TEMPLATE_DIRS["live_capture"],_目標完成png) # 用戶實際行為和理想行為的差距
+                        for _,_,理想目標 in path_all(r,"_目標完成.png"): # 用戶的理想目標，等於意圖?
+                            # 用戶實際行為和理想行為的差距
+                            bfl= path_all(TEMPLATE_DIRS["live_capture"]) 
                             if len(bfl):
                                 for _,_,cf in bfl: # 用戶的實際行為
-                                    x=雙方正規化分析誤差主因(cf,_目標完成png) # 用戶真正的意圖
+                                    x=雙方正規化分析誤差主因(cf,理想目標) # 用戶真正的意圖
                                     y=雙方正規化分析誤差主因(cf,files細節) # Noesis和用戶的意圖的差距
-                                    需求.append([x[0],y[0],y[1]]) # 用戶意圖,Noesis和 用戶意圖 差距(寬泛)
+                                    需求.append([x[0],y[0],y[1]]) # 用戶意圖,Noesis和 用戶意圖 差距(寬泛) # TODO:看真正意圖修改這邊的動作
                 話題,細節,細節的誤差=需求 # path,png # 溝通協作核 和 優化學習核 可以用
                 # 用數學找意圖對應的型態?必定多種np方法，np.array(動作分支,相似動作,目標完整性,目標危險,目標進度,動作危險) 抽取成需求對應的型態曲線
                 建議的最有效動作=趨勢分析(話題) # 需求對應的型態曲線:現階段曲線# 可能有多張圖片
@@ -2589,13 +2616,24 @@ class Noēsis:
                 協作依照溝通結果 調整策略，說自己感覺，除了懂不懂以外，還有 同意含失誤，不同意含做不到；還有 真實含無幫助，不真實含演練
                 """
                 def 情境式對話(path_dir,floder_name):
-                    # TODO:***回覆訊息為其下資料夾名稱，用戶點某個詞會看到該資料夾的圖片，像方便的小說(動態圖片，可調每次撥放幾張圖)
-                        # QML (path_dir=root詞,path_dir的files圖片)
-                        # 點擊回覆對話框中的詞，上方顯示圖片集循環撥放一部分
-                    # TODO:******符合用戶策略中表達的意義的最有效行為
+                    # TODO:符合用戶策略中表達的意義的最有效行為，計算其中的語意距離，取最近的
+                        # 想表達的語意是 path_dir
+                        # 結論是找到最符合的files，可能不在本dir中
+                    best_score=-1
+                    best_file=None
+                    for _,_,f1s in 理想目標(path_dir,"_目標完成.png"):
+                        for _,_,f2s in path_all(TEMPLATE_DIRS["absorb"]):
+                            score=[(全能ORB(f,f2,similar_ratio=0.9),f2) for f in f1s for f2 in f2s]
+                            if max(score[0])>best_score:
+                                best_score=max(score[0])
+                                best_file=score[1]
+
                     策略調整() 
                     if path_dir.is_dirs(): 
                         shutil.copytree(path_dir, TEMPLATE_DIRS["speak"]/make_folder(floder_name)/path_dir)
+                    # TODO:***回覆訊息為其下資料夾名稱，用戶點某個詞會看到該資料夾的圖片，像方便的小說(動態圖片，可調每次撥放幾張圖)
+                        # QML (path_dir=root詞,path_dir的files圖片)
+                        # 點擊回覆對話框中的詞，上方顯示圖片集循環撥放一部分
 
                 def 偏好程度(path1,path2,偏好名稱,target=None):
                     # path2的path1的target比率
