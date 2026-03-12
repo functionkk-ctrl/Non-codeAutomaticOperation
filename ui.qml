@@ -60,7 +60,7 @@ Window {
             source: "ilulu.glb"
             scale: Qt.vector3d(scaleFactor, scaleFactor, scaleFactor)
             position: Qt.vector3d(0, 0, 0)
-            MouseArea {
+            MouseArea { // TODO:***Model 下的MouseArea不會生效
                 anchors.fill: parent
                 onClicked: {
                     var node = view.pick(mouse.x, mouse.y)
@@ -129,9 +129,10 @@ Window {
         anchors.left: inputBox.left
         color: "white"
         font.pixelSize: 16
-        // TODO:***打開路徑下的所有圖片
-        // TODO:***點擊某個詞，顯示該詞對應路徑下的圖片集
-        // TODO:***動態圖片：每次撥放幾張圖，循環撥放
+        // TODO:收到的路徑轉成句子，
+        // TODO:*** 打開路徑下的所有圖片
+        // TODO:*** 點擊某個詞，顯示該詞對應路徑下的圖片集
+        // TODO:*** 動態圖片：每次撥放幾張圖，循環撥放
     }
     // ***讀取到模型，卻看不見
     Button {
@@ -139,15 +140,15 @@ Window {
         text: "輸出動畫"
         onClicked: {
             // 拆字判斷動畫
-            real target = keyword_map[userInput];
+            var target = keyword_map[userInput];
             if (!target) {
                 console.log("❌ 找不到 userInput", userInput);
                 return;
             }
-            real clipName =Object.keys(target)[0];
+            var clipName  =Object.keys(target)[0];
             // 搜尋 glTF 中的動畫列表
             for (real i = 0; i < ilulu.animations.length; i++) {
-                real a = ilulu.animations[i];
+                var a = ilulu.animations[i];
                 if (a.name === clipName) {
                     console.log("▶ 播放動畫:", clipName);
                     ilulu.animations[i].position = a.start;
@@ -183,10 +184,18 @@ Window {
 
     Rectangle  {
         id:listErrandButton
-        text: "任務欄"
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         z: 99
+        property bool dragging: false
+        
+        Text {
+            id:title
+            text:"任務欄"
+            anchors.centerIn: parent
+            color:"white"
+        }
+
 
         TextField {
             id: ListNameField
@@ -212,7 +221,7 @@ Window {
                 if (mouse.button === Qt.LeftButton) {
                     lastMousePos = Qt.vector2d(mouse.x, mouse.y)
                     // **重新命名
-                    listErrandButton.text=ListNameField.text
+                    title.text = ListNameField.text
                 }
             }
 
@@ -269,7 +278,7 @@ Window {
                                     }
                                     
                                     onReleased: {
-                                        Item indexObj=listErrand.children[listErrand.children.indexOf(errandItem)]
+                                        var indexObj=listErrand.children[listErrand.children.indexOf(errandItem)]
                                         bool objOk=false
                                         if ( Math.abs(mouse.x - lastMousePos.x)>20 && indexObj!==-1 ) {
                                             // **任務左右位移時移除 ，GPT 寫錯 GPT已死
