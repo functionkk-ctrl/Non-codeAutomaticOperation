@@ -1582,7 +1582,41 @@ class EventMonitor:
                     evt["Cost"] = input(
                         f"{img}{stage}成本太高 時的應對作法：").strip() or evt.get("Cost")
 
+from PySide6.QtCore import QObject, Signal, Property
 
+class Backend(QObject):
+    pathChanged = Signal(str)
+    copyChanged = Signal(str)
+    imagesReady = Signal(list)  # 發送圖片列表給 QML
+
+    def __init__(self):
+        super().__init__()
+        self._path_dir = ""
+        self._copy_path = ""
+
+    def getPath(self): return self._path_dir
+    def setPath(self, v):
+        if self._path_dir != v:
+            self._path_dir = v
+            self.pathChanged.emit(v)
+
+    def getCopy(self): return self._copy_path
+    def setCopy(self, v):
+        if self._copy_path != v:
+            self._copy_path = v
+            self.copyChanged.emit(v)
+
+    path_dir = Property(str, getPath, setPath, notify=pathChanged)
+    copy_path = Property(str, getCopy, setCopy, notify=copyChanged)
+
+    @Slot()
+    def getImages(self):
+        if os.path.exists(self._path_dir):
+            imgs = [os.path.join(self._path_dir, f) 
+                    for f in os.listdir(self._path_dir)
+                    if f.lower().endswith((".png", ".jpg", ".jpeg", ".gif"))]
+            self.imagesReady.emit(imgs)
+            
 # 把GPT的甚麼鬼邏輯清乾淨，只要說:你又犯了，可以，打扁你，你扁掉了?
 # === class Noēsis:
     # Noēsis(諾埃西斯）希臘文 νόησις。Perceptive Structural Language(PSL）。自己用 World-Formation Language(WFL）
@@ -2098,7 +2132,7 @@ class Noēsis:
 
     # 十六核計算輔助(用戶訊息)
     def 十六核(self, 低階, 中階, 高階):
-        def calculate(dir):
+       def calculate(dir):
             for layer in [低階, 中階, 高階]:
                 for key, value in layer.items():
                     for _, _, f in path_all(dir, os.path.join(key, value)):
@@ -2648,12 +2682,17 @@ class Noēsis:
                     策略調整() 
                     if path_dir.is_dir(): 
                         dialogue_data = []
-                        shutil.copytree(path_dir, TEMPLATE_DIRS["speak"]/make_folder(floder_name)/path_dir)
+                        copy_path=TEMPLATE_DIRS["speak"]/make_folder(floder_name)/path_dir
+                        shutil.copytree(path_dir, copy_path)
                     # TODO:***回覆訊息為其下資料夾名稱，用戶點某個詞會看到該資料夾的圖片，像方便的小說(動態圖片，可調每次撥放幾張圖)
                         # QML (path_dir=root詞,path_dir的files圖片)
                         # 點擊回覆對話框中的詞，上方顯示圖片集循環撥放一部分
-                        dialogue_data.append({"word": path_dir, "path": TEMPLATE_DIRS["speak"]/make_folder(floder_name)/path_dir})
-                        qml_root.dialogueModel = dialogue_data
+                        back=Backend()
+                        back.path_dir=path_dir
+                        back.copy_path=copy_path
+                        
+                        
+
 
                 def 偏好程度(path1,path2,偏好名稱,target=None):
                     # path2的path1的target比率

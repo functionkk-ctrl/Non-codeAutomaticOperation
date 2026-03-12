@@ -124,16 +124,67 @@ Window {
     // 顯示回覆用戶的文本
     Text {
         id:dialogue
-        text: "輸出內容: " + userInput // TODO:***回報 和 回應
+        text: backend.path_dir 
         anchors.top: inputBox.bottom
         anchors.left: inputBox.left
         color: "white"
         font.pixelSize: 16
         // TODO:收到的路徑轉成句子，
         // TODO:*** 打開路徑下的所有圖片
+        Text { text: backend.copy_path }
         // TODO:*** 點擊某個詞，顯示該詞對應路徑下的圖片集
         // TODO:*** 動態圖片：每次撥放幾張圖，循環撥放
     }
+    Column {
+        spacing: 10
+        Text {
+            id: dialogue
+            text: backend.path_dir
+            color: "white"
+            font.pixelSize: 16
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: backend.getImages()  // 點擊文字請求圖片列表
+            }
+        }
+
+        Image {
+            id: imgDisplay
+            width: 300
+            height: 300
+            fillMode: Image.PreserveAspectFit
+        }
+
+        Timer {
+            id: imgTimer
+            interval: 1000 // 每秒切換
+            repeat: true
+            running: false
+            onTriggered: {
+                if (imageList.length > 0) {
+                    imgDisplay.source = imageList[currentIndex]
+                    currentIndex = (currentIndex + 1) % imageList.length
+                }
+            }
+        }
+
+        property var imageList: []
+        property int currentIndex: 0
+
+        Connections {
+            target: backend
+            onImagesReady: {
+                imageList = images
+                currentIndex = 0
+                if (imageList.length > 0) imgTimer.start()
+            }
+        }
+    }
+
+
+
+
     // ***讀取到模型，卻看不見
     Button {
         id: animButton
@@ -188,7 +239,7 @@ Window {
         anchors.horizontalCenter: parent.horizontalCenter
         z: 99
         property bool dragging: false
-        
+
         Text {
             id:title
             text:"任務欄"
