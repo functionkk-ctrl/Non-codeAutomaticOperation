@@ -91,7 +91,7 @@ firebase_admin.initialize_app(cred, {
 })
 
 
-def path_all(paths, target=None,exclude=None):
+def path_all(paths, target=None,exclude=None,time=None):
     """
     預設排序為時間，由舊到新
     yield root(完整目錄), dirs(下一層的全部資料夾名), files(這層全部檔案含檔名)
@@ -125,6 +125,13 @@ def path_all(paths, target=None,exclude=None):
                 if target_dirs:                           
                     files=[f for f in files for t in target if t in f]
                     yield root_path,files # 得到每個target檔案
+            elif time is not None: # 找同時間的檔案 
+                matched_files = [
+                    f for f in files
+                    if abs((root_path / f).stat().st_ctime - time) <= 0.5 # 0.5秒
+                ]
+                if matched_files:
+                    yield root_path, matched_files
             else:
                 yield root_path, dirs, files
 
@@ -1583,7 +1590,9 @@ class EventMonitor:
                         f"{img}{stage}成本太高 時的應對作法：").strip() or evt.get("Cost")
 
 from PySide6.QtCore import QObject, Signal, Property
-
+# TODO:**回覆訊息為其下資料夾名稱，用戶點某個詞會看到該資料夾的圖片，像方便的小說(動態圖片，可調每次撥放幾張圖)
+        # QML (path_dir=root詞,path_dir的files圖片)
+        # 點擊回覆對話框中的詞，上方顯示圖片集循環撥放一部分
 class Backend(QObject):
     pathChanged = Signal(str)
     copyChanged = Signal(str)
@@ -1611,10 +1620,8 @@ class Backend(QObject):
 
     @Slot()
     def getImages(self):
-        if os.path.exists(self._path_dir):
-            imgs = [os.path.join(self._path_dir, f) 
-                    for f in os.listdir(self._path_dir)
-                    if f.lower().endswith((".png", ".jpg", ".jpeg", ".gif"))]
+        found=path_all(TEMPLATE_DIRS["speak"],".png")
+        for _,imgs in found:
             self.imagesReady.emit(imgs)
             
 # 把GPT的甚麼鬼邏輯清乾淨，只要說:你又犯了，可以，打扁你，你扁掉了?
@@ -2423,49 +2430,57 @@ class Noēsis:
                 # 副詞 = 程度 。files
                 # 動詞或動名詞 = 變化 / 作用 。dirs
                 def 路徑語意轉曲線並更新(path_a,fas,path_b,曲線,新增或移除=0):
-                    ruselt=[]
-                    for _,_,fbs in path_all(path_b):
+                    期望動作=[] # fas動作和 path_b的動作 比對，只拿想要的(新增或移除) 動作
+                    for r,_,fbs in path_all(path_b):
                         if 新增或移除>0:
-                            ruselt=[fa for fa in fas for fb in fbs if 全能ORB(fa,fb,similar=0.9)] 
+                            期望動作.extend([[fb,r] for fa in fas for fb in fbs if 全能ORB(fa,fb,similar=0.9)]) 
                         else:
-                            ruselt=[fa for fa in fas for fb in fbs if not 全能ORB(fa,fb,similar=0.9)] 
+                            期望動作.extend([[fb,r] for fa in fas for fb in fbs if not 全能ORB(fa,fb,similar=0.9)]) 
+                    # 在path_a找 完整詳細的動作紀錄(str)
                     目標=read_json_content(path_a,"肌肉記憶","time_schedule") # 時間順序非時間 讀取 目標,目標危險,目標進度,動作危險
                     if 目標 is []: 
                         print(f"讀取失敗: {path_a}") 
-                    目標完整性,目標危險,目標進度,動作危險=np.array(目標[0]),np.array(目標[1]),np.array(目標[2]),np.array(目標[3])
-                    節拍=節拍觸發(path_a) # 時間順序非時間 讀取 動作分支,相似動作
-                    動作分支,相似動作=np.array(節拍[0]),np.array(節拍[1])
-                    if 曲線 == 相似動作:
+                    使用=[np.array(目標[a]) for a in 曲線 if not "相似動作" in a]
+                    if "相似動作" in 曲線:
                         # 一起、合併、同時、順便
                         # 避開、跳過、略過
                         # 類似的、相似的
-                        for c in 相似動作:
-                            if 全能ORB(path_a,c,similar=0.9):
-                                yield c
-                    yield 曲線
+                        節拍=節拍觸發(path_a) # 時間順序非時間 讀取 動作分支,相似動作
+                        動作分支,相似動作=np.array(節拍[0]),np.array(節拍[1]) # 紀錄(str)
+                        
+                        使用的相似動作=[相似v.name 
+                        for 相似 in 相似動作 
+                        for 期望 in 期望動作[0] 
+                        for 相似v in path_all(期望[1],相似)
+                        if 全能ORB(期望,相似v,similar=0.9) ] # 期望 png，相似v str no png
+                        使用.append(使用的相似動作) 
+                    # 在path_b 找 png使用(str使用) 
+                    for a in 使用:
+                        for _,fs in path_all(path_a,time=a[0]): 
+                            yield [a[1],fs] # 值,png
                 
                 def 前後詞(paths):
                     # 精準使用有需要的曲線
                     for pa in paths:
                         pal=path_all(pa)
                         if len(pal):
-                            for r,da,fas in pal:
+                            for r,da,fas in pal: # 語意,關聯,準確動作
                                 for d in da:
                                     if any(k in d for k in ["放棄", "刪除", "移除", "捨棄"]):
-                                        路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=-1, 曲線=[相似動作,目標完整性,目標危險]) # 放棄甚麼(目標)的甚麼
+                                        路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=-1, 曲線=["相似動作","目標完整性","目標危險"]) # 放棄甚麼(目標)的甚麼
                                     elif any(k in d for k in ["新增", "加入", "增加"]):
-                                        路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作,目標危險]) # 目標不可以甚麼、目標甚麼犯法
+                                        路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=["相似動作","目標危險"]) # 目標不可以甚麼、目標甚麼犯法
                                     elif any(k in d for k in ["更快", "加速", "穩定", "優化"]):
                                         if any(k in d for k in ["更快", "加速"]):
-                                            路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作,目標進度]) # 更快 
+                                            路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=["相似動作","目標進度"]) # 更快 
                                         if any(k in d for k in [ "穩定", "優化"]):
-                                            路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作,目標進度]) # 更穩
+                                            路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=["相似動作","目標進度"]) # 更穩
                                     elif any(k in d for k in ["犯法", "違規", "禁止"]):
-                                        路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作,動作危險]) # 動作不可以甚麼、小心甚麼、避免甚麼
+                                        路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=["相似動作","動作危險"]) # 動作不可以甚麼、小心甚麼、避免甚麼
                                     elif any(k in d for k in ["全部動作", "所有動作"]):
-                                        路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[動作分支]) 
+                                        路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=["動作分支"]) 
                                     elif any(k in d for k in ["一起", "合併", "同時", "順便"]):
-                                        路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=[相似動作]) 
+                                        路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=1, 曲線=["相似動作"]) 
                                     else:
                                         yield ( "無法解析的路徑語意", r/d, fas)
                 最佳建議={} # 需求對應的型態曲線:現階段曲線
@@ -2670,29 +2685,21 @@ class Noēsis:
                     # TODO:符合用戶策略中表達的意義的最有效行為，計算其中的語意距離，取最近的
                         # 想表達的語意是 path_dir
                         # 結論是找到最符合的files，可能不在本dir中
-                    best_score=-1
-                    best_file=None
+                    speak=TEMPLATE_DIRS["speak"]/make_folder(floder_name)
                     for _,_,f1s in path_all(path_dir,"_目標完成.png"):
-                        for _,_,f2s in path_all(TEMPLATE_DIRS["absorb"]):
+                        best_score=-1
+                        for r,_,f2s in path_all(TEMPLATE_DIRS["absorb"]):
                             score=[(全能ORB(f,f2,similar_ratio=0.9),f2) for f in f1s for f2 in f2s]
                             if max(score[0])>best_score:
                                 best_score=max(score[0])
-                                best_file=score[1]
+                                # TODO:*** 完整他。 有建議動作，實踐差，目標差，然後要怎麼回覆，以正常語言
+                                path,建議動作,實踐差,目標差=策略調整() 
+                                png1實,floar1實,png2實,float2實=實踐差
+                                png1差,floar1差,png2差,float2差=目標差
 
-                    策略調整() 
-                    if path_dir.is_dir(): 
-                        dialogue_data = []
-                        copy_path=TEMPLATE_DIRS["speak"]/make_folder(floder_name)/path_dir
-                        shutil.copytree(path_dir, copy_path)
-                    # TODO:***回覆訊息為其下資料夾名稱，用戶點某個詞會看到該資料夾的圖片，像方便的小說(動態圖片，可調每次撥放幾張圖)
-                        # QML (path_dir=root詞,path_dir的files圖片)
-                        # 點擊回覆對話框中的詞，上方顯示圖片集循環撥放一部分
-                        back=Backend()
-                        back.path_dir=path_dir
-                        back.copy_path=copy_path
-                        
-                        
-
+                                shutil.copy2(r/score[1],speak/r/score[1].name+"_建議動作".png)
+                    if path_dir.is_dir(): # 非建議動作，一般對話
+                        shutil.copytree(path_dir, speak/path_dir)
 
                 def 偏好程度(path1,path2,偏好名稱,target=None):
                     # path2的path1的target比率

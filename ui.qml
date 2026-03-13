@@ -122,19 +122,10 @@ Window {
         font.pixelSize: 16
     }
     // 顯示回覆用戶的文本
-    Text {
-        id:dialogue
-        text: backend.path_dir 
-        anchors.top: inputBox.bottom
-        anchors.left: inputBox.left
-        color: "white"
-        font.pixelSize: 16
         // TODO:收到的路徑轉成句子，
         // TODO:*** 打開路徑下的所有圖片
-        Text { text: backend.copy_path }
         // TODO:*** 點擊某個詞，顯示該詞對應路徑下的圖片集
         // TODO:*** 動態圖片：每次撥放幾張圖，循環撥放
-    }
     Column {
         spacing: 10
         Text {
@@ -145,7 +136,10 @@ Window {
 
             MouseArea {
                 anchors.fill: parent
-                onClicked: backend.getImages()  // 點擊文字請求圖片列表
+                onClicked: { // 點擊文字請求圖片列表
+                imgTimer.stop()       // 切換前先停止播放
+                backend.getImages(dialogue.text) // 傳文字給後端
+            }  
             }
         }
 
@@ -165,7 +159,9 @@ Window {
                 if (imageList.length > 0) {
                     imgDisplay.source = imageList[currentIndex]
                     currentIndex = (currentIndex + 1) % imageList.length
-                }
+                } else {
+                imgDisplay.source = "" // 空列表清除圖片
+            }
             }
         }
 
@@ -174,10 +170,17 @@ Window {
 
         Connections {
             target: backend
-            onImagesReady: {
+            // onImagesReady: {
+            function onImagesReady(images) {
                 imageList = images
                 currentIndex = 0
-                if (imageList.length > 0) imgTimer.start()
+                if (imageList.length > 0) {
+                    imgDisplay.source = imageList[0] // 立即顯示第一張
+                    imgTimer.start()
+                } else {
+                    imgDisplay.source = ""
+                    imgTimer.stop()
+                }
             }
         }
     }
