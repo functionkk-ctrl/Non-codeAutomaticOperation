@@ -2692,7 +2692,11 @@ class Noēsis:
                             score=[(全能ORB(f,f2,similar_ratio=0.9),f2) for f in f1s for f2 in f2s]
                             if max(score[0])>best_score:
                                 best_score=max(score[0])
-                                # TODO:*** 完整他。 有建議動作，實踐差，目標差，然後要怎麼回覆，以正常語言
+                                # TODO:*** 完整他。 分析者:有建議動作，實踐差，目標差，然後要怎麼回覆，以正常語言
+                                    # 接收者:
+                                        # 建議作法:作法優缺點、與目標之間的差距是甚麼、拆解行動
+                                        # 實踐差:無變化則提XO；增加則XO；下降則XO
+                                        # 目標差:無變化則提阻力原因；增加則鼓勵；下降則改變目標
                                 path,建議動作,實踐差,目標差=策略調整() 
                                 png1實,floar1實,png2實,float2實=實踐差
                                 png1差,floar1差,png2差,float2差=目標差
