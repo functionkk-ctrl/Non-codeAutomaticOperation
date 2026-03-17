@@ -1787,7 +1787,7 @@ class Backend(QObject):
     # ===== 十六核 =====
     # 真正乾淨的 16 核(每核獨立可運作）
         # 主流程決策核 – 決定當下執行哪個任務
-        # 數量控制核 – 判斷目前物件數量與目標差距
+        # 數量控制核 – 判斷目前物件數量與雙方目標差距
         # 節奏維持核 – 控制動作頻率與節拍
         # 容錯判斷核 – 即時判斷偏差是否可容忍
         # 手部執行核 – 控制手的抓、放、操作動作
@@ -1851,7 +1851,7 @@ class Backend(QObject):
             # 有趣元只處理回覆策略和分析交流資料夾，與ORB函數分開，但使用ORB函數
     #
 
-
+import pandas as pd
 class Noēsis:
     def __init__(self):
         self.technology = {
@@ -2425,6 +2425,9 @@ class Noēsis:
                                     
             # 從此處起為交流
             def 趨勢分析(意圖):
+                """
+                yield [a[1],fs] # 動作值(time_schedule[1]),png
+                """
                 # 名詞 = 物件 。*.json
                 # 形容詞 = 性質 。folder
                 # 副詞 = 程度 。files
@@ -2517,7 +2520,7 @@ class Noēsis:
                     ass:觀測動作.png
                     bs:對照的目標完成.png
                     ratio:目標進度區間，最大為1，小則剛開始，大則快結束
-                    return root,建議動作,實踐差(png,float,png,float),目標差(降頻動作,動作降頻時目標進度,降頻動作的真正目標,降頻動作的真正目標進度)
+                    return root,建議動作,實踐差(png,float,png,float),雙方目標差(降頻動作,動作降頻時目標進度,降頻動作的真正目標,降頻動作的真正目標進度)
                         實踐差=降頻動作,動作降頻時目標進度,降頻動作的真正目標,降頻動作的真正目標進度
                     圖片集，同時間 此處降頻(目標進度變化率)，他處升頻(目標進度變化率)
                         下降的時間段，找到在所有資料夾的同時間，有升頻
@@ -2564,7 +2567,7 @@ class Noēsis:
                                 for _,_,實際動作 in bfl: 
                                     # TODO:修改到這邊，不確定如何修正行為
                                     實踐差=雙方正規化分析誤差主因(實際動作,理想目標f) # 用戶實際行為和理想的差距 #升頻動作 # 語意:做不到
-                                    目標差=雙方正規化分析誤差主因(理想目標f,推測目標f) # 雙方目標的差距 #降頻[1]-升頻動作 # 語意:理解錯
+                                    雙方目標差=雙方正規化分析誤差主因(理想目標f,推測目標f) # 雙方目標的差距 #降頻[1]-升頻動作 # 語意:理解錯
                                     # TODO:真正意圖進度變化(降頻動作) 被移除(最有效動作(推測目標) 覆蓋 降頻動作)或加快(最有效動作(理想目標))
                                         # 對長遠目標的影響決定 要推測目標(Noesis)或理想目標(用戶)
                                     for r,長遠目標f in path_all(TEMPLATE_DIRS["user"],"_長遠目標".png):
@@ -2575,14 +2578,14 @@ class Noēsis:
                                                     "path": r2,
                                                     "建議動作": 趨勢分析(r2),
                                                     "實踐差": 實踐差,
-                                                    "目標差": 目標差,
+                                                    "雙方目標差": 雙方目標差,
                                                 })
                                             else: # 覆蓋掉 降頻動作
                                                 需求.append({
                                                     "path": r,
                                                     "建議動作": 趨勢分析(r),
                                                     "實踐差": 實踐差,
-                                                    "目標差": 目標差,
+                                                    "雙方目標差": 雙方目標差,
                                                 })
                                 return 需求 
    
@@ -2653,7 +2656,7 @@ class Noēsis:
                     "趕快完成","把它搞定","不懂就問","問問看","算了","暫時放一放","努力一下","繼續試",
                     "想通了","領悟了"
                 ]
-                # 先假設用戶訊息為真，用戶的行為和目標差，學習者的行為和目標差，兩者之差為距離，以用戶的學習行為詞為幅度調整**2，學習者的行為
+                # 先假設用戶訊息為真，用戶的行為和雙方目標差，學習者的行為和雙方目標差，兩者之差為距離，以用戶的學習行為詞為幅度調整**2，學習者的行為
                     # **2 調整幅度以學習者意願調整，例如學習者沒空、肚子餓、雙方關係惡劣
                 # 以交流為準，以觀察為參照
                 c學習=path_all(TEMPLATE_DIRS["communication"],學習行為詞)
@@ -2694,12 +2697,35 @@ class Noēsis:
                                 best_score=max(score[0])
                                 # TODO 回覆還剩下， 動作的優缺點 、 未執行的(OK) 、 縮小差距的具體動作
 
-                                path,建議動作,實踐差,目標差=策略調整() # 建議動作的優缺點 # 策略調整=降頻動作,動作降頻時目標進度,降頻動作的真正目標,降頻動作的真正目標進度
+                                path,建議動作,實踐差,雙方目標差=策略調整() # 建議動作的優缺點 # 策略調整=降頻動作,動作降頻時目標進度,降頻動作的真正目標,降頻動作的真正目標進度
                                     # 策略調整=降頻動作,動作降頻時目標進度,降頻動作的真正目標,降頻動作的真正目標進度
-                                # TODO:***Completeness Consistency Accuracy Usability Usability Privacy & Security
-                                動作的優缺點=
-                                
-                                # 實踐差 目標差 =降頻動作,動作降頻時目標進度,降頻動作的真正目標,降頻動作的真正目標進度
+                                # TODO:*** 完整性 一致性 準確性 可用性 隱私與安全
+                                completeness = 1 - 建議動作.isna().sum().sum() / (建議動作.shape[0] * 建議動作.shape[1]) 
+                                consistency = 建議動作['分類欄位'].value_counts().max() / len(建議動作) 
+                                accuracy = (建議動作['實際值'] == 建議動作['記錄值']).mean() 
+                                # 你這個回答就是 還是要用到關聯，代表該建議動作在該層資料夾之下的資料夾有沒有同樣動作，符合的資料夾總數直接等於欄位數量
+                                time_file=read_json_content(r,"肌肉記憶","time_file") # TODO: ****可用性
+                                usability= len(建議動作)/len(time_file) # 建議動作數量/整個動作分之數量 
+
+                                timeliness = (pd.Timestamp.now() - 建議動作[0]).dt.total_seconds().mean()
+                                max_seconds = (pd.Timestamp.now() - 建議動作[0]).dt.total_seconds().max()
+                                timeliness_score = 1 - timeliness / max_seconds
+
+                                sensitive_cols = ['姓名','電話','信用卡號']  # 假設敏感欄位
+                                if all(col not in 建議動作.columns for col in sensitive_cols):
+                                    privacy_score = 1
+                                else:
+                                    privacy_score = 0.5  # 或根據脫敏程度給分
+                                建議動作的優缺點={
+                                    "Completeness": completeness, # 1-缺失/總數 
+                                    "Consistency": consistency, # 最常出現值/總數
+                                    "Accuracy": accuracy, # 真實/總數
+                                    "Usability": usability, # TODO 多樣性
+                                    "Timeliness":timeliness_score, # TODO:每筆創建時差的平均/現在時間-最近創建時間
+                                    "Privacy & Security": privacy_score, # TODO 敏感資訊
+                                }
+
+                                # 實踐差 =降頻動作,動作降頻時目標進度,降頻動作的真正目標,降頻動作的真正目標進度
                                 png1實,float1實,png2實,float2實=實踐差 # 實踐成果,未執行建議動作 # png2實=實踐中其他真正想做的動作 不是 未執行建議動作
                                 live=path_all(TEMPLATE_DIRS["live_capture"],建議動作)
                                 未執行的動作=[
@@ -2709,13 +2735,20 @@ class Noēsis:
                                     for _,_,f in live
                                         if not 全能ORB(f,a,similar=0.9)
                                 ]
-                                # 實踐差 目標差 =降頻動作,動作降頻時目標進度,降頻動作的真正目標,降頻動作的真正目標進度
-                                png1差,float1差,png2差,float2差=目標差 # 預定目標,縮小差距的具體行動 # float2差=預定目標在推測目標的真正位移量 # png2差=預定目標在推測目標的位置
-                                # TODO:***從資料指標反推驅動因素，再制定具體措施，最後再用資料驗證效果。
-                                
-                                預定目標,縮小差距的具體行動=png1差,float2差-float1差 # 假的，亂寫
+                                # 雙方目標差 =降頻動作,動作降頻時目標進度,降頻動作的真正目標,降頻動作的真正目標進度
+                                # png1差,float1差,png2差,float2差=雙方目標差 # 預定目標,縮小差距的具體行動 # float2差=預定目標在推測目標的真正位移量 # png2差=預定目標在推測目標的位置
+                                # 找到相似動作且目標進度變化上升更高，變化只算升值不算下降的
+                                預定目標,縮小差距的具體行動=None,None
+                                縮小差距=100
+                                for i in range(1,len(雙方目標差)):
+                                    if 全能ORB(雙方目標差[i][0],雙方目標差[i][0],similar=0.9):  # # TODO:***比對的動作?  
+                                        if 0<=雙方目標差[i][3]<縮小差距: # 只算升值，不算下降
+                                            縮小差距=雙方目標差[i][3]
+                                            縮小差距的具體行動=雙方目標差[i-1][1]
+                                            預定目標=雙方目標差[i-1][2]
+
                                 shutil.copy2(r/score[1],speak/r/score[1].name+"_建議動作".png)
-                                return [[建議動作,動作的優缺點],[png1實,float1實,未執行的動作],[預定目標,縮小差距的具體行動]] 
+                                return [[建議動作,建議動作的優缺點],[png1實,float1實,未執行的動作],[預定目標,縮小差距的具體行動]] 
                     if path_dir.is_dir(): # 非建議動作，一般對話
                         shutil.copytree(path_dir, speak/path_dir)
 
