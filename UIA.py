@@ -2699,32 +2699,20 @@ class Noēsis:
 
                                 path,建議動作,實踐差,雙方目標差=策略調整() # 建議動作的優缺點 # 策略調整=降頻動作,動作降頻時目標進度,降頻動作的真正目標,降頻動作的真正目標進度
                                     # 策略調整=降頻動作,動作降頻時目標進度,降頻動作的真正目標,降頻動作的真正目標進度
-                                # TODO:*** 完整性 一致性 準確性 可用性 隱私與安全
-                                completeness = 1 - 建議動作.isna().sum().sum() / (建議動作.shape[0] * 建議動作.shape[1]) 
-                                consistency = 建議動作['分類欄位'].value_counts().max() / len(建議動作) 
-                                accuracy = (建議動作['實際值'] == 建議動作['記錄值']).mean() 
-                                # 你這個回答就是 還是要用到關聯，代表該建議動作在該層資料夾之下的資料夾有沒有同樣動作，符合的資料夾總數直接等於欄位數量
-                                time_file=read_json_content(r,"肌肉記憶","time_file") # TODO: ****可用性
-                                usability= len(建議動作)/len(time_file) # 建議動作數量/整個動作分之數量 
+                                # TODO:*** 
+                                time_schedule=read_json_content(r,"肌肉記憶","time_schedule") # 目標,目標危險,目標進度,動作危險
+                                # shutil.copy2(r/score[1],speak/r/score[1].name+"_ 意外推進的目標".png)# 如果用戶回覆有提出，在記錄，目前無法處理
+                                    
+                                shutil.copy2(r/score[1],speak/r/score[1].name+"_ 必定使用的資源".png)# ORB固定出現的非人和目標
+                                # shutil.copy2(r/score[1],speak/r/score[1].name+"_ 運用條件".png)# 設備健全，目前無法處理，如果用戶回覆提出軟件遺失在找
+                                for a in time_schedule:
+                                    if a[2]>=best_score:
+                                        
+                                shutil.copy2(r/score[1],speak/r/score[1].name+"_ 成功與失敗的情境".png)# 目標進度變化率大，上升為成功，下降為失敗
+                                shutil.copy2(r/score[1],speak/r/score[1].name+"_ 不適用的情境".png)# 目標高危險時的環境和 動作
+                                shutil.copy2(r/score[1],speak/r/score[1].name+"_ 動作衝突或限制".png)# 人體高危險的動作
 
-                                timeliness = (pd.Timestamp.now() - 建議動作[0]).dt.total_seconds().mean()
-                                max_seconds = (pd.Timestamp.now() - 建議動作[0]).dt.total_seconds().max()
-                                timeliness_score = 1 - timeliness / max_seconds
-
-                                sensitive_cols = ['姓名','電話','信用卡號']  # 假設敏感欄位
-                                if all(col not in 建議動作.columns for col in sensitive_cols):
-                                    privacy_score = 1
-                                else:
-                                    privacy_score = 0.5  # 或根據脫敏程度給分
-                                建議動作的優缺點={
-                                    "Completeness": completeness, # 1-缺失/總數 
-                                    "Consistency": consistency, # 最常出現值/總數
-                                    "Accuracy": accuracy, # 真實/總數
-                                    "Usability": usability, # TODO 多樣性
-                                    "Timeliness":timeliness_score, # TODO:每筆創建時差的平均/現在時間-最近創建時間
-                                    "Privacy & Security": privacy_score, # TODO 敏感資訊
-                                }
-
+                               
                                 # 實踐差 =降頻動作,動作降頻時目標進度,降頻動作的真正目標,降頻動作的真正目標進度
                                 png1實,float1實,png2實,float2實=實踐差 # 實踐成果,未執行建議動作 # png2實=實踐中其他真正想做的動作 不是 未執行建議動作
                                 live=path_all(TEMPLATE_DIRS["live_capture"],建議動作)
