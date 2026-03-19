@@ -2020,6 +2020,7 @@ class Noēsis:
                 for _, _, f in path_all(self.dirs_user):
                     speaker([func(f) for func in self.technology.values()])
         experience("有趣")
+        self.十六核.交流
 
     # 自習 觀察異步(用戶訊息)
     def 自習_交流異步(self, experience=experience()):
@@ -2036,9 +2037,7 @@ class Noēsis:
             else:
                 save_path = Path(TEMPLATE_DIRS[dir_str]/dirs /
                                  f"{int(time.time())}.jpg")
-            save_path.parent.mkdir(
-                parents=True, exist_ok=True)  # 沒有資料夾，重建資料夾
-            cv2.imwrite(str(save_path), img)
+            cv2.imwrite(make_folder(save_path.parent)/save_path.name , img)
 
         def remove_thinking_file():
             if os.path.isfile(TEMPLATE_DIRS["thinking"]) or os.path.islink(TEMPLATE_DIRS["thinking"]):
@@ -2083,7 +2082,7 @@ class Noēsis:
                 # scores.append(score)
                 # all_scores=sum(scores) / len(scores) if scores else 0
             # a 對 b 的整體相似度:print(all_scores)
-
+        
         def extract_semantic_segment(path, choice):
             """
             choice:接力 / 讚美 / 分享 / 提問 / 轉向 / 相遇
@@ -2113,6 +2112,7 @@ class Noēsis:
         # TODO:符合代價要執行，創建資料夾樹
         for _, dir, f in path_all(TEMPLATE_DIRS["thinking"]):
             technology_create(f, dir)  # TODO: 補工具 technology_create，放回 交流 資料夾
+        self.十六核.觀察
         # 有趣
         tlist = list(self.technology.values()).split("/")
         root = path_all(self.dirs_Noesis, tlist)
@@ -2144,10 +2144,9 @@ class Noēsis:
                 for key, value in layer.items():
                     for _, _, f in path_all(dir, os.path.join(key, value)):
                         fa = self.img_orb(f, "高頻率")
-                        self.orb_matches_imwrite(
-                            TEMPLATE_DIRS["absorb"], fa.get(value))
+                        self.orb_matches_imwrite(TEMPLATE_DIRS["absorb"], fa.get(value))
 
-        def 交流():
+        def 交流(self): 
             dir = TEMPLATE_DIRS["communication"]
             低階 = {
                 "肌肉記憶": "動作拆小單元，固定節奏自動執行",
@@ -2172,7 +2171,7 @@ class Noēsis:
             }
             calculate(dir, 低階, 中階, 高階)
 
-        def 觀察():
+        def 觀察(self):
             # 有可能和三元協作一樣，會大幅改革減少一大堆，意思是可能沒有16個
             dir = Path(TEMPLATE_DIRS["absorb"])/"觀察"
             # 路徑,ORB分析方法
