@@ -3,8 +3,7 @@ import shutil
 import mediapipe as mp
 from geographiclib.geodesic import Geodesic
 import firebase_admin
-from firebase_admin import credentials, firestore
-from firebase_admin import credentials, db
+from firebase_admin import credentials, firestore, db
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QApplication
 from pathlib import Path
@@ -117,14 +116,14 @@ def path_all(paths, target=None,exclude=None,time=None):
             # 依建立時間排序
             dirs.sort(key=lambda d: (root_path/ d).stat().st_ctime)
             files.sort(key=lambda f: (root_path/ f).stat().st_ctime)
-            if isinstance(target, str):
-                target_dirs = all(
-                    any(t in d for d in dirs) or 
-                    any(t in f for f in files)
-                    for t in target)
-                if target_dirs:                           
-                    files=[f for f in files for t in target if t in f]
-                    yield root_path,files # 得到每個target檔案
+
+            target_dirs = all(
+                any(t in d for d in dirs) or 
+                any(t in f for f in files)
+                for t in target)
+            if target_dirs:                           
+                files=[f for f in files for t in target if t in f]
+                yield root_path,files # 得到每個target檔案
             elif time is not None: # 找同時間的檔案 
                 matched_files = [
                     f for f in files
@@ -335,6 +334,7 @@ def locate_template_orb(name, sort=1, num=1, extractor=False, dir=TEMPLATE_DIRS[
 
 
 def locate_template_orb_cached(obj, name, sort=1, num=1):
+    obj.extractor=TargetExtractor()
     if name in obj.cache:
         pos = obj.cache[name]
         if validate_cache(name, pos):
@@ -364,7 +364,7 @@ def validate_cache(name, pos, tolerance=10, dir=TEMPLATE_DIRS["img"]):
 def locate_text(keyword, sort=1, num=1, classA=None):
     """找字"""
     # OCR識別文字
-    data = pytesseract.image_to_data(c2v2.cvtColor(screenshot(
+    data = pytesseract.image_to_data(cv2.cvtColor(screenshot(
     ), cv2.COLOR_BGR2GRAY), lang=LANGS, output_type=pytesseract.Output.DICT)
     # 收集匹配點
     pts = [
@@ -620,7 +620,7 @@ class State:
         return self
 
 
-class InputCommand(QObject):
+class InputCommand(QObject,monitor):
     def __init__(self):
         super().__init__()
         self.vars = {}
@@ -912,8 +912,8 @@ class Recorder:
 
 
 class TargetExtractor:
-    def __init__(self, image=None):
-        if self.extractor is False:
+    def __init__(self,start=True,image=None):
+        if start is False:
             print("找不到目標且自動確認未開啟，跳過選取點。 調整ORB_create>=500")
             return
         else:
@@ -2193,9 +2193,9 @@ class Noēsis:
             }
             高階 = {
                     "長期目標核": "制定長期完成策略，修正低階標記的問題，肌肉記憶核符合人體限制",  # NG
-                    "優化學習": "以肌肉記憶核和快速感官切換核為主，以循環訓練核和趨勢分析核為輔，以此和批次進度核的最高比率",  # NG
-                    "溝通協作": "以交流為考量，以優化學習核為參照",  # NG
-                "危機處理核": "當低階或中階出現重大異常或矛盾時，提出緊急通，避免資料錯誤累積"  # 亂寫的
+                "優化學習": "以肌肉記憶核和快速感官切換核為主，以循環訓練核和趨勢分析核為輔，以此和批次進度核的最高比率",  # NG
+                "溝通協作": "以交流為考量，以優化學習核為參照",  # NG
+                    "危機處理核": "當低階或中階出現重大異常或矛盾時，提出緊急通，避免資料錯誤累積"  # 亂寫的
             }
 
             def 感官視覺化():
@@ -2698,19 +2698,33 @@ class Noēsis:
                                 # TODO 回覆還剩下， 動作的優缺點 、 未執行的(OK) 、 縮小差距的具體動作
 
                                 path,建議動作,實踐差,雙方目標差=策略調整() # 建議動作的優缺點 # 策略調整=降頻動作,動作降頻時目標進度,降頻動作的真正目標,降頻動作的真正目標進度
-                                    # 策略調整=降頻動作,動作降頻時目標進度,降頻動作的真正目標,降頻動作的真正目標進度
-                                # TODO:*** 
+                                shutil.copy2(r/score[1],speak/r/score[1].name+"_建議動作".png)
+
+                                # TODO:***建議動作的優缺點
                                 time_schedule=read_json_content(r,"肌肉記憶","time_schedule") # 目標,目標危險,目標進度,動作危險
                                 # shutil.copy2(r/score[1],speak/r/score[1].name+"_ 意外推進的目標".png)# 如果用戶回覆有提出，在記錄，目前無法處理
-                                    
-                                shutil.copy2(r/score[1],speak/r/score[1].name+"_ 必定使用的資源".png)# ORB固定出現的非人和目標
+                                # TODO:固定出現是必定使用的資源?
+                                人體=[r,a for r,_,fs in path_all(r,target="_人體".png) for f in fs]
+                                目標完成=[r,a for r,_,fs in path_all(r,target="_目標完成".png) for f in fs]
+                                工具=[r,a 
+                                    for r,_,fs in path_all(r) 
+                                    for f in fs 
+                                    for fa in 人體 
+                                    for fb in 目標完成 
+                                    if not 全能ORB(f,fa[1],similar=0.9) and not 全能ORB(f,fb[1],similar=0.9)]
+                                看見工具=[a for a in 工具 for b in 工具 if 全能ORB(a[1],b[1])]
+                                固定工具=[a for a in 看見工具 for b in 看見工具 if 全能ORB(a[1],b[1],similar=0.9)]
+                                for a in 固定工具:
+                                    shutil.copy2(a[0]/a[1],speak/a[0]/a[1].name+"_ 必定使用的資源".png)# ORB固定出現的非人和目標=固定使用的資源
+
                                 # shutil.copy2(r/score[1],speak/r/score[1].name+"_ 運用條件".png)# 設備健全，目前無法處理，如果用戶回覆提出軟件遺失在找
-                                for a in time_schedule:
-                                    if a[2]>=best_score:
-                                        
-                                shutil.copy2(r/score[1],speak/r/score[1].name+"_ 成功與失敗的情境".png)# 目標進度變化率大，上升為成功，下降為失敗
-                                shutil.copy2(r/score[1],speak/r/score[1].name+"_ 不適用的情境".png)# 目標高危險時的環境和 動作
-                                shutil.copy2(r/score[1],speak/r/score[1].name+"_ 動作衝突或限制".png)# 人體高危險的動作
+                                for a in time_schedule: 
+                                    if a[2]>=best_score: # 目標進度
+                                        shutil.copy2(r/a[0],speak/r/a[0].name+"_ 成功與失敗的情境".png)# 目標進度變化率大，上升為成功，下降為失敗
+                                    if a[1]>=best_score: # 目標危險
+                                        shutil.copy2(r/a[0],speak/r/a[0].name+"_ 不適用的情境".png)# 目標高危險時的環境和 動作
+                                    if a[3]>=best_score: # 動作危險
+                                        shutil.copy2(r/a[0],speak/r/a[0].name+"_ 動作衝突或限制".png)# 人體高危險的動作
 
                                
                                 # 實踐差 =降頻動作,動作降頻時目標進度,降頻動作的真正目標,降頻動作的真正目標進度
@@ -2734,9 +2748,11 @@ class Noēsis:
                                             縮小差距=雙方目標差[i][3]
                                             縮小差距的具體行動=雙方目標差[i-1][1]
                                             預定目標=雙方目標差[i-1][2]
-
-                                shutil.copy2(r/score[1],speak/r/score[1].name+"_建議動作".png)
-                                return [[建議動作,建議動作的優缺點],[png1實,float1實,未執行的動作],[預定目標,縮小差距的具體行動]] 
+                                shutil.copy2(r/png1實,speak/r/png1實.name+"_執行成果".png)
+                                shutil.copy2(r/float1實,speak/r/float1實.name+"_執行差距".png)
+                                shutil.copy2(r/未執行的動作,speak/r/未執行的動作.name+"_未執行的建議動作".png)
+                                shutil.copy2(r/預定目標,speak/r/預定目標.name+"_預定目標".png)
+                                shutil.copy2(r/縮小差距的具體行動,speak/r/縮小差距的具體行動.name+"_縮小差距的具體行動".png)
                     if path_dir.is_dir(): # 非建議動作，一般對話
                         shutil.copytree(path_dir, speak/path_dir)
 
@@ -2794,9 +2810,9 @@ class Noēsis:
 視窗標題,GPT:食指,全選:按下::視窗標題,GPT:肛門,位置深處:放開
 """
 if __name__ == "__main__":
-    ic = InputCommand()
-    rec = Recorder()
     monitor = EventMonitor()
+    ic = InputCommand(monitor=monitor)
+    rec = Recorder()
 
     app = QApplication(sys.argv)
     ic.app = app
