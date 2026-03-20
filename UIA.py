@@ -293,7 +293,7 @@ def screenshot():
     return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
 
-def locate_template_orb(name, sort=1, num=1, extractor=False, dir=TEMPLATE_DIRS["img"]):
+def locate_template_orb(name, sort=1, num=1, extractor=False, dir=TEMPLATE_DIRS["live_capture"]):
     """ORB 特徵匹配找圖像 screenshot() → 灰階 """
     name = name.split("<img>")[1]
     path = os.path.join(dir, f"{name}.png")
@@ -311,8 +311,8 @@ def locate_template_orb(name, sort=1, num=1, extractor=False, dir=TEMPLATE_DIRS[
     if len(matches) < 5:
         return None  # 太少特徵配對視為不可靠
     # 取前 10 個最佳匹配點的座標
-    pts = [(int(kp2[m.trainIdx].pt[0]), int(kp2[m.trainIdx].pt[1]))
-           for m in matches[:10]]
+    pts = np.array([kp2[m.trainIdx].pt for m in matches[:10]], dtype=np.int32).tolist()
+        
     pts.sort(key=lambda p: (p[0], p[1]))  # 左上排序
     if not pts:
         TargetExtractor().select_polygon_roi()
@@ -345,7 +345,7 @@ def locate_template_orb_cached(obj, name, sort=1, num=1):
     return pos
 
 
-def validate_cache(name, pos, tolerance=10, dir=TEMPLATE_DIRS["img"]):
+def validate_cache(name, pos, tolerance=10, dir=TEMPLATE_DIRS["live_capture"]):
     screen_gray = cv2.cvtColor(screenshot(), cv2.COLOR_BGR2GRAY)
     h, w = screen_gray.shape[:2]
     x, y = pos
@@ -417,7 +417,7 @@ def locate_text(keyword, sort=1, num=1, classA=None):
         def dist(a, b):
             aLocation = geolocator.geocode(a)
             # 避免被geocode 封鎖
-            time.sleep(0.5)
+            time.sleep(0.1)
             if b == startP:
                 bLocation = locationStart
             elif b == nearP:
@@ -430,7 +430,7 @@ def locate_text(keyword, sort=1, num=1, classA=None):
                 print("無效地址")
             distance = (aLocation.latitude - bLocation.latitude)**2 + \
                 (aLocation.longitude - bLocation.longitude)**2
-            time.sleep(0.5)
+            time.sleep(0.05)
             return distance
 
         for ress in readText:
@@ -481,8 +481,8 @@ def locate_text(keyword, sort=1, num=1, classA=None):
             # Routing API給最佳真實路線
 
 
-def click(pos): pyautogui.moveTo(
-    *pos, duration=0.2); pyautogui.click(); time.sleep(0.3)
+def click(pos): 
+    pyautogui.moveTo(*pos, duration=0.2); pyautogui.click(); time.sleep(0.05)
 
 
 class StateMgr:
@@ -696,11 +696,7 @@ class InputCommand(QObject,monitor):
                 window, path, action = [x.strip() for x in line.split(',', 2)]
                 if self.current_window != window:
                     self.focus_window(window)
-                    time.sleep(0.5)
-                # *鍵盤滑鼠
-                # -*- coding: utf-8 -*- # 滑鼠 + 鍵盤全功能示例(不含監聽） import pyautogui, keyboard, time from pynput.mouse import Button, Controller as MouseController from pynput.keyboard import Key, Controller as KeyController # pyautogui 全域設定 pyautogui.FAILSAFE = True pyautogui.PAUSE = 0.1 # ==== 滑鼠控制 ==== # 位置資訊 screen_w, screen_h = pyautogui.size() print("Screen:", screen_w, screen_h) print("Mouse position:", pyautogui.position()) # 基本移動 pyautogui.moveTo(100, 100, duration=0.3) pyautogui.moveRel(50, 0, duration=0.2) # 點擊與雙擊 pyautogui.click() pyautogui.doubleClick() pyautogui.rightClick() pyautogui.middleClick() pyautogui.click(300, 300) # 按下 / 放開(可長按） pyautogui.mouseDown(button='left') time.sleep(0.5) pyautogui.mouseUp(button='left') # 拖曳操作 pyautogui.moveTo(400, 400) pyautogui.mouseDown() pyautogui.moveTo(600, 600, duration=1.0) pyautogui.mouseUp() # 滾輪 pyautogui.scroll(300) pyautogui.scroll(-300) # ==== 鍵盤控制 ==== # 輸入文字 pyautogui.typewrite("Hello from pyautogui!", interval=0.05) # 單鍵操作 pyautogui.press("enter") pyautogui.press("tab") pyautogui.press("backspace") # 組合鍵 pyautogui.hotkey("ctrl", "s") pyautogui.hotkey("alt", "f4") # 拆解按下與放開 pyautogui.keyDown("shift") pyautogui.press("a") pyautogui.keyUp("shift") # ==== 使用 pynput 進階控制 ==== mouse = MouseController() keyboard_ctrl = KeyController() # 滑鼠精確控制 mouse.position = (200, 200) mouse.press(Button.left) time.sleep(0.3) mouse.release(Button.left) mouse.press(Button.right) mouse.release(Button.right) mouse.scroll(0, 3) # 鍵盤精確控制 keyboard_ctrl.press('a') keyboard_ctrl.release('a') keyboard_ctrl.press(Key.enter) keyboard_ctrl.release(Key.enter) # ==== 使用 keyboard 模組 ==== keyboard.press_and_release('ctrl+c') keyboard.write('Typed by keyboard module!', delay=0.05) if keyboard.is_pressed('esc'): print("ESC pressed!")
-                # *運算
-                # -*- coding: utf-8 -*- import math, random, statistics, decimal, fractions, cmath, numpy as np # === 基本四則 === a, b = 10, 3 print(a + b, a - b, a * b, a / b, a // b, a % b, a ** b) # === 比較與邏輯 === print(a > b, a < b, a == b, a != b, a >= b, a <= b) # === 內建函式 === print(abs(-5), round(3.14159, 2), pow(2, 5), divmod(17, 3), sum([1,2,3,4])) # === math 模組 === print(math.sqrt(16), math.pow(2, 10), math.factorial(5)) print(math.sin(math.pi/2), math.cos(0), math.tan(math.pi/4)) print(math.degrees(math.pi), math.radians(180)) print(math.log(100, 10), math.log2(8), math.exp(1)) print(math.ceil(2.1), math.floor(2.9), math.trunc(-3.8)) print(math.gcd(24, 36), math.isclose(0.1+0.2, 0.3)) # === 統計 === data = [2, 3, 5, 7, 11] print(statistics.mean(data), statistics.median(data), statistics.pstdev(data)) # === 隨機 === print(random.random(), random.randint(1,10), random.uniform(1.5,5.5)) print(random.choice(['A','B','C'])) items = [1,2,3,4]; random.shuffle(items); print(items) # === decimal 高精度運算 === decimal.getcontext().prec = 10 x = decimal.Decimal('1.1') + decimal.Decimal('2.2') print(x)  # 精確加法 # === fractions 分數 === f1 = fractions.Fraction(1,3); f2 = fractions.Fraction(1,6) print(f1 + f2, f1 * f2) # === 複數 === z1, z2 = 2+3j, 1-1j print(z1 + z2, z1 * z2, abs(z1), cmath.phase(z1)) # === numpy 高階運算 === arr = np.array([1,2,3,4,5]) print(arr + 2, arr * 3, np.mean(arr), np.std(arr)) print(np.sin(arr), np.dot([1,2,3],[4,5,6]))
+                    time.sleep(0.3)
                 for pa in path.split(":"):
                     # [(x,y),(x,y),(x,y),...]，sp[0]=x,y，sp[0][1]=y，打死GPT
                     sp = self.selected(pa)
@@ -733,8 +729,7 @@ class InputCommand(QObject,monitor):
                                         case "滾上": pyautogui.scroll(300)
                                         case "滾下": pyautogui.scroll(-300)
                                         case "左滑":
-                                            pyautogui.dragRel(-200,
-                                                              0, duration=0.5)
+                                            pyautogui.dragRel(-200,0, duration=0.5)
                                         case "右滑":
                                             pyautogui.dragRel(
                                                 200, 0, duration=0.5)
@@ -987,7 +982,7 @@ class TargetExtractor:
             if cv2.waitKey(20) & 0xFF == 27:
                 break
 
-    def filter_target(self, dir=TEMPLATE_DIRS["img"]):
+    def filter_target(self, dir=TEMPLATE_DIRS["live_capture"]):
         """
         從 ROI 中提取目標，做 GrabCut 去背景，生成透明圖
         """
@@ -1038,7 +1033,7 @@ class TargetExtractor:
         print(f"✅ 已儲存 {save_path}")
 
     # *** 等待QML設定
-    # *** Img+GPS 列出 圖像中占比大的一些相似物體 和長寬高，等待QML輸入要儲存的圖片名稱，進TEMPLATE_DIRS["img"]資料夾。計算相似物品的 單一數量的 實際大小
+    # *** Img+GPS 列出 圖像中占比大的一些相似物體 和長寬高，等待QML輸入要儲存的圖片名稱，進TEMPLATE_DIRS["live_capture"]資料夾。計算相似物品的 單一數量的 實際大小
     def Img_IMU_GPS():
         # 讀取設備，GPS得高度尺可以和地面參照，GPS平移得橫向尺在空中至少要移動20m，才可以參照
         # *** 先拓樸後幾何，穩定拓樸結構
@@ -1196,7 +1191,7 @@ class TargetExtractor:
         # return whz  # 疊加實際大小
 
         # *** python OCR找到該目標時計算該目標附在其物之上，利用目標的物件名稱紀錄的，計算其物的實際大小
-        # *** save_path圖片 重新命名(固定格式有長寬高)，在判斷物體實際大小模式時，在TEMPLATE_DIRS["img"]中找到(固定格式有長寬高)save_path圖片，全部找一次，找到則分析附在何物、計算該物實際大小
+        # *** save_path圖片 重新命名(固定格式有長寬高)，在判斷物體實際大小模式時，在TEMPLATE_DIRS["live_capture"]中找到(固定格式有長寬高)save_path圖片，全部找一次，找到則分析附在何物、計算該物實際大小
         # *** 進入 計算物體實際大小的 計算模式 *** 讀取存檔的圖片
         pass
     def compute_logic(self):
@@ -1593,7 +1588,9 @@ from PySide6.QtCore import QObject, Signal, Property
 # TODO:**回覆訊息為其下資料夾名稱，用戶點某個詞會看到該資料夾的圖片，像方便的小說(動態圖片，可調每次撥放幾張圖)
         # QML (path_dir=root詞,path_dir的files圖片)
         # 點擊回覆對話框中的詞，上方顯示圖片集循環撥放一部分
+# TODO:***使用好像有問題
 class Backend(QObject):
+    """對話 shutil存進TEMPLATE_DIRS["speak"]，Backend getImages讀取TEMPLATE_DIRS["speak"]給QML就是 使用 對話"""
     pathChanged = Signal(str)
     copyChanged = Signal(str)
     imagesReady = Signal(list)  # 發送圖片列表給 QML
@@ -2078,7 +2075,7 @@ class Noēsis:
                     filename = os.path.relpath(
                         TEMPLATE_DIRS[dir_str], base_path).replace(os.sep, "_") + ".jpg"
                     save_path = os.path.join(TEMPLATE_DIRS[dir_str], filename)
-                    cv2.imwrite(save_path, img_matches)  # "img"
+                    cv2.imwrite(save_path, img_matches)  # "live_capture"
                 # scores.append(score)
                 # all_scores=sum(scores) / len(scores) if scores else 0
             # a 對 b 的整體相似度:print(all_scores)
@@ -2139,7 +2136,7 @@ class Noēsis:
 
     # 十六核計算輔助(用戶訊息)
     def 十六核(self, 低階, 中階, 高階):
-       def calculate(dir):
+        def calculate(dir):
             for layer in [低階, 中階, 高階]:
                 for key, value in layer.items():
                     for _, _, f in path_all(dir, os.path.join(key, value)):
@@ -2698,7 +2695,6 @@ class Noēsis:
 
                                 path,建議動作,實踐差,雙方目標差=策略調整() # 建議動作的優缺點 # 策略調整=降頻動作,動作降頻時目標進度,降頻動作的真正目標,降頻動作的真正目標進度
                                 shutil.copy2(r/score[1],speak/r/score[1].name+"_建議動作".png)
-
                                 # TODO:***建議動作的優缺點
                                 time_schedule=read_json_content(r,"肌肉記憶","time_schedule") # 目標,目標危險,目標進度,動作危險
                                 # shutil.copy2(r/score[1],speak/r/score[1].name+"_ 意外推進的目標".png)# 如果用戶回覆有提出，在記錄，目前無法處理
