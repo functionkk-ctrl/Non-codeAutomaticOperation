@@ -538,6 +538,20 @@ class State:
         else:
             self._sub.setdefault(name, State(name))
         return self
+    
+    # 移除子狀態
+    def remove(self, name):
+        if name in self._sub:
+            # 如果被移除的是當前狀態，先清除 current
+            if self.current == name:
+                self.current = None
+            # 刪除子狀態
+            del self._sub[name]
+            # 刪除該子狀態在轉移表中的所有紀錄
+            self._trans.pop(name, None)
+        else:
+            raise ValueError(f"子狀態 '{name}' 不存在")
+        return self
 
     # 動態存取子狀態
     def __getattr__(self, name):
@@ -1964,6 +1978,7 @@ class Noēsis:
         stm.add("交流").add("十六核").add("立場").add("潤滑?")
         stm.add("交流").add("自習").add("代價").add(["不真實", "普通", "真實"])
         stm.add("交流").add("自習").add("目的").add("增加真實知識、有趣")
+        stm.add("交流").add("版本").add(f"s{time.time():.0f}").add(["時間穿越","時間凍結","時間生死","時間橋接"]) # TODO:時間橋接只是好聽，其實沒甚麼
 
         stm.add("觀察").add("自習").add("代價").add(["不真實", "普通", "真實"])
         stm.add("觀察").add("自習").add("立場").add("真實世界的真實穩定性")
