@@ -105,6 +105,11 @@ def path_all(paths, target=None,exclude=None,time=None):
         target = [target]
     if isinstance(exclude, str):
         exclude = [exclude]
+        
+    def is_hidden(filepath):
+        FILE_ATTRIBUTE_HIDDEN = 0x02
+        attrs = ctypes.windll.kernel32.GetFileAttributesW(str(filepath))
+        return attrs & FILE_ATTRIBUTE_HIDDEN
 
     for path in paths:
         for root, dirs, files in os.walk(path):
@@ -113,6 +118,10 @@ def path_all(paths, target=None,exclude=None,time=None):
             if exclude:
                 dirs = [d for d in dirs if not any(e in d for e in exclude)]
                 files = [f for f in files if not any(e in f for e in exclude)]
+                if "不要隱藏" in exclude :
+                    dirs = [d for d in dirs if not any(is_hidden(d))]
+                    files = [f for f in files if not any(is_hidden(f))]
+                    
             # 依建立時間排序
             dirs.sort(key=lambda d: (root_path/ d).stat().st_ctime)
             files.sort(key=lambda f: (root_path/ f).stat().st_ctime)
@@ -279,6 +288,17 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
         cv2.imwrite(path+png+".png", img_matches)
         return path
 
+def hide_file_windows(file_path):
+    FILE_ATTRIBUTE_HIDDEN = 0x02
+    ret = ctypes.windll.kernel32.SetFileAttributesW(str(file_path), FILE_ATTRIBUTE_HIDDEN)
+    if not ret:
+        raise ctypes.WinError()
+
+def unhide_file_windows(file_path):
+    FILE_ATTRIBUTE_NORMAL = 0x80
+    ret = ctypes.windll.kernel32.SetFileAttributesW(str(file_path), FILE_ATTRIBUTE_NORMAL)
+    if not ret:
+        raise ctypes.WinError()
 
 def watchdog():
     while not alive_event.wait(timeout=10):
@@ -1861,7 +1881,9 @@ class Backend(QObject):
             # GPT寫的回覆技巧和造句，無return，"技巧"和"詞"也是GPT隨便寫的
             # 有趣元只處理回覆策略和分析交流資料夾，與ORB函數分開，但使用ORB函數
     #
-
+import subprocess
+import sys
+import ctypes
 import pandas as pd
 class Noēsis:
     def __init__(self):
@@ -2372,9 +2394,62 @@ class Noēsis:
                 return 動作分支,相似動作
             
             def 優先級切換():
-                # TODO:***圖片特徵非預期結構或 肌肉記憶核危險時
-                # TODO:***切換到哪一個
-                全能ORB(dir,b="危險")
+                # TODO:**圖片特徵非預期結構或 肌肉記憶核危險時
+                found=path_all(TEMPLATE_DIRS["absorb"],["_異常","_危險"],exclude="不要隱藏")
+                # TODO:延遲其餘的動作分支
+                found2=path_all(TEMPLATE_DIRS["live_capture"],exclude="不要隱藏")
+                if next(found) and next(found2) :
+                    if next([f for _,_,f in found2 if 全能ORB( f ,found[1],similar=0.8)]):
+                        for r,_,f in found2:
+                            shutil.copytree(r,make_folder(r/"延期"),dirs_exist_ok=True)
+                            for ff in f:
+                                hide_file_windows(ff)
+                # TODO:**python 修正或重啟操作、人工介入確認、封鎖危險範圍或停用問題設備
+                def is_admin():
+                    """檢查是否具有管理員權限"""
+                    try:
+                        return ctypes.windll.shell32.IsUserAnAdmin()
+                    except:
+                        return False
+
+                def disable_device(instance_id):
+                    """
+                    使用 pnputil 停用指定設備
+                    instance_id: 設備的實體識別碼 (例如: "USB\VID_XXXX&PID_XXXX\...")
+                    """
+                    print(f"正在嘗試停用設備: {instance_id}")
+                    
+                    # 執行 pnputil 指令
+                    # /disable-device: 停用設備
+                    # /device-id: 指定 ID
+                    result = subprocess.run(
+                        ["pnputil", "/disable-device", instance_id], 
+                        capture_output=True, 
+                        text=True,
+                        encoding='utf-8' # 避免中文環境亂碼
+                    )
+                    
+                    if result.returncode == 0:
+                        print("✅ 設備已成功停用！")
+                    else:
+                        print("❌ 停用失敗。")
+                        print(f"錯誤訊息: {result.stdout} {result.stderr}")
+                def using():
+                    if not is_admin():
+                        print("請以「系統管理員」權限執行此程式，否則無法修改設備狀態。")
+                        sys.exit(1)
+                    if TARGET_DEVICE_ID == "你的設備ID填在這裡":
+                        print("大哥，你還沒填設備 ID 喔！去裝置管理員找一下。")
+                    else:
+                        disable_device(TARGET_DEVICE_ID)
+
+                # TODO:**修正完異常時恢復其餘的動作分支
+                if not next(found) and next(found2) :
+                    for r,d,f in found2:
+                        if d == "延期":
+                            shutil.rmtree(r/d)
+                            for ff in f:
+                                unhide_file_windows(ff)
                 
             # TODO: intent 目標圖片，從多個圖片中的重疊拓樸結構得到
             def 容錯允許(intent_ratio=0.75):
@@ -2836,6 +2911,7 @@ class Noēsis:
 視窗標題,GPT:食指,全選:按下::視窗標題,GPT:肛門,位置深處:放開
 """
 if __name__ == "__main__":
+    TARGET_DEVICE_ID = r"你的設備ID填在這裡" 
     monitor = EventMonitor()
     ic = InputCommand(monitor=monitor)
     rec = Recorder()
