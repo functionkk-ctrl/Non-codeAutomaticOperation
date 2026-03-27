@@ -8,9 +8,8 @@ from PyInstaller.utils.hooks import (
     collect_dynamic_libs
 )
 
-qml_src = os.path.join(os.path.dirname(PySide6.__file__), "qml")
+datas = collect_data_files('PySide6', subdir='qml')
 qml_dst = os.path.join("dist", "PySide6", "qml")
-shutil.copytree(qml_src, qml_dst, dirs_exist_ok=True)
 
 block_cipher = None
 
@@ -24,8 +23,8 @@ a = Analysis(
         ('ui.qml', '.'),
         ('ilulu.glb', '.'),
         ('uploads_files_3351752_Rocking_Chair2.obj', '.'),
-    ],
-    hiddenimports=collect_submodules('PySide6'),
+    ]+ collect_data_files('PySide6', subdir='qml'),
+    hiddenimports=collect_submodules('PySide6') + collect_submodules('shiboken6'),
 )
 
 exe = EXE(

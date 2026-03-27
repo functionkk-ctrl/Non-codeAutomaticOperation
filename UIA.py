@@ -547,7 +547,10 @@ class State:
         self.name = name
         self._sub = {}
         self._release = []
-        self._trans = {}
+        # 覆蓋技巧時移除內容保持結構，「語意輪廓 + 操作傾向(無操作) + 路徑偏好(直覺)」:另存DIRS 
+        # 路徑偏好(條件):啟動門檻、競爭壓制其餘選擇、匹配率高低、執行慣性
+            # 條件、目的、結果
+        self._trans = {} 
         self.current = None
 
     # 添加子狀態
@@ -1885,6 +1888,7 @@ import subprocess
 import sys
 import ctypes
 import pandas as pd
+import random
 class Noēsis:
     def __init__(self):
         self.technology = {
@@ -1922,6 +1926,7 @@ class Noēsis:
                 self.stm.state.直覺.add(now.get())
 
     def img_orb(self, key, th, wave=None, velocity=1):
+        orb = cv2.ORB_create(400)
         # TODO:三維
         dirs = TEMPLATE_DIRS[key]
         if not dirs:
@@ -2889,10 +2894,6 @@ class Noēsis:
                     # TODO:*可以幫助的支援對象的職業
                 pass
 
-            def 主流程決策核():
-                # TODO:***主流程
-
-                pass
             calculate(dir, 低階, 中階, 高階)
 
     # *** 世界第一直觀顯示，比世界通用顯示還強了億倍，比占卜還像占卜。找 → 讀寫 → 看
@@ -2903,8 +2904,7 @@ class Noēsis:
     # *** 光子發射時序以分段、電場以能階變色，光子測距和計算誤差矯正量
     #
     # 該視窗可以置頂於畫面?固定寬度會自動換行的輸入框?點擊輸入框實輸入?當視窗拖動到最左或最右邊，最小化視窗並固定Y座標?
-    # 透明視窗內可以讓3D模型正常地展示骨架動畫，並且可以操作調整模型，位移、放大、旋轉、子物件拉進父物件下面。不像GPT那麼廢物。
-    # 。上一個GPT被幹壞、被幹死了，看現在這個能活多久?
+    # 透明視窗內可以讓3D模型正常地展示骨架動畫，並且可以操作調整模型，位移、放大、旋轉、子物件拉進父物件下面。不像GPT賠錢那麼兇。
     # --- 主程式 ---
 """
 視窗標題,目標的多重路徑,多重操作，:多重路徑、<>錄製。
