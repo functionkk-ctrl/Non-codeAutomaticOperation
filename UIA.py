@@ -156,7 +156,7 @@ def make_folder(folder_name):
 def make_json_content(file_path, file_name,  key, value):
     """
     在 base_path 下建立或更新 file_path 文件之下並建立或更新 file_name.json，之內建立或更新內容 key:value
-    key 是不可變且可哈希的類型，可以tuple(list)、字串、數字、元組
+    key 只能不可變且可哈希的類型，可以tuple(list)、字串、數字、元組
     """
     path = make_folder(file_path) / (file_name + ".json")
     if path.exists():  # 有檔案
@@ -558,7 +558,7 @@ class State:
             make_json_content(
                 file_path=該層資料夾/make_folder(root), # 語意輪廓
                 file_name="被覆蓋的技巧", # json
-                key=[條件 time_schedule[0],time_schedule[0],time_schedule[2],(root/ cover_png).stat().st_ctime],
+                key=[條件 time_schedule[0],time_schedule[0],time_schedule[2],(root/ cover_png).stat().st_ctime], # TODO:*****最終決定改成dist版本 條件,目的,結果,,
                 value=全能ORB(cover_png) # 操作傾向
             ) 
             self._trans = {} 
