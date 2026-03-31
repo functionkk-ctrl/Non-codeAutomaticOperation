@@ -175,6 +175,27 @@ def make_json_content(file_path, file_name,  key, value):
         json.dump(data, f, indent=4, ensure_ascii=False)
     temp_path.replace(path)
 
+def make_json_content(file_path, file_name, content):
+    """
+    在 base_path 下建立或更新 file_path 文件之下並建立或更新 file_name.json，之內建立或更新內容 key:value
+    key 只能不可變且可哈希的類型，可以tuple(list)、字串、數字、元組
+    """
+    path = make_folder(file_path) / (file_name + ".json")
+    if path.exists():  # 有檔案
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            data =[]
+    else:
+        data =[]
+    data.append(content)
+    # 寫入（原子寫入比較安全）避免「寫到一半斷電檔案壞掉」。
+    temp_path = path.with_suffix(".tmp")
+    with open(temp_path , "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+    temp_path.replace(path)
+
 def read_json_content(file_path, file_name,  key):
     """讀取失敗時回傳[]，成功回傳 key 的內容"""
     path = base_path/file_path / f"{file_name}.json"
@@ -549,17 +570,37 @@ class State:
             self._sub = {}
             self._release = []
             # 資料夾結構儲存:[語意輪廓(root) , 操作傾向(files.name/無操作) ,dirs(條件、目的、結果)]
-            # 觸發使用:低啟動門檻(易上手:系統簡單、 耗時短、工具少、重複性高)、高競爭壓制其餘選擇(影響範圍:時程、空間位置、資源空氣（可量化/注意力、金錢、社交資源）)、高匹配率高低(可使用工具:情緒、體力、外貿、影響力（不可量化/社交、權威、群體效應）)、強執行慣性(未來性:自動連續、連鎖效應、累積價值)
-                # 技巧儲存在Noesis的 的下面，用戶說的內容再引用找哪個符合 觸發使用
-            
+            # 觸發使用:
+                # 低啟動門檻(易上手:系統簡單、 耗時短、工具少、重複性高)、
+                    # %%%妳臉快!舉例(用到的def內的東西) 
+                # 高競爭壓制其餘選擇(影響範圍:時程、空間位置、資源空氣（可量化/注意力、金錢、社交資源）)、
+                    # %%%妳臉快!舉例(用到的def內的東西) 
+                # 高匹配率(可使用工具:情緒、體力、外貿、影響力（不可量化/社交、權威、群體效應）)、
+                    # %%%妳臉快!舉例(用到的def內的東西) 語意的資源、 操作傾向、  
+                # 強執行慣性(未來性:自動連續、連鎖效應、累積價值)
+                    # %%%妳臉快!舉例(用到的def內的東西) 語意的條件、 結果、
+                # Noesis如何用被覆蓋的技巧、用戶如何直觀地用被覆蓋的技巧
+
+                
+            # TODO:***寫在哪裡才符合 更替圖片中 的紀錄被覆蓋的技巧
             cover_png=被覆蓋的圖片
             root=cover_png的路徑
             time_schedule=read_json_content(該層資料夾,"time_schedule") # 目標,目標危險,目標進度,動作危險
+            content={ 
+                "資源": 全能ORB(path_all(root,target="_ 必定使用的資源".png)[2]), # 條件
+                "成與敗": 全能ORB(path_all(root,target="_ 成功與失敗的情境".png)[2]), # 條件
+                "不適合情境": 全能ORB(path_all(root,target="_ 不適用的情境".png)[2]), # 條件
+                "動作衝突": 全能ORB(path_all(root,target="_ 動作衝突或限制".png)[2]), # 條件
+
+                "建立時間":(root/ cover_png).stat().st_ctime,
+                "目的":time_schedule[0],
+                "操作傾向":全能ORB(cover_png), 
+                "結果":time_schedule[2],
+            }
             make_json_content(
                 file_path=該層資料夾/make_folder(root), # 語意輪廓
                 file_name="被覆蓋的技巧", # json
-                key=[條件 time_schedule[0],time_schedule[0],time_schedule[2],(root/ cover_png).stat().st_ctime], # TODO:*****最終決定改成dist版本 條件,目的,結果,,
-                value=全能ORB(cover_png) # 操作傾向
+                content=content 
             ) 
             self._trans = {} 
             self.current = None
@@ -646,10 +687,10 @@ class State:
             # 投票同意增加 neighbor(event) 、不同意增加 invariably
             # neighbor 上層的在下層中有
             ok = sum(1
-                     for walker in self._walk()
-                     for neighbor, (to_state, inv) in walker._trans_get(event, "all")
-                     if neighbor in event
-                     )
+                for walker in self._walk()
+                for neighbor, (to_state, inv) in walker._trans_get(event, "all")
+                if neighbor in event
+                )
             # invariably 上層的在下層中有
             not_not = sum(
                 1
@@ -2822,7 +2863,7 @@ class Noēsis:
                                     if not 全能ORB(f,fa[1],similar=0.9) and not 全能ORB(f,fb[1],similar=0.9)]
                                 看見工具=[a for a in 工具 for b in 工具 if 全能ORB(a[1],b[1])]
                                 固定工具=[a for a in 看見工具 for b in 看見工具 if 全能ORB(a[1],b[1],similar=0.9)]
-                                for a in 固定工具: # TODO:******找 被覆蓋的技巧 的條件
+                                for a in 固定工具: 
                                     shutil.copy2(a[0]/a[1],speak/a[0]/a[1].name+"_ 必定使用的資源".png)# ORB固定出現的非人和目標=固定使用的資源
 
                                 # shutil.copy2(r/score[1],speak/r/score[1].name+"_ 運用條件".png)# 設備健全，目前無法處理，如果用戶回覆提出軟件遺失在找
