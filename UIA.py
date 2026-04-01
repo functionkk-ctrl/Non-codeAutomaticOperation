@@ -546,6 +546,7 @@ def OverridingTechniques(cover_png=None,png_root=None,using=False):
             found1=path_all(TEMPLATE_DIRS["user"],"被覆蓋的技巧")
             found2=path_all(TEMPLATE_DIRS["user"]/"直覺要用的") # 在用戶說 技巧(直覺)甚麼之前，就先判斷出，並處理，不要馬後炮
             # 這和我的對話差太多，實在無法理解，我都是在很長的進度停滯後領悟處理方法後，很自信才會說直覺甚麼
+            # 甚麼時候會使用直覺
             # 你的訊號：「我懂了」、「原來要這樣」、「這才是關鍵」、「（自信的總結）」。
         else:
             found1=path_all(TEMPLATE_DIRS["Noesis"],"被覆蓋的技巧")
