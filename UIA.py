@@ -203,9 +203,12 @@ def read_json_content(file_path, file_name,  key):
         try:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
+                if isinstance(data, dict):
+                    return data.get(key, []) # {不同key:value}
+                elif isinstance(data, list):
+                    return data[key] # [不同key:value]
         except (FileNotFoundError, json.JSONDecodeError): # 錯誤時中斷
             return []
-        return data[key]
     else:
         return []
 
@@ -526,40 +529,106 @@ def locate_text(keyword, sort=1, num=1, classA=None):
 def click(pos): 
     pyautogui.moveTo(*pos, duration=0.2); pyautogui.click(); time.sleep(0.05)
 
-def OverridingTechniques():
+def OverridingTechniques(cover_png=None,png_root=None,using=False):
     # 資料夾結構儲存:[語意輪廓(root) , 操作傾向(files.name/無操作) ,dirs(條件、目的、結果)]
     # 觸發使用:
-        # 低啟動門檻(易上手:系統簡單、 耗時短、工具少、重複性高)、
-            # 資源(工具) 操作傾向(重複性、耗時) 語意的目的(系統)
-        # 高競爭壓制其餘選擇(影響範圍:時程、空間位置、資源空氣（可量化/注意力、金錢、社交資源）)、
-            # 操作傾向(時程) 資源和屬性ORB(資源空氣、空間位置)
-        # 高匹配率(可使用工具:情緒、體力、外貿、影響力（不可量化/社交、權威、群體效應）)、
-            # 語意的資源(外貿、影響力)、 操作傾向、目的(相似度)、用戶的詳細資訊(情緒、體力) 
+        # 低啟動門檻: 資源(工具)、操作傾向(重複性高、耗時短)、語意的目的(系統簡單)
+        # 高競爭壓制其餘選擇(影響範圍): 操作傾向(時程不重疊性)、資源和屬性ORB(資源空氣(可量化/注意力、金錢、社交資源)、空間位置)
+        # 高匹配率(可使用工具): 語意的資源(外貿、影響力(不可量化/社交、權威、群體效應))、 操作傾向、目的(相似度)、用戶的詳細資訊(情緒、體力可消耗) 
         # 強執行慣性(未來性:自動連續、連鎖效應、累積價值)
             # 語意的條件、結果、成與敗、不適合情境
         # Noesis如何用被覆蓋的技巧、用戶如何直觀地用被覆蓋的技巧
+    def sorted_data(f,a):
+        return sorted([ read_json_content(r,ff,a) for ff in f])
 
-        
-    # TODO:***寫在哪裡才符合 更替圖片中 的紀錄被覆蓋的技巧
-    cover_png=被覆蓋的圖片
-    root=cover_png的路徑
-    time_schedule=read_json_content(該層資料夾,"time_schedule") # 目標,目標危險,目標進度,動作危險
-    content={ 
-        "資源": 全能ORB(path_all(root,target="_ 必定使用的資源".png)[2]), # 條件
-        "成與敗": 全能ORB(path_all(root,target="_ 成功與失敗的情境".png)[2]), # 條件
-        "不適合情境": 全能ORB(path_all(root,target="_ 不適用的情境".png)[2]), # 條件
-        "動作衝突": 全能ORB(path_all(root,target="_ 動作衝突或限制".png)[2]), # 條件
+    if using:
+        if 用戶: # TODO:***驗證是否為用戶?
+            found1=path_all(TEMPLATE_DIRS["user"],"被覆蓋的技巧")
+            found2=path_all(TEMPLATE_DIRS["user"]/"直覺要用的") # 在用戶說 技巧(直覺)甚麼之前，就先判斷出，並處理，不要馬後炮
+            # 這和我的對話差太多，實在無法理解，我都是在很長的進度停滯後領悟處理方法後，很自信才會說直覺甚麼
+            # 你的訊號：「我懂了」、「原來要這樣」、「這才是關鍵」、「（自信的總結）」。
+        else:
+            found1=path_all(TEMPLATE_DIRS["Noesis"],"被覆蓋的技巧")
+            found2=path_all(TEMPLATE_DIRS["Noesis"]/"直覺要用的")
+        if next(found1) and next(found2):
+            sorce=1
+            直覺=found2[1]
+            for r,f in found1:
+                # 低啟動門檻: 
+                if "低啟動門檻" in 直覺:
+                    資源= sorted_data(f,"資源")
+                    if next(資源):
+                        sorce*= float(len(資源) % 10) / 5.0 # 資源(工具)
+                    操作傾向= sorted_data(f,"操作傾向")
+                    if next(操作傾向):
+                        sorce*=np.log1p(len(操作傾向)) # 操作傾向(重複性高、耗時短)
+                    目的= sorted_data(f,"目的")
+                    if next(目的):
+                        sorce*= 1.0 / (np.sqrt(len(目的)) + 1.0) # 語意的目的(系統簡單)
+                # 高競爭壓制其餘選擇(影響範圍):
+                if "高競爭壓制其餘選擇" in 直覺:
+                    資源= sorted_data(f,"資源")
+                    if next(資源):
+                        sorce*= np.linalg.norm(資源) if hasattr(資源, "__len__") else 1.5 # 操作傾向(時程不重疊性)
+                    操作傾向= sorted_data(f,"操作傾向")
+                    if next(操作傾向):
+                        sorce *= np.count_nonzero(操作傾向) if isinstance(操作傾向, np.ndarray) else 1.2 # 操作傾向(時程不重疊性)
+                    目的= sorted_data(f,"目的")
+                    if next(目的):
+                        sorce *= np.mean(目的) if isinstance(目的, (list, np.ndarray)) else 1.1 # 資源和屬性ORB(資源空氣(可量化/注意力、金錢、社交資源)、空間位置)
+                # 高匹配率(可使用工具):
+                if "高匹配率" in 直覺:
+                    資源= sorted_data(f,"資源")
+                    if next(資源):
+                        sorce*= float(len(資源) % 10) / 5.0 # 語意的資源(外貿、影響力(不可量化/社交、權威、群體效應))
+                    操作傾向= sorted_data(f,"操作傾向")
+                    if next(操作傾向):
+                        sorce *= np.std(操作傾向) + 1.0 # 操作傾向
+                    目的= sorted_data(f,"目的")
+                    if next(目的):
+                        sorce *= np.exp(np.clip(len(目的)/5.0, 0, 2)) # 目的(相似度)
+                    用戶的詳細資訊= sorted_data(f,"用戶的詳細資訊")
+                    if next(用戶的詳細資訊):
+                        sorce*=np.exp(用戶的詳細資訊) # 用戶的詳細資訊(情緒、體力可消耗)
+                # 強執行慣性(未來性):
+                if "強執行慣性" in 直覺:
+                    語意的條件= sorted_data(f,"語意的條件")
+                    if next(語意的條件):
+                        sorce *= np.log1p(len(語意的條件)) # 自動連續
+                    for tag in ["成與敗", "不適合情境"]:
+                        資料 = sorted_data(f, tag)
+                        if next(資料, None):
+                            sorce *= np.tanh(len(資料)) + 1.0 # 累積價值
+                    動作衝突= sorted_data(f,"動作衝突")
+                    if next(動作衝突):
+                        sorce *= (1.0 + (float(len(動作衝突)) / 10.0))  # 自動連續 # 借力使力，增益倍率 10%
+                    結果= sorted_data(f,"結果")
+                    if next(結果):
+                        sorce *= np.prod(np.atleast_1d(結果)) # 連鎖效應
+                    目的= sorted_data(f,"目的")
+                    if next(目的):
+                        sorce *= np.prod(np.atleast_1d(目的)) # 連鎖效應
+            
+    # TODO:***誰更替圖片才符合 被覆蓋的技巧
+    # TODO:***寫在哪裡才符合 更新狀態值
+    if cover_png is not None and png_root is not None:
+        time_schedule=read_json_content(png_root,"time_schedule") # 目標,目標危險,目標進度,動作危險
+        content={ 
+            "資源": 全能ORB(path_all(png_root,target="_ 必定使用的資源".png)[2]), # 條件
+            "成與敗": 全能ORB(path_all(png_root,target="_ 成功與失敗的情境".png)[2]), # 條件
+            "不適合情境": 全能ORB(path_all(png_root,target="_ 不適用的情境".png)[2]), # 條件
+            "動作衝突": 全能ORB(path_all(png_root,target="_ 動作衝突或限制".png)[2]), # 條件
 
-        "建立時間":(root/ cover_png).stat().st_ctime,
-        "目的":time_schedule[0],
-        "操作傾向":全能ORB(cover_png), 
-        "結果":time_schedule[2],
-    }
-    make_json_content(
-        file_path=該層資料夾/make_folder(root), # 語意輪廓
-        file_name="被覆蓋的技巧", # json
-        content=content 
-    ) 
+            "建立時間":(png_root/ cover_png).stat().st_ctime,
+            "目的":time_schedule[0],
+            "操作傾向":全能ORB(cover_png), 
+            "結果":time_schedule[2],
+        }
+        make_json_content(
+            file_path=png_root/make_folder(png_root), # 語意輪廓
+            file_name="被覆蓋的技巧", # json
+            content=content 
+        ) 
 
 class StateMgr:
     __slots__ = ("_states",)
