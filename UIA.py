@@ -526,6 +526,40 @@ def locate_text(keyword, sort=1, num=1, classA=None):
 def click(pos): 
     pyautogui.moveTo(*pos, duration=0.2); pyautogui.click(); time.sleep(0.05)
 
+def OverridingTechniques():
+    # 資料夾結構儲存:[語意輪廓(root) , 操作傾向(files.name/無操作) ,dirs(條件、目的、結果)]
+    # 觸發使用:
+        # 低啟動門檻(易上手:系統簡單、 耗時短、工具少、重複性高)、
+            # 資源(工具) 操作傾向(重複性、耗時) 語意的目的(系統)
+        # 高競爭壓制其餘選擇(影響範圍:時程、空間位置、資源空氣（可量化/注意力、金錢、社交資源）)、
+            # 操作傾向(時程) 資源和屬性ORB(資源空氣、空間位置)
+        # 高匹配率(可使用工具:情緒、體力、外貿、影響力（不可量化/社交、權威、群體效應）)、
+            # 語意的資源(外貿、影響力)、 操作傾向、目的(相似度)、用戶的詳細資訊(情緒、體力) 
+        # 強執行慣性(未來性:自動連續、連鎖效應、累積價值)
+            # 語意的條件、結果、成與敗、不適合情境
+        # Noesis如何用被覆蓋的技巧、用戶如何直觀地用被覆蓋的技巧
+
+        
+    # TODO:***寫在哪裡才符合 更替圖片中 的紀錄被覆蓋的技巧
+    cover_png=被覆蓋的圖片
+    root=cover_png的路徑
+    time_schedule=read_json_content(該層資料夾,"time_schedule") # 目標,目標危險,目標進度,動作危險
+    content={ 
+        "資源": 全能ORB(path_all(root,target="_ 必定使用的資源".png)[2]), # 條件
+        "成與敗": 全能ORB(path_all(root,target="_ 成功與失敗的情境".png)[2]), # 條件
+        "不適合情境": 全能ORB(path_all(root,target="_ 不適用的情境".png)[2]), # 條件
+        "動作衝突": 全能ORB(path_all(root,target="_ 動作衝突或限制".png)[2]), # 條件
+
+        "建立時間":(root/ cover_png).stat().st_ctime,
+        "目的":time_schedule[0],
+        "操作傾向":全能ORB(cover_png), 
+        "結果":time_schedule[2],
+    }
+    make_json_content(
+        file_path=該層資料夾/make_folder(root), # 語意輪廓
+        file_name="被覆蓋的技巧", # json
+        content=content 
+    ) 
 
 class StateMgr:
     __slots__ = ("_states",)
@@ -569,39 +603,6 @@ class State:
             self.name = name
             self._sub = {}
             self._release = []
-            # 資料夾結構儲存:[語意輪廓(root) , 操作傾向(files.name/無操作) ,dirs(條件、目的、結果)]
-            # 觸發使用:
-                # 低啟動門檻(易上手:系統簡單、 耗時短、工具少、重複性高)、
-                    # %%%妳臉快!舉例(用到的def內的東西) 
-                # 高競爭壓制其餘選擇(影響範圍:時程、空間位置、資源空氣（可量化/注意力、金錢、社交資源）)、
-                    # %%%妳臉快!舉例(用到的def內的東西) 
-                # 高匹配率(可使用工具:情緒、體力、外貿、影響力（不可量化/社交、權威、群體效應）)、
-                    # %%%妳臉快!舉例(用到的def內的東西) 語意的資源、 操作傾向、  
-                # 強執行慣性(未來性:自動連續、連鎖效應、累積價值)
-                    # %%%妳臉快!舉例(用到的def內的東西) 語意的條件、 結果、
-                # Noesis如何用被覆蓋的技巧、用戶如何直觀地用被覆蓋的技巧
-
-                
-            # TODO:***寫在哪裡才符合 更替圖片中 的紀錄被覆蓋的技巧
-            cover_png=被覆蓋的圖片
-            root=cover_png的路徑
-            time_schedule=read_json_content(該層資料夾,"time_schedule") # 目標,目標危險,目標進度,動作危險
-            content={ 
-                "資源": 全能ORB(path_all(root,target="_ 必定使用的資源".png)[2]), # 條件
-                "成與敗": 全能ORB(path_all(root,target="_ 成功與失敗的情境".png)[2]), # 條件
-                "不適合情境": 全能ORB(path_all(root,target="_ 不適用的情境".png)[2]), # 條件
-                "動作衝突": 全能ORB(path_all(root,target="_ 動作衝突或限制".png)[2]), # 條件
-
-                "建立時間":(root/ cover_png).stat().st_ctime,
-                "目的":time_schedule[0],
-                "操作傾向":全能ORB(cover_png), 
-                "結果":time_schedule[2],
-            }
-            make_json_content(
-                file_path=該層資料夾/make_folder(root), # 語意輪廓
-                file_name="被覆蓋的技巧", # json
-                content=content 
-            ) 
             self._trans = {} 
             self.current = None
 
