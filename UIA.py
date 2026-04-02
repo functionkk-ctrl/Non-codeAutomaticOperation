@@ -544,25 +544,47 @@ def OverridingTechniques(cover_png=None,png_root=None,using=False):
     if using:
         if 用戶: # TODO:***驗證是否為用戶?
             found1=path_all(TEMPLATE_DIRS["user"],"被覆蓋的技巧")
-            found2=path_all(TEMPLATE_DIRS["user"]/"直覺要用的") # 在用戶說 技巧(直覺)甚麼之前，就先判斷出，並處理，不要馬後炮
+            # 在用戶說 技巧(直覺)甚麼之前，就先判斷出，並處理，不要馬後炮
+            attributes=path_all(TEMPLATE_DIRS["attributes"])
+            communication=path_all(TEMPLATE_DIRS["communication"])
             # 1. 邏輯死胡同的「突然沉默」 (The Cognitive Gap)
-                # 當你在對話中原本密集的邏輯推導、細節描述突然中斷，出現 1-2 秒的空白時。
-                # 預判訊號：這不是卡住，是大腦在進行後台封包整合。
-                # 特徵：對話節奏從「碎碎念」變成「停頓」。
-            # 2. 語氣從「發散」轉為「收斂」 (Focus Narrowing)
-                # 當你不再討論「可能的原因」或「各種方案」，而是突然對準某一個特定的變數或路徑進行反覆確認時。
-                # 預判訊號：大腦已經過濾掉 99% 的雜訊，正在對準那 1% 的關鍵路徑。
-                # 特徵：問題的層級突然從「廣度」縮減到「深度」。
-            # 3. 主詞與語態的「確定性偏移」 (Certainty Shift)
-                # 注意你的用詞從「好像、可能是、試試看」轉變為「這、那個、就是」這種代名詞。
-                # 預判訊號：這代表你的潛意識已經定位了目標，只是意識層面還沒把具體的解釋（口語化）補齊。
-                # 特徵：語氣變得短促且篤定。
-            # 4. 拋棄冗餘資訊 (Information Pruning)
-                # 如果你突然說：「等等，前面的都不重要，重點是……」這句話本身就是最強的直覺前兆。
-                # 預判訊號：大腦完成了權重重組，這就是你說的「靜謐感」在對話中的表現——自動過濾無用資訊。
-                # 簡單來說，你要抓的訊號是：
-                # 「節奏停頓」+「目標收窄」+「語氣轉硬」。
+                # 對話節奏從「碎碎念」變成「停頓」。資訊密度的「驟降」。
+                # 名詞頻率。  
+            if next(attributes) and next(communication):
+                for r,f in attributes:
+                    comm_sorted = sorted(communication, key=lambda x: x[2].stat().st_ctime)
+                    nouns_f = [a for a in comm_sorted for b in attributes if 全能ORB(a[2],b[2],similar=0.9)] # TODO:***要檢查詞性
+                    prons_f = [a for a in comm_sorted for b in attributes if 全能ORB(a[2],b[2],similar=0.9)] # TODO:***要檢查詞性
+                    if not nouns_f or not prons_f: continue
+                    n = np.array(sorted([r/ f.stat().st_ctime for r,_,f in nouns_f])) # 名詞時間戳
+                    p = np.array(sorted([r/ f.stat().st_ctime for r,_,f in prons_f])) # 代名詞時間戳
 
+                    對話節奏變慢索引=np.argmin(np.abs(np.diff(n)))# 靠近最新的對話，對話節奏中變慢的時間段
+                    重點時間點 = nouns_f[對話節奏變慢索引]
+            # 2. 語氣從「發散」轉為「收斂」 (Focus Narrowing)
+                # 問題的層級突然從「廣度」縮減到「深度」。語法結構的「破碎化」 語言區還沒跟上，只能先用代名詞「佔位」。
+                # 上下文的資訊熵
+                    資訊熵偏移 = np.mean(p) / (np.mean(n) + 1e-5) 
+                    # 計算代名詞與名詞權重比的「突變程度」
+                    資訊熵偏移 = p / (n + 1e-5)
+                    # 閾值 = 全域平均值 + 兩倍標準差 (統計學上的異常跳變)
+                    threshold = np.mean(資訊熵偏移) + 2 * np.std(資訊熵偏移)
+                    if 資訊熵偏移[-1] > threshold and len(f) > 對話節奏變慢索引: # 偵測到收斂訊號
+                        # 這就是「語言區跟不上直覺」的瞬間
+                        # 抓取這個跳變點之後的第一個名詞
+                        target_idx = np.argmax(n[對話節奏變慢索引+1:]) + 對話節奏變慢索引 + 1
+                        # 直覺標的應該是具體的檔案物件（或包裹成列表）
+                        直覺標的 = [nouns_f[target_idx][1]] 
+                        for a in 直覺標的:
+                            shutil.copy2(make_folder(TEMPLATE_DIRS["user"]/"直覺要用的"),a) # TODO:** 直覺前兆觸發！抓到的『東西』
+            # 3. 主詞與語態的「確定性偏移」 (Certainty Shift)
+                # 語氣變得短促且篤定。語氣的「重音轉移」從「詢問/討論」變成「宣告」。
+                # 延遲一段時間後，使用絕對肯定詞 「沉默」之後出現的第一個「名詞」視為直覺的導向標的。
+                    if 對話節奏變慢索引 + 1 < len(nouns_f):
+                        直覺導向標的 = nouns_f[對話節奏變慢索引 + 1]
+                        # 輸出抓到的直覺本體（檔案名稱通常代表該詞）
+                        for a in 直覺導向標的:
+                            shutil.copy2(make_folder(TEMPLATE_DIRS["user"]/"直覺要用的"),a) # TODO:** 捕捉到直覺實體
         else:
             found1=path_all(TEMPLATE_DIRS["Noesis"],"被覆蓋的技巧")
             found2=path_all(TEMPLATE_DIRS["Noesis"]/"直覺要用的")
