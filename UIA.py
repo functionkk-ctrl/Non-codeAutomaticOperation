@@ -542,7 +542,7 @@ def OverridingTechniques(cover_png=None,png_root=None,using=False):
         return sorted([ read_json_content(r,ff,a) for ff in f])
 
     if using:
-        if 用戶: # TODO:***驗證是否為用戶?
+        if getattr(current_session, 'is_owner', False) and TEMPLATE_DIRS["user"].exists(): # TODO:***驗證是否為用戶?
             found1=path_all(TEMPLATE_DIRS["user"],"被覆蓋的技巧")
             # 在用戶說 技巧(直覺)甚麼之前，就先判斷出，並處理，不要馬後炮
             attributes=path_all(TEMPLATE_DIRS["attributes"])
