@@ -1818,7 +1818,6 @@ class Backend(QObject):
         for _,imgs in found:
             self.imagesReady.emit(imgs)
             
-# 把GPT的甚麼鬼邏輯清乾淨，只要說:你又犯了，可以，打扁你，你扁掉了?
 # === class Noēsis:
     # Noēsis(諾埃西斯）希臘文 νόησις。Perceptive Structural Language(PSL）。自己用 World-Formation Language(WFL）
         # 我正在創建 新社交，因為聊天機器人好像很賺錢。
@@ -1973,7 +1972,7 @@ class Backend(QObject):
             # ** 同層之間關係的變化 算出規律，進而算出未拍攝的同層
                 # *** 夢境，多組屬性交叉 生成虛擬的 未拍攝的同層
                     # 寫回:一般新圖像 創世
-                    # 刪除:預設為全部。一般新圖像 滅式
+                    # 刪除:預設為全部。一般新圖像 滅世
                     # 運用(託夢):用戶創建一組上層和同層為目標，作夢時就會生成虛擬同層，逐漸完善目標
         # *** 預言對 上層命名，參照屬性資料夾(語言辭典)
             # *** 從 上層之間 以互相不重疊的拓樸結構 來命名
@@ -2769,6 +2768,13 @@ class Noēsis:
             def 環境配置():
                 # 多張圖片有純環境、不純環境，移除環境和人體就得到目標。人體和目標的正常和危險的圖片。
                 # 獲得目標後要完成的有 _目標危險.png、_目標完成.png。獲得人體後要有 _人體危險.png
+                found = path_all(TEMPLATE_DIRS["live_capture"])
+                if next(found):
+                    for r,d,f in found:
+                        for ff in f:
+                            全能ORB(f,ff,similar_ratio=0.8) # 穩定的拓樸結構
+                            全能ORB(f,ff,similar=0.95) # 是否相近，重複
+
                 pass
 
             def 策略調整():
