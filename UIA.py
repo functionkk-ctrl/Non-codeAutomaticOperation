@@ -529,6 +529,9 @@ def locate_text(keyword, sort=1, num=1, classA=None):
 def click(pos): 
     pyautogui.moveTo(*pos, duration=0.2); pyautogui.click(); time.sleep(0.05)
 
+import firebase_admin
+from firebase_admin import credentials, auth
+
 def OverridingTechniques(cover_png=None,png_root=None,using=False):
     # 資料夾結構儲存:[語意輪廓(root) , 操作傾向(files.name/無操作) ,dirs(條件、目的、結果)]
     # 觸發使用:
@@ -542,7 +545,19 @@ def OverridingTechniques(cover_png=None,png_root=None,using=False):
         return sorted([ read_json_content(r,ff,a) for ff in f])
 
     if using:
-        if getattr(current_session, 'is_owner', False) and TEMPLATE_DIRS["user"].exists(): # TODO:***驗證是否為用戶?
+        def UID():
+            cred = credentials.Certificate("path/to/serviceAccountKey.json")
+            firebase_admin.initialize_app(cred)
+            # 2. 驗證從前端傳來的 ID Token
+            id_token= input("請輸入ID: ").strip()
+            try:
+                decoded_token = auth.verify_id_token(id_token)
+                uid = decoded_token['uid']
+                print(f"驗證成功！用戶 UID: {uid}")
+            except Exception as e:
+                print("驗證失敗：", e)
+
+        if UID(): # TODO:**驗證是否為用戶?
             found1=path_all(TEMPLATE_DIRS["user"],"被覆蓋的技巧")
             # 在用戶說 技巧(直覺)甚麼之前，就先判斷出，並處理，不要馬後炮
             attributes=path_all(TEMPLATE_DIRS["attributes"])
@@ -551,7 +566,7 @@ def OverridingTechniques(cover_png=None,png_root=None,using=False):
                 # 對話節奏從「碎碎念」變成「停頓」。資訊密度的「驟降」。
                 # 名詞頻率。  
             if next(attributes) and next(communication):
-                for r,f in attributes:
+                for r,d,f in attributes:
                     comm_sorted = sorted(communication, key=lambda x: x[2].stat().st_ctime)
                     nouns_f = [a for a in comm_sorted for b in attributes if 全能ORB(a[2],b[2],similar=0.9)] # TODO:***要檢查詞性
                     prons_f = [a for a in comm_sorted for b in attributes if 全能ORB(a[2],b[2],similar=0.9)] # TODO:***要檢查詞性
@@ -2183,7 +2198,7 @@ class Noēsis:
         dirs = TEMPLATE_DIRS["communication"]
 
         def speaker(img_path_list):
-            for r, _, f in path_all(img_path_list, TEMPLATE_DIRS["attributes"]):                       
+            for r, _, f in path_all(img_path_list, self.dirs_attributes):                       
                 cv2.imwrite(make_folder(TEMPLATE_DIRS["speak"]/r/f"{f+int(time.time())}.jpg"), f) # TODO: 屬性資料夾的圖片
         # TODO:  # 找出用戶的交流資料夾，代表和用戶交談，同時已經區分話題，接著更改資料夾位址就算 延續話題，新位址與目前位址共享前綴
         # 話題排序(操作路徑):頻率(資料夾檔案數量)=高、前後詞(同層)=5、關聯詞(上下層)=3、資料夾名稱(NER)
@@ -2318,10 +2333,10 @@ class Noēsis:
             remove_thinking_file()
             for ext, anchor in tlist:
                 root_att = list(
-                    path_all(TEMPLATE_DIRS["attributes"], self.dirs_Noesis))
+                    path_all(self.dirs_attributes, self.dirs_Noesis))
                 if root_att:  # dirs_Noesis 在屬性資料夾中 有出現過的。有出現，但和 technology 無關，用T找屬性路徑，用T屬性找Noesis路徑
                     root_att_technology = list(
-                        path_all(TEMPLATE_DIRS["attributes"], [ext, anchor]))
+                        path_all(self.dirs_attributes, [ext, anchor]))
                     if root_att_technology:
                         root_Noesis_att = list(
                             path_all(self.dirs_Noesis, root_att_technology))
