@@ -2841,6 +2841,7 @@ class Noēsis:
                     for r,推測目標f in nc:
                         for r2,_,理想目標f in path_all(TEMPLATE_DIRS["communication"],r): 
                             # 用戶
+                            理想目標fs=[a for a in 理想目標f]
                             bfl= path_all(TEMPLATE_DIRS["live_capture"]) 
                             if len(bfl): 
                                 for _,_,實際動作 in bfl: 
@@ -2850,8 +2851,28 @@ class Noēsis:
                                     # TODO:真正意圖進度變化(降頻動作) 被移除(最有效動作(推測目標) 覆蓋 降頻動作)或加快(最有效動作(理想目標))
                                         # 對長遠目標的影響決定 要推測目標(Noesis)或理想目標(用戶)
                                     for r,長遠目標f in path_all(TEMPLATE_DIRS["user"],"_長遠目標".png):
-                                        # TODO:***其實路徑或ORB 不能當作計算長遠目標，先暫時占用
+                                        # TODO:***其實路徑或ORB 無法"計算"長遠目標，先暫時占用
+                                        sorce=sum(1 for ra in r2.split() for rb in r.split() if ra in rb) # 有部分文字相同 # .拆解目標路徑
+
                                         for 長遠f in 長遠目標f:
+                                            # 評估該動作的期望值。
+                                                # 影響力 (Impact)： 該動作能讓進度往前推進多少？（1-10分）
+                                                Impact=[(fa,全能ORB(fa,fb,similar_ratio=0.8)) for fa in 理想目標f for fb in 長遠目標f]
+                                                # 槓桿率 (Leverage)： 它是否具備複利效應？（例如：寫一篇文章可以被看一千次，比打一通電話更有槓桿率）。
+                                                    # TODO:*** 必經之路、推進長遠目標、節省資源
+
+                                                Leverage = sum(1 for target in path_all_targets if r in target) / total_targets_count
+                                                # 機會成本 (Opportunity Cost)： 做這件事時，你放棄了哪件更重要的事？
+                                                #TODO:*****
+                                                同時的行為=[a for a in 理想目標fs if a.stat().st_ctime ==長遠f.stat().st_ctime]
+                                                other_pngs_impact = [(a,全能ORB(a, target,similar_ratio=0.9)) for target in 同時的行為 for a in 理想目標fs] # 你寫得很奇怪，同時做得最不衝突的行為，是幹甚麼?
+                                                opportunity_cost = max(other_pngs_impact[1]) if other_pngs_impact else 0
+                                            # 80/20 法則： 檢視過去的經驗，是否 20% 的這類動作貢獻了 80% 的成果？
+                                            # 1% 試驗： 如果不確定，先花最少的成本（1% 的時間）試做，觀察是否有正向反饋（數據增長、技能提升或關鍵資源獲取）。
+                                            final_score = (Impact[1] * Leverage) / (opportunity_cost[1] + 1)
+                                            if final_score > 0.8:
+                                                print("還可以")
+
                                             if 全能ORB(理想目標f,長遠f,similar=0.8): # 更有效的 降頻動作 
                                                 需求.append({
                                                     "path": r2,
