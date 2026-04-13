@@ -2634,7 +2634,7 @@ class Noēsis:
             def 容錯允許(intent_ratio=0.75):
                 pd=path_all(dir,"_目標.png")
                 if len(pd):
-                    for r,_,files in path_all(pd):
+                    for r,files in path_all(pd):
                         target=[f for f in files if "_目標.png" in f]
                         target_danger=[f for f in files if "_目標危險.png" in f]
                         target_ok=[f for f in files if "_目標完成.png" in f]
@@ -2836,58 +2836,85 @@ class Noēsis:
                 需求=[]
                 # 分析交流意圖和甚麼型態最有效，趨勢分析該型態，甚麼動作對該型態最有貢獻
                 # 需求= 分析交流意圖 # 用辭典找真正的意圖?
-                nc=path_all(TEMPLATE_DIRS["Noesis"],TEMPLATE_DIRS["communication"],target="_目標完成".png) # 聆聽用戶訊息
-                if len(nc):
-                    for r,推測目標f in nc:
+                found_live= path_all(TEMPLATE_DIRS["live_capture"]) 
+                found_nc=path_all(TEMPLATE_DIRS["Noesis"],TEMPLATE_DIRS["communication"],target="_目標完成".png) # 聆聽用戶訊息
+                found_long=path_all(TEMPLATE_DIRS["user"],"_長遠目標".png)
+                if next(found_nc) and next(found_live) and next(found_long):
+                    for r,推測目標f in found_nc:
                         for r2,_,理想目標f in path_all(TEMPLATE_DIRS["communication"],r): 
                             # 用戶
                             理想目標fs=[a for a in 理想目標f]
-                            bfl= path_all(TEMPLATE_DIRS["live_capture"]) 
-                            if len(bfl): 
-                                for _,_,實際動作 in bfl: 
-                                    # TODO:修改到這邊，不確定如何修正行為
-                                    實踐差=雙方正規化分析誤差主因(實際動作,理想目標f) # 用戶實際行為和理想的差距 #升頻動作 # 語意:做不到
-                                    雙方目標差=雙方正規化分析誤差主因(理想目標f,推測目標f) # 雙方目標的差距 #降頻[1]-升頻動作 # 語意:理解錯
-                                    # TODO:真正意圖進度變化(降頻動作) 被移除(最有效動作(推測目標) 覆蓋 降頻動作)或加快(最有效動作(理想目標))
-                                        # 對長遠目標的影響決定 要推測目標(Noesis)或理想目標(用戶)
-                                    for r,長遠目標f in path_all(TEMPLATE_DIRS["user"],"_長遠目標".png):
-                                        # TODO:***其實路徑或ORB 無法"計算"長遠目標，先暫時占用
-                                        sorce=sum(1 for ra in r2.split() for rb in r.split() if ra in rb) # 有部分文字相同 # .拆解目標路徑
+                            for _,_,實際動作 in found_live: 
+                                # TODO:修改到這邊，不確定如何修正行為
+                                實踐差=雙方正規化分析誤差主因(實際動作,理想目標f) # 用戶實際行為和理想的差距 #升頻動作 # 語意:做不到
+                                雙方目標差=雙方正規化分析誤差主因(理想目標f,推測目標f) # 雙方目標的差距 #降頻[1]-升頻動作 # 語意:理解錯
+                                # TODO:真正意圖進度變化(降頻動作) 被移除(最有效動作(推測目標) 覆蓋 降頻動作)或加快(最有效動作(理想目標))
+                                    # 對長遠目標的影響決定 要推測目標(Noesis)或理想目標(用戶)
+                                for r,長遠目標f in found_long:
+                                    # TODO:*** 評估該動作的期望值。
+                                    for 長遠f in 長遠目標f:
+                                        # <+6:倒推必經之路含 此行為?
+                                        相關性 = sum(1 
+                                            for ra in r2.split() # 理想目標
+                                            for rb in r.split() # 長遠目標
+                                            if ra in rb)
+                                        # <+11:長遠目標進度變化率:該動作能讓進度往前推進多少？ 
+                                        目標進度變化=(f,全能ORB(f,長遠f,similar_ratio=0.5) for f in 理想目標fs)
+                                        目標進度變化率=np.mean(目標進度變化[1])
+                                        # 目標進度變化率=np.max(目標進度變化[1]) if 目標進度變化[0] else 0
+                                        # <6*複利效應:辭典(大種類/進階行為)的基礎行為(前置)含 此行為? 一次作用時長
+                                        found_af=path_all(TEMPLATE_DIRS["absorb"])
+                                        for r,d,f in found_af:
+                                            潛力=sum(1 for ff in f 
+                                                if 全能ORB(ff,理想目標fs,similar=0.9) # 找到在下面
+                                                and ff in r.split() # TODO:***且符合是基礎行為或前置行為。 工具型肌肉記憶
+                                                ) 
 
-                                        for 長遠f in 長遠目標f:
-                                            # 評估該動作的期望值。
-                                                # 影響力 (Impact)： 該動作能讓進度往前推進多少？（1-10分）
-                                                Impact=[(fa,全能ORB(fa,fb,similar_ratio=0.8)) for fa in 理想目標f for fb in 長遠目標f]
-                                                # 槓桿率 (Leverage)： 它是否具備複利效應？（例如：寫一篇文章可以被看一千次，比打一通電話更有槓桿率）。
-                                                    # TODO:*** 必經之路、推進長遠目標、節省資源
+                                        time_schedule=read_json_content(TEMPLATE_DIRS["communication"],"肌肉記憶","time_schedule") # 時間順序非時間 讀取 動作分支,相似動作
+                                        for 目標,目標危險,目標進度,動作危險 in time_schedule:
+                                            # TODO:此行為的 一次作用時長
+                                            # 如何知道這是此行為，先亂寫
+                                            if 目標進度 == 目標進度變化率:
+                                                # 先拿掉此行為在計算全部的變化率，和原陣列計算增減益的時長
+                                                效果作用時長=目標進度 # 計算其他行為的肌肉記憶變化率，預測進度變化率的 變化，計算該行為的 增減益效果時長
+                                        複利效應="*"+潛力+"*"+效果作用時長+"秒"
 
-                                                Leverage = sum(1 for target in path_all_targets if r in target) / total_targets_count
-                                                # 機會成本 (Opportunity Cost)： 做這件事時，你放棄了哪件更重要的事？
-                                                #TODO:*****
-                                                同時的行為=[a for a in 理想目標fs if a.stat().st_ctime ==長遠f.stat().st_ctime]
-                                                other_pngs_impact = [(a,全能ORB(a, target,similar_ratio=0.9)) for target in 同時的行為 for a in 理想目標fs] # 你寫得很奇怪，同時做得最不衝突的行為，是幹甚麼?
-                                                opportunity_cost = max(other_pngs_impact[1]) if other_pngs_impact else 0
-                                            # 80/20 法則： 檢視過去的經驗，是否 20% 的這類動作貢獻了 80% 的成果？
-                                            # 1% 試驗： 如果不確定，先花最少的成本（1% 的時間）試做，觀察是否有正向反饋（數據增長、技能提升或關鍵資源獲取）。
-                                            final_score = (Impact[1] * Leverage) / (opportunity_cost[1] + 1)
-                                            if final_score > 0.8:
-                                                print("還可以")
 
-                                            if 全能ORB(理想目標f,長遠f,similar=0.8): # 更有效的 降頻動作 
-                                                需求.append({
-                                                    "path": r2,
-                                                    "建議動作": 趨勢分析(r2),
-                                                    "實踐差": 實踐差,
-                                                    "雙方目標差": 雙方目標差,
-                                                })
-                                            else: # 覆蓋掉 降頻動作
-                                                需求.append({
-                                                    "path": r,
-                                                    "建議動作": 趨勢分析(r),
-                                                    "實踐差": 實踐差,
-                                                    "雙方目標差": 雙方目標差,
-                                                })
-                                return 需求 
+                                        Impact=[(fa,全能ORB(a,b,similar_ratio=0.8)) 
+                                            for fa in 理想目標fs 
+                                            for a in fa 
+                                            for b in 長遠目標f]
+                                        # +:辭典(大種類)的正向情緒含 此行為?此行為不含 目標的資源資源? 
+                                            # </6:辭典(大種類)的負向情緒含 此行為?
+
+
+                                        Leverage = sum(1 for target in path_all_targets if r in target) / total_targets_count
+                                        # 機會成本 (Opportunity Cost)： 做這件事時，你放棄了哪件更重要的事？
+                                            # -:機會成本(此行為的目標進度變化率-行為於最重要的目標的 目標進度變化率)
+                                        #TODO:*****
+                                        同時的行為=[a for a in 理想目標fs if a.stat().st_ctime ==長遠f.stat().st_ctime]
+                                        other_pngs_impact = [(a,全能ORB(a, target,similar_ratio=0.9)) for target in 同時的行為 for a in 理想目標fs] # 你寫得很奇怪，同時做得最不衝突的行為，是幹甚麼?
+                                        opportunity_cost = max(other_pngs_impact[1]) if other_pngs_impact else 0
+                                        
+                                        # TODO:*** max(長遠目標) save to 最重要.png
+
+                                        if 全能ORB(理想目標f,長遠f,similar=0.8): # 更有效的 降頻動作 
+                                            需求.append({
+                                                "path": r2,
+                                                "建議動作": 趨勢分析(r2),
+                                                "實踐差": 實踐差,
+                                                "雙方目標差": 雙方目標差,
+                                                "長遠目標變化": 長遠目標,
+                                            })
+                                        else: # 覆蓋掉 降頻動作
+                                            需求.append({
+                                                "path": r,
+                                                "建議動作": 趨勢分析(r),
+                                                "實踐差": 實踐差,
+                                                "雙方目標差": 雙方目標差,
+                                                "長遠目標變化": 長遠目標,
+                                            })
+                            return 需求 
    
             def 學習者意願(
                 是否空閒=True,
