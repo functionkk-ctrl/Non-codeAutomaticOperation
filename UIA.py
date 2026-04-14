@@ -2789,7 +2789,7 @@ class Noēsis:
                         for ff in f:
                             全能ORB(f,ff,similar_ratio=0.8) # 穩定的拓樸結構
                             全能ORB(f,ff,similar=0.95) # 是否相近，重複
-
+                # TODO:更新 處理用到的資料 和通知無資料或要更新
                 pass
 
             def 策略調整():
@@ -2839,6 +2839,8 @@ class Noēsis:
                 found_live= path_all(TEMPLATE_DIRS["live_capture"]) 
                 found_nc=path_all(TEMPLATE_DIRS["Noesis"],TEMPLATE_DIRS["communication"],target="_目標完成".png) # 聆聽用戶訊息
                 found_long=path_all(TEMPLATE_DIRS["user"],"_長遠目標".png)
+                found_positive_emo =path_all(TEMPLATE_DIRS["absorb"],target="正向情緒")
+                found_negative_emo =path_all(TEMPLATE_DIRS["absorb"],target="負向情緒")
                 if next(found_nc) and next(found_live) and next(found_long):
                     for r,推測目標f in found_nc:
                         for r2,_,理想目標f in path_all(TEMPLATE_DIRS["communication"],r): 
@@ -2850,8 +2852,9 @@ class Noēsis:
                                 雙方目標差=雙方正規化分析誤差主因(理想目標f,推測目標f) # 雙方目標的差距 #降頻[1]-升頻動作 # 語意:理解錯
                                 # TODO:真正意圖進度變化(降頻動作) 被移除(最有效動作(推測目標) 覆蓋 降頻動作)或加快(最有效動作(理想目標))
                                     # 對長遠目標的影響決定 要推測目標(Noesis)或理想目標(用戶)
+
                                 for r,長遠目標f in found_long:
-                                    # TODO:*** 評估該動作的期望值。
+                                    # TODO:** 評估該動作的期望值。
                                     for 長遠f in 長遠目標f:
                                         # <+6:倒推必經之路含 此行為?
                                         相關性 = sum(1 
@@ -2861,7 +2864,7 @@ class Noēsis:
                                         # <+11:長遠目標進度變化率:該動作能讓進度往前推進多少？ 
                                         目標進度變化=(f,全能ORB(f,長遠f,similar_ratio=0.5) for f in 理想目標fs)
                                         目標進度變化率=np.mean(目標進度變化[1])
-                                        # 目標進度變化率=np.max(目標進度變化[1]) if 目標進度變化[0] else 0
+                                            # 目標進度變化率=np.max(目標進度變化[1]) if 目標進度變化[0] else 0
                                         # <6*複利效應:辭典(大種類/進階行為)的基礎行為(前置)含 此行為? 一次作用時長
                                         found_af=path_all(TEMPLATE_DIRS["absorb"])
                                         for r,d,f in found_af:
@@ -2869,42 +2872,65 @@ class Noēsis:
                                                 if 全能ORB(ff,理想目標fs,similar=0.9) # 找到在下面
                                                 and ff in r.split() # TODO:***且符合是基礎行為或前置行為。 工具型肌肉記憶
                                                 ) 
-
+                                            
                                         time_schedule=read_json_content(TEMPLATE_DIRS["communication"],"肌肉記憶","time_schedule") # 時間順序非時間 讀取 動作分支,相似動作
                                         for 目標,目標危險,目標進度,動作危險 in time_schedule:
+                                            進度a=np.array(目標進度)
+                                        def find(a,i):
+                                            # i欄 j列，找到i欄的同一值，列出此列
+                                            abc = (time_schedule[j] for j, row in enumerate(time_schedule) if np.array_equal(row[i], a))
+                                            return abc
+                                        
+                                        for i, 移除 in enumerate(進度a):
                                             # TODO:此行為的 一次作用時長
                                             # 如何知道這是此行為，先亂寫
-                                            if 目標進度 == 目標進度變化率:
+                                            if 移除 == 目標進度變化率:
                                                 # 先拿掉此行為在計算全部的變化率，和原陣列計算增減益的時長
-                                                效果作用時長=目標進度 # 計算其他行為的肌肉記憶變化率，預測進度變化率的 變化，計算該行為的 增減益效果時長
-                                        複利效應="*"+潛力+"*"+效果作用時長+"秒"
-
-
-                                        Impact=[(fa,全能ORB(a,b,similar_ratio=0.8)) 
-                                            for fa in 理想目標fs 
-                                            for a in fa 
-                                            for b in 長遠目標f]
+                                                # 計算其他行為的肌肉記憶變化率，預測進度變化率的 變化，計算該行為的 增減益效果時長
+                                                    # 參考 const events = [10, 15, 20, 25, 30, 40]; // 總時長應為 (15-10) + (25-20) + (40-30) = 20/5=+5效果*4格
+                                                原時長=len(進度a[i:])
+                                                增減益=np.mean(進度a[i:])-np.mean(進度a[i+1:]) # 原效果-移除後效果
+                                                # 未處理：[10, 15, 11, 3, 4]
+                                                # 原數列一階差分 (diff)：[5,- 4, -8, 1](這是你的 目標進度變化率)原本效果是, 8, -1] =? 
+                                                # 所以原本是-8,1]=-7/2= -3.5*2格
+                                                # 新數列：[10, 15, 3, 4] 
+                                                # 此時的一階差分：[5, -12, 1] 
+                                                # 效果為1*1格
+                                                # ，所以效果作用時長為-4.5*2格?
+                                        複利效應="*"+潛力+"*"+增減益+"*"+ 原時長+"格"
+                                        def 複利效應(a):
+                                            return f"行為的{潛力}潛力的效果{增減益*a}持續{原時長}格"
                                         # +:辭典(大種類)的正向情緒含 此行為?此行為不含 目標的資源資源? 
                                             # </6:辭典(大種類)的負向情緒含 此行為?
-
-
-                                        Leverage = sum(1 for target in path_all_targets if r in target) / total_targets_count
+                                        Leverage = (sum(1 for emo in found_positive_emo[1] if r in emo)
+                                            -sum(1 for emo in found_negative_emo[1] if r in emo) ) # 槓桿
                                         # 機會成本 (Opportunity Cost)： 做這件事時，你放棄了哪件更重要的事？
                                             # -:機會成本(此行為的目標進度變化率-行為於最重要的目標的 目標進度變化率)
-                                        #TODO:*****
                                         同時的行為=[a for a in 理想目標fs if a.stat().st_ctime ==長遠f.stat().st_ctime]
-                                        other_pngs_impact = [(a,全能ORB(a, target,similar_ratio=0.9)) for target in 同時的行為 for a in 理想目標fs] # 你寫得很奇怪，同時做得最不衝突的行為，是幹甚麼?
+                                        other_pngs_impact = [
+                                            (target,全能ORB(target, 目標,similar_ratio=0.9)-全能ORB(a, 目標,similar_ratio=0.9)) 
+                                            for target in 同時的行為 
+                                            for a in 理想目標fs] # 損失做這個 同時的行為 的推進進度速度
                                         opportunity_cost = max(other_pngs_impact[1]) if other_pngs_impact else 0
-                                        
-                                        # TODO:*** max(長遠目標) save to 最重要.png
-
+                                        # # 全部行為均導致生存False，則                                       
+                                            # 重構基礎行為，找辭典的進階動作或前置動作
+                                            # 等危險(事件)過去
+                                            # 收割價值種子，埋進安穩的土裡。
+                                        schedule=find(進度a,2) # 圖片名稱:不適用的情境(目標危險) 動作衝突或限制(動作危險)
+                                        危險動作=(全能ORB(a,schedule[3]) for a in 理想目標fs )
+                                        危險目標=(全能ORB(a,schedule[1]) for a in 理想目標fs )
+                                        生存=schedule[2]>危險動作>危險目標 # 生存=目標進度>動作危險>目標危險
+                                        長遠目標="先活下來"
+                                        if 生存: 
+                                            長遠目標=複利效應((1*(相關性+目標進度變化率)*(1-opportunity_cost))/Leverage) # 1代表原本的複利效應的位置                                            
                                         if 全能ORB(理想目標f,長遠f,similar=0.8): # 更有效的 降頻動作 
                                             需求.append({
                                                 "path": r2,
                                                 "建議動作": 趨勢分析(r2),
                                                 "實踐差": 實踐差,
                                                 "雙方目標差": 雙方目標差,
-                                                "長遠目標變化": 長遠目標,
+                                                "長遠目標變化": 長遠目標, # 以長遠目標為主，生存插隊，以現在目標為副
+                                                "生存": "斷掉聯絡和離開現場以迴避，打好基礎，流動資產。\n不反饋，隱匿長遠目標。\n洗掉導致生存False的行為。", # 收割價值種子，埋進安穩的土裡。 
                                             })
                                         else: # 覆蓋掉 降頻動作
                                             需求.append({
@@ -2912,7 +2938,8 @@ class Noēsis:
                                                 "建議動作": 趨勢分析(r),
                                                 "實踐差": 實踐差,
                                                 "雙方目標差": 雙方目標差,
-                                                "長遠目標變化": 長遠目標,
+                                                "長遠目標變化": 長遠目標, # 以長遠目標為主，以生存為插隊，以現在目標為副
+                                                "生存": "斷掉聯絡和離開現場以迴避，打好基礎，流動資產。\n不反饋，隱匿長遠目標。\n洗掉導致生存False的行為。", # 收割價值種子，埋進安穩的土裡。 
                                             })
                             return 需求 
    
