@@ -224,10 +224,48 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
     similar:ab圖相似率要多少，最多100，return bool
     similar_ratio:return ab圖相似率，最多100%
     """
+    def im2_orb(b,png="_相似拓樸結構"):
+        img2 = cv2.imread(b) 
+        if img2 is None:
+            raise ValueError(f"讀取圖檔失敗: {b}")
+        kp2, desB = sift.detectAndCompute(img2, None)
+        if desA is None or desB is None:
+            return False if similar is not None else None
+        matches = bf.knnMatch(desA, desB, k=2)
+        good_matches = []
+        good_matches = [m for m, n in matches if m.distance < ratio * n.distance]
+        good_matches = sorted(good_matches, key=lambda x: x.distance)
+        src_pts = np.float32(
+            [kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+        dst_pts = np.float32(
+            [kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+        H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+        if similar_ratio:
+            return mask.sum() / len(good_matches) * 100
+        if similar is not None:
+            if len(good_matches) < 4:
+                return False
+            if H is None or mask is None:
+                return False
+            similarity = mask.sum() / len(good_matches) * 100
+            return similarity > similar
+        matchesMask = mask.ravel().tolist() if mask is not None else None
+        img_matches = cv2.drawMatches(
+            img1, kp1,
+            img2, kp2,
+            good_matches, None,  # TODO: 完全相同的拓樸結構
+            matchColor=(0, 255, 0),
+            singlePointColor=(255, 0, 0),
+            matchesMask=matchesMask,    
+            flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
+        )
+        cv2.imwrite(path+png+".png", img_matches)
+        return path
+    
     if path is None:
         path = path_all(base_path, a)[0]
     sift = cv2.SIFT_create()
-    img1 = cv2.imread(a)
+    img1 =( cv2.imread(aa) for aa in a)
     if img1 is None:
         raise ValueError(f"讀取圖檔失敗: {a}")
     kp1, desA = sift.detectAndCompute(img1, None)
@@ -275,43 +313,19 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
     else:
         im2_orb(b)
 
-    def im2_orb(b,png="_相似拓樸結構"):
-        img2 = cv2.imread(b) 
-        if img2 is None:
-            raise ValueError(f"讀取圖檔失敗: {b}")
-        kp2, desB = sift.detectAndCompute(img2, None)
-        if desA is None or desB is None:
-            return False if similar is not None else None
-        matches = bf.knnMatch(desA, desB, k=2)
-        good_matches = []
-        good_matches = [m for m, n in matches if m.distance < ratio * n.distance]
-        good_matches = sorted(good_matches, key=lambda x: x.distance)
-        src_pts = np.float32(
-            [kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
-        dst_pts = np.float32(
-            [kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
-        H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
-        if similar_ratio:
-            return mask.sum() / len(good_matches) * 100
-        if similar is not None:
-            if len(good_matches) < 4:
-                return False
-            if H is None or mask is None:
-                return False
-            similarity = mask.sum() / len(good_matches) * 100
-            return similarity > similar
-        matchesMask = mask.ravel().tolist() if mask is not None else None
-        img_matches = cv2.drawMatches(
-            img1, kp1,
-            img2, kp2,
-            good_matches, None,  # TODO: 完全相同的拓樸結構
-            matchColor=(0, 255, 0),
-            singlePointColor=(255, 0, 0),
-            matchesMask=matchesMask,    
-            flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
-        )
-        cv2.imwrite(path+png+".png", img_matches)
-        return path
+
+def array_find(a,i,array):
+    # [[1,2,3,4],[1,2,3,4],,,]。i副位 j主位，j主位的i副位若是同一值，列出此主位
+    return array[array[:, i] == a] # array[array([True, True, False])] ，只留下 True 對應的列
+def find_flex(array, funcs):
+    mask = np.ones(len(array), dtype=bool)
+    for f in funcs:
+        mask &= f(array)
+    return array[mask]
+find_flex(array, [
+    lambda x: x[:, 0] == 1,
+    lambda x: x[:, 1] > 5
+])
 
 def hide_file_windows(file_path):
     FILE_ATTRIBUTE_HIDDEN = 0x02
@@ -389,7 +403,6 @@ def locate_template_orb_cached(obj, name, sort=1, num=1):
         obj.cache[name] = pos
     return pos
 
-
 def validate_cache(name, pos, tolerance=10, dir=TEMPLATE_DIRS["live_capture"]):
     screen_gray = cv2.cvtColor(screenshot(), cv2.COLOR_BGR2GRAY)
     h, w = screen_gray.shape[:2]
@@ -455,9 +468,6 @@ def locate_text(keyword, sort=1, num=1, classA=None):
         locationStart = geolocator.geocode(startP)
         locationNear = geolocator.geocode(startP)
         locationFar = geolocator.geocode(startP)
-        # 間距太近(firestore.client().reference(太近的地址)，起點和太近地址的距離為 間距)的一些地址為一分支 manifest[分支]，離起點太遠(firestore 太遠地址)額外安排 manifest2
-        NEAR_DISTANCE = dist(nearP, startP)
-        FAR_DISTANCE = dist(farP, startP)
 
         def dist(a, b):
             aLocation = geolocator.geocode(a)
@@ -477,6 +487,10 @@ def locate_text(keyword, sort=1, num=1, classA=None):
                 (aLocation.longitude - bLocation.longitude)**2
             time.sleep(0.05)
             return distance
+        # 間距太近(firestore.client().reference(太近的地址)，起點和太近地址的距離為 間距)的一些地址為一分支 manifest[分支]，離起點太遠(firestore 太遠地址)額外安排 manifest2
+        NEAR_DISTANCE = dist(nearP, startP)
+        FAR_DISTANCE = dist(farP, startP)
+
 
         for ress in readText:
             line_key = (
@@ -519,7 +533,7 @@ def locate_text(keyword, sort=1, num=1, classA=None):
             # 4️⃣ 上傳 Firebase
             # manifest 上傳給firebase，manifest中最難的給最早請求的用戶 # *** firebase 分發給用戶，用戶如何獲取 manifest
 
-            firestore.client().document("manifest").add(manifest)
+            # firestore.client().document("manifest").add(manifest)
 
             # *** 繪製路線圖並記錄指南針方向，旋轉地圖時路線圖與地圖的指南針向量 矯正
             # *** 指南針計算(一維)
@@ -1216,7 +1230,7 @@ class TargetExtractor:
         bgdModel = np.zeros((1, 65), np.float64)
         fgdModel = np.zeros((1, 65), np.float64)
         cv2.grabCut(self.image, mask, None, bgdModel,
-                    fgdModel, 5, cv2.GC_INIT_WITH_MASK)
+            fgdModel, 5, cv2.GC_INIT_WITH_MASK)
 
         # 調整mask，使得前景與可能前景視為前景
         mask2 = np.where((mask == cv2.GC_FGD) | (
@@ -2879,10 +2893,10 @@ class Noēsis:
                                         time_schedule=read_json_content(TEMPLATE_DIRS["communication"],"肌肉記憶","time_schedule") # 時間順序非時間 讀取 動作分支,相似動作
                                         for 目標,目標危險,目標進度,動作危險 in time_schedule:
                                             進度a=np.array(目標進度)
-                                        def find(a,i):
-                                            # i欄 j列，找到i欄的同一值，列出此列
-                                            abc = (time_schedule[j] for j, row in enumerate(time_schedule) if np.array_equal(row[i], a))
-                                            return abc
+                                        def find_life(a,i):
+                                            # [[1,2,3,4],[1,2,3,4],,,]。i副位 j主位，j主位的i副位若是同一值，列出此主位
+                                            if 生存: 
+                                                yield from time_schedule[time_schedule[:, i] == a] # time_schedule[array([True, True, False])] ，只留下 True 對應的列
                                         
                                         for i, 移除 in enumerate(進度a):
                                             # TODO:此行為的 一次作用時長
@@ -2919,13 +2933,12 @@ class Noēsis:
                                             # 重構基礎行為，找辭典的進階動作或前置動作
                                             # 等危險(事件)過去
                                             # 收割價值種子，埋進安穩的土裡。
-                                        schedule=find(進度a,2) # 圖片名稱:不適用的情境(目標危險)、動作衝突或限制(動作危險)
+                                        schedule=find_life(進度a,2) # 圖片名稱:不適用的情境(目標危險)、動作衝突或限制(動作危險)
                                         危險動作=any(全能ORB(a,schedule[3]) for a in 理想目標fs )
                                         危險目標=any(全能ORB(a,schedule[1]) for a in 理想目標fs )
                                         生存=schedule[2]>危險動作>危險目標 # 生存=目標進度>動作危險>目標危險
                                         長遠目標="先活下來"
-                                        if 生存: 
-                                            長遠目標=複利效應((1*(相關性+目標進度變化率)*(1-opportunity_cost))/Leverage) # 1代表原本的複利效應的位置                                            
+                                        長遠目標=複利效應((1*(相關性+目標進度變化率)*(1-opportunity_cost))/Leverage) # 1代表原本的複利效應的位置                                            
                                         if 全能ORB(理想目標f,長遠f,similar=0.8): # 更有效的 降頻動作 
                                             需求.append({
                                                 "path": r2,
@@ -3060,9 +3073,9 @@ class Noēsis:
                                 time_schedule=read_json_content(r,"肌肉記憶","time_schedule") # 目標,目標危險,目標進度,動作危險
                                 # shutil.copy2(r/score[1],speak/r/score[1].name+"_ 意外推進的目標".png)# 如果用戶回覆有提出，在記錄，目前無法處理
                                 # TODO:固定出現是必定使用的資源?
-                                人體=[r,a for r,_,fs in path_all(r,target="_人體".png) for f in fs]
-                                目標完成=[r,a for r,_,fs in path_all(r,target="_目標完成".png) for f in fs]
-                                工具=[r,a 
+                                人體=[(r,a) for r,_,fs in path_all(r,target="_人體".png) for f in fs]
+                                目標完成=[(r,a) for r,_,fs in path_all(r,target="_目標完成".png) for f in fs]
+                                工具=[(r,a) 
                                     for r,_,fs in path_all(r) 
                                     for f in fs 
                                     for fa in 人體 
