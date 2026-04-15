@@ -90,7 +90,7 @@ firebase_admin.initialize_app(cred, {
 })
 
 
-def path_all(paths, target=None,exclude=None,time=None):
+def path_all(paths, target=None,exclude=None,time=None,use_orb=False):
     """
     預設排序為時間，由舊到新
     yield root(完整目錄), dirs(下一層的全部資料夾名), files(這層全部檔案含檔名)
@@ -101,47 +101,89 @@ def path_all(paths, target=None,exclude=None,time=None):
         if not next(path_all(...)):
     paths, target, exclude =[],[]，all(...)同時都有target，any(...)任一有exclude
     """
-    if isinstance(target, str):
-        target = [target]
-    if isinstance(exclude, str):
-        exclude = [exclude]
-        
+    # 統一處理單一字串或清單
+    search_paths = [Path(p) for p in (paths if isinstance(paths, list) else [paths])]
+    target = [t for t in (target if isinstance(target, list) else [target])] if target else []
+    exclude = [e for e in (exclude if isinstance(exclude, list) else [exclude])] if exclude else []
+
     def is_hidden(filepath):
-        FILE_ATTRIBUTE_HIDDEN = 0x02
-        attrs = ctypes.windll.kernel32.GetFileAttributesW(str(filepath))
-        return attrs & FILE_ATTRIBUTE_HIDDEN
+        try:
+            attrs = ctypes.windll.kernel32.GetFileAttributesW(str(filepath))
+            return attrs & 0x02 if attrs != -1 else False
+        except: return False
+    
+    found_any = False
 
-    for path in paths:
-        for root, dirs, files in os.walk(path):
-            root_path = Path(root)
-            # TODO: **排除掉 exclude
-            if exclude:
-                dirs = [d for d in dirs if not any(e in d for e in exclude)]
-                files = [f for f in files if not any(e in f for e in exclude)]
-                if "不要隱藏" in exclude :
-                    dirs = [d for d in dirs if not any(is_hidden(d))]
-                    files = [f for f in files if not any(is_hidden(f))]
+    for base in search_paths:
+        if not base.exists(): continue
+        
+        # 遍歷所有子目錄 (不純的搜尋開始)
+        # 使用 rglob("*") 模擬 os.walk 的深度遍歷，但轉為 Path 物件
+        sub_paths = sorted(base.rglob("*"), key=lambda p: p.stat().st_ctime)
+        
+        # 這裡模擬 os.walk 結構：找出所有的「目錄」作為 root
+        roots = [p for p in sub_paths if p.is_dir()]
+        # 加入 base 本身作為第一個 root
+        roots.insert(0, base)
+
+        for root in roots:
+            # 獲取當前層級的資料夾與檔案名稱
+            current_all = list(root.iterdir())
+            if "不要隱藏" in exclude :
+                dirs = sorted([d.name for d in current_all if d.is_dir() and not is_hidden(d)], 
+                    key=lambda n: (root/n).stat().st_ctime)
+                files = sorted([f.name for f in current_all if f.is_file() and not is_hidden(f)], 
+                    key=lambda n: (root/n).stat().st_ctime)
+            else:
+                dirs = sorted([d.name for d in current_all if d.is_dir()], 
+                    key=lambda n: (root/n).stat().st_ctime)
+                files = sorted([f.name for f in current_all if f.is_file()], 
+                    key=lambda n: (root/n).stat().st_ctime)
+
+            # --- 目標檢索邏輯 ---
+            # 1. 排除 (Exclude): 任一匹配即跳過is_hidden
+            if exclude and any(e in (str(root) + "".join(files)) for e in exclude):
+                continue
+            
+            # 2. 目標 (Target) 匹配：支援字串 find 與 ORB 比對
+            if target:
+                # 檢查是否「所有」target 條件都滿足
+                match_all_targets = True
+                for t in target:
+                    # 優先使用字串 find (找目錄名或檔名)
+                    text_match = any(t in name for name in (dirs + files))
                     
-            # 依建立時間排序
-            dirs.sort(key=lambda d: (root_path/ d).stat().st_ctime)
-            files.sort(key=lambda f: (root_path/ f).stat().st_ctime)
-
-            target_dirs = all(
-                any(t in d for d in dirs) or 
-                any(t in f for f in files)
-                for t in target)
-            if target_dirs:                           
-                files=[f for f in files for t in target if t in f]
-                yield root_path,files # 得到每個target檔案
-            elif time is not None: # 找同時間的檔案 
+                    # 如果字串沒中，且開啟 ORB，則比對圖片相似度
+                    orb_match = False
+                    if not text_match and use_orb and t.endswith(('.png', '.jpg')):
+                        # 這裡的 t 是目標圖片路徑或特徵，files 是當前目錄檔案
+                        orb_match = any(全能ORB(t, root/f, similar=0.9) for f in files if f.endswith(('.png', '.jpg')))
+                    
+                    if not (text_match or orb_match):
+                        match_all_targets = False
+                        break
+                
+                if match_all_targets:
+                    # 僅保留包含 target 字眼的檔案 (符合你原本 files=... for t in target 邏輯)
+                    matched_files = [f for f in files if any(t in f for t in target)]
+                    yield Path(str(root)), dirs, matched_files
+                    found_any = True
+                    elif time is not None:
+            elif time is not None:
+                # 找同時間（誤差0.5秒內）的檔案
                 matched_files = [
                     f for f in files
-                    if abs((root_path / f).stat().st_ctime - time) <= 0.5 # 0.5秒
+                    if abs((root / f).stat().st_ctime - time) <= 0.5
                 ]
                 if matched_files:
-                    yield root_path, matched_files
+                    yield Path(str(root)), dirs, matched_files
+                    found_any = True
             else:
-                yield root_path, dirs, files
+                # 無 target 則全產出
+                yield Path(str(root)), dirs, files
+                found_any = True
+        if not found_any:
+            yield False
 
 
 def make_folder(folder_name):
@@ -208,8 +250,10 @@ def read_json_content(file_path, file_name,  key):
                 elif isinstance(data, list):
                     return data[key] # [不同key:value]
         except (FileNotFoundError, json.JSONDecodeError): # 錯誤時中斷
+            print(f"讀取失敗: {file_path}") 
             return []
     else:
+        print(f"讀取失敗: {file_path}") 
         return []
 
 def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_ratio=None):
@@ -263,7 +307,8 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
         return path
     
     if path is None:
-        path = path_all(base_path, a)[0]
+        # row[0] 只存（Index 0）比起[:,0]整個 path_all 轉成 np.array，記憶體佔用會小很多。
+        path = [row[0] for row in path_all(base_path, a)]
     sift = cv2.SIFT_create()
     img1 =( cv2.imread(aa) for aa in a)
     if img1 is None:
@@ -359,23 +404,23 @@ def C(i):
     return Col(i)
 
 
-def find(array,cond):
+def find_array(array,cond):
     """
-    find((C(0) == 1) & (C(1) > 5), array)
-    find((C(0) == 1) | (C(1) > 5), array)
-    find(C(0).between(1, 5), array)
-    find((C(0).between(1, 5)) & (C(1).isin([2,3,4])), array) 
+    AND:find_array(array,(C(0) == 1) & (C(1) > 5)
+    OR:find_array(array,(C(0) == 1) | (C(1) > 5)
+    between:find_array(array,C(0).between(1, 5)
+    between + isin:find_array(array,(C(0).between(1, 5)) & (C(1).isin([2,3,4])) 
         np.isin(A, B)
         A 裡每個元素
         是否存在於 B
-    find(((C(0) == 1) & (C(1) > 5)) | (C(2) < 3), array)
-    find((C(0) + C(1)) > 10, array)
-    find(((C(0) + C(1)) > 10) & (C(2) == 3), array)
+    :find_array(array,((C(0) == 1) & (C(1) > 5)) | (C(2) < 3)
+    +:find_array(array,(C(0) + C(1)) > 10)
+    expression:find_array(array,((C(0) + C(1)) > 10) & (C(2) == 3)
     """
-    return cond.apply(array)
+    return array[cond.func(array)]
 
 
-# def array_find(a,i,array):
+# def array_find_array(a,i,array):
 #     # [[1,2,3,4],[1,2,3,4],,,]。i副位 j主位，j主位的i副位若是同一值a，列出array[此主位]
 #     return array[array[:, i] == a] # array[array([True, True, False])] ，只留下 True 對應的列
 
@@ -514,13 +559,26 @@ def locate_text(keyword, sort=1, num=1, classA=None):
 
         # *** classA 似乎在這一行開始不通用了，使用到 Geocoding
         # *** firebase 用戶儲存的起點地址 addrStart
-        geolocator = Nominatim(user_agent="geo_example")
-        startP = firestore.client("用戶").reference("addrStart").get()
-        nearP = firestore.client("用戶").document("near").get().to_dict()
-        farP = firestore.client("用戶").document("far").get().to_dict()
-        locationStart = geolocator.geocode(startP)
-        locationNear = geolocator.geocode(startP)
-        locationFar = geolocator.geocode(startP)
+        def UID():
+            cred = credentials.Certificate("path/to/serviceAccountKey.json")
+            firebase_admin.initialize_app(cred)
+            # 2. 驗證從前端傳來的 ID Token
+            id_token= input("請輸入ID: ").strip()
+            try:
+                decoded_token = auth.verify_id_token(id_token)
+                uid = decoded_token['uid']
+                print(f"驗證成功！用戶 UID: {uid}")
+            except Exception as e:
+                print("驗證失敗：", e)
+
+        if UID(): # TODO:**驗證是否為用戶?
+            geolocator = Nominatim(user_agent="geo_example")
+            startP = firestore.client().reference("addrStart").get()
+            nearP = firestore.client().document("near").get().to_dict()
+            farP = firestore.client().document("far").get().to_dict()
+            locationStart = geolocator.geocode(startP)
+            locationNear = geolocator.geocode(startP)
+            locationFar = geolocator.geocode(startP)
 
         def dist(a, b):
             aLocation = geolocator.geocode(a)
@@ -596,7 +654,6 @@ def locate_text(keyword, sort=1, num=1, classA=None):
 def click(pos): 
     pyautogui.moveTo(*pos, duration=0.2); pyautogui.click(); time.sleep(0.05)
 
-import firebase_admin
 from firebase_admin import credentials, auth
 
 def OverridingTechniques(cover_png=None,png_root=None,using=False):
@@ -734,11 +791,11 @@ def OverridingTechniques(cover_png=None,png_root=None,using=False):
     if cover_png is not None and png_root is not None:
         time_schedule=read_json_content(png_root,"time_schedule") # 目標,目標危險,目標進度,動作危險
         content={ 
-            "資源": 全能ORB(path_all(png_root,target="_ 必定使用的資源".png)[2]), # 條件
-            "成與敗": 全能ORB(path_all(png_root,target="_ 成功與失敗的情境".png)[2]), # 條件
-            "不適合情境": 全能ORB(path_all(png_root,target="_ 不適用的情境".png)[2]), # 條件
-            "動作衝突": 全能ORB(path_all(png_root,target="_ 動作衝突或限制".png)[2]), # 條件
-
+            "資源": 全能ORB([row[2] for row in path_all(png_root,target="_ 必定使用的資源".png)]), # 條件
+            "成與敗": 全能ORB([row[2] for row in path_all(png_root,target="_ 成功與失敗的情境".png)]), # 條件
+            "不適合情境": 全能ORB([row[2] for row in path_all(png_root,target="_ 不適用的情境".png)]), # 條件
+            "動作衝突": 全能ORB([row[2] for row in path_all(png_root,target="_ 動作衝突或限制".png)]), # 條件
+            # row[2] 只存（Index 2）比起[:,2]整個 path_all 轉成 np.array，記憶體佔用會小很多。
             "建立時間":(png_root/ cover_png).stat().st_ctime,
             "目的":time_schedule[0],
             "操作傾向":全能ORB(cover_png), 
@@ -2377,7 +2434,7 @@ class Noēsis:
                 開放式提問
                 換話題
                 暗示下次相遇
-            [最前端名稱(路徑重疊最長的):末端的完整路徑(每個檔案)]+find(找到(ext類似副檔名))
+            [最前端名稱(路徑重疊最長的):末端的完整路徑(每個檔案)]+find_array(找到(ext類似副檔名))
             """
             segments = []
             for t in self.technology[choice]:
@@ -2780,8 +2837,6 @@ class Noēsis:
                             期望動作.extend([[fb,r] for fa in fas for fb in fbs if not 全能ORB(fa,fb,similar=0.9)]) 
                     # 在path_a找 完整詳細的動作紀錄(str)
                     目標=read_json_content(path_a,"肌肉記憶","time_schedule") # 時間順序非時間 讀取 目標,目標危險,目標進度,動作危險
-                    if 目標 is []: 
-                        print(f"讀取失敗: {path_a}") 
                     使用=[np.array(目標[a]) for a in 曲線 if not "相似動作" in a]
                     if "相似動作" in 曲線:
                         # 一起、合併、同時、順便
@@ -2791,10 +2846,10 @@ class Noēsis:
                         動作分支,相似動作=np.array(節拍[0]),np.array(節拍[1]) # 紀錄(str)
                         
                         使用的相似動作=[相似v.name 
-                        for 相似 in 相似動作 
-                        for 期望 in 期望動作[0] 
-                        for 相似v in path_all(期望[1],相似)
-                        if 全能ORB(期望,相似v,similar=0.9) ] # 期望 png，相似v str no png
+                            for 相似 in 相似動作 
+                            for 期望 in 期望動作[0] 
+                            for 相似v in path_all(期望[1],相似)
+                            if 全能ORB(期望,相似v,similar=0.9) ] # 期望 png，相似v str no png
                         使用.append(使用的相似動作) 
                     # 在path_b 找 png使用(str使用) 
                     for a in 使用:
@@ -2987,7 +3042,7 @@ class Noēsis:
                                             # 等危險(事件)過去
                                             # 收割價值種子，埋進安穩的土裡。
                                         if 生存:
-                                            schedule = find(time_schedule,C(2).isin(進度a)) # 找到圖片名稱:不適用的情境(目標危險)、動作衝突或限制(動作危險)
+                                            schedule = find_array(time_schedule,C(2).isin(進度a)) # 找到圖片名稱:不適用的情境(目標危險)、動作衝突或限制(動作危險)
                                         危險動作=any(全能ORB(a,b) for a in 理想目標fs for b in schedule[3] )
                                         危險目標=any(全能ORB(a,b) for a in 理想目標fs for b in schedule[1] )
                                         生存=schedule[2]>危險動作>危險目標 # 生存=目標進度>動作危險>目標危險
