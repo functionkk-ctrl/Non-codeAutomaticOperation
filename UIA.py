@@ -168,7 +168,6 @@ def path_all(paths, target=None,exclude=None,time=None,use_orb=False):
                     matched_files = [f for f in files if any(t in f for t in target)]
                     yield Path(str(root)), dirs, matched_files
                     found_any = True
-                    elif time is not None:
             elif time is not None:
                 # 找同時間（誤差0.5秒內）的檔案
                 matched_files = [
@@ -273,21 +272,33 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
         if img2 is None:
             raise ValueError(f"讀取圖檔失敗: {b}")
         kp2, desB = sift.detectAndCompute(img2, None)
+        matches = bf.knnMatch(desA, desB, k=2)
         if desA is None or desB is None:
             return False if similar is not None else None
-        matches = bf.knnMatch(desA, desB, k=2)
-        good_matches = []
-        good_matches = [m for m, n in matches if m.distance < ratio * n.distance]
-        good_matches = sorted(good_matches, key=lambda x: x.distance)
-        src_pts = np.float32(
-            [kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
-        dst_pts = np.float32(
-            [kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+        
+        # 將距離資料轉為矩陣:# 欄位定義：C(0): m.dist, C(1): n.dist, C(2): queryIdx, C(3): trainIdx
+        m_data = np.array([[m.distance, n.distance, m.queryIdx, m.trainIdx] for m, n in matches])
+        # [取代 if]：用 find_array 執行 Ratio Test 篩選
+        good_data = find_array(m_data, C(0) < (ratio * C(1)))
+        # [取代 sorted]：利用 numpy 排序後再次使用索引取值 (或直接在 Expr 擴充 sort)
+        # 這裡才是真正的「用 find_array 執行結果」
+        good_matches = good_data[np.argsort(good_data[:, 0])] 
+            # good_matches = []
+            # good_matches = [m for m, n in matches if m.distance < ratio * n.distance]
+            # good_matches = sorted(good_matches, key=lambda x: x.distance)
+        # 4. 回傳與 opencv 相容的結構 (或直接給 src_pts, dst_pts 用於 findHomography)
+        src_pts = np.float32([kp1[int(i)].pt for i in good_matches[:, 2]]).reshape(-1, 1, 2)
+        dst_pts = np.float32([kp2[int(i)].pt for i in good_matches[:, 3]]).reshape(-1, 1, 2)
+            # src_pts = np.float32(
+                # [kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+            # dst_pts = np.float32(
+                # [kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+
         H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
         if similar_ratio:
             return mask.sum() / len(good_matches) * 100
         if similar is not None:
-            if len(good_matches) < 4:
+            if len(good_matches) < 4: 
                 return False
             if H is None or mask is None:
                 return False
@@ -327,7 +338,12 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
                 "pos": (x_norm, y_norm),
                 "descriptor": tuple(desA[i]),
                 "color": (int(h), int(s), int(v))
-            })
+            }) 
+            # 幾何位置、局部外觀、顏色
+            # TODO: ***時序、動作、動機(意義)
+                # 實拍檔案的創建時間
+                # 拓譜結構的邊的移動過程
+                # GOOGLE的機器人驗證的反向方法，看圖說故事
         return feature_nodes
     if not b:
         return kp1, desA
@@ -350,10 +366,11 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
                 color=(0, 255, 0), thickness=2, circle_radius=2),
             mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2)
         )
-        cv2.imwrite(path + "_人體拓樸.png", topo_img)
+        cv2.imwrite(path + "_人體拓樸.png", 
+        )
         return path
     elif isinstance(b, str):
-        for _,_,f in path_all(TEMPLATE_DIRS["attributes"],b):
+        for _,f in path_all(TEMPLATE_DIRS["attributes"],b):
             im2_orb(f,"_目標")
     else:
         im2_orb(b)
@@ -371,6 +388,10 @@ class Expr:
     def __lt__(self, val):
         return Cond(lambda x: self.func(x) < val)
 
+    def argsort(self):
+        """回傳由小到大的索引排序"""
+        return lambda x: np.argsort(self.func(x))
+
 
 class Cond:
     def __init__(self, func):
@@ -384,6 +405,10 @@ class Cond:
     
     def apply(self, array):
         return array[self.func(array)]
+
+    def get_mask(self, array):
+        """回傳 True/False 的布林索引陣列"""
+        return self.func(array)
 
 
 class Col(Expr):
@@ -399,6 +424,10 @@ class Col(Expr):
     def between(self, a, b):
         return Cond(lambda x: (self.func(x) >= a) & (self.func(x) <= b))
 
+    def __ne__(self, val):
+        if isinstance(val, (list, np.ndarray)):
+            return Cond(lambda x: ~np.isin(self.func(x), val)) # 這裡就是你要的 "排除"
+        return Cond(lambda x: self.func(x) != val)
 
 def C(i):
     return Col(i)
@@ -406,6 +435,8 @@ def C(i):
 
 def find_array(array,cond):
     """
+    用法:find_array(資料陣列,C(順位) 運算符號 數值或文字)
+    -:find_array(目標,C(0)!="曲線")
     AND:find_array(array,(C(0) == 1) & (C(1) > 5)
     OR:find_array(array,(C(0) == 1) | (C(1) > 5)
     between:find_array(array,C(0).between(1, 5)
@@ -1981,6 +2012,8 @@ class Backend(QObject):
                 # 不是等問題出現才處理，
                 # 而是在多維趨勢開始失衡時就中和。
         # 協作方式 # TODO:三元協作時的回覆策略，交流或觀察
+                    # 立場、目的、局面:提高話題連續性和總長度、讓用戶感到有趣、
+                    # 立場、目的、局面:真實世界的真實穩定性、增加真實知識、
             # 交流時
                 # 有趣 主導:
                     # 承擔後果:不有趣
@@ -2786,7 +2819,8 @@ class Noēsis:
                             img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                             result = pose.process(img_rgb)
                             if result.pose_landmarks:
-                                topo_img = np.zeros((h, w), dtype=np.uint8)
+                                
+                                 = np.zeros((h, w), dtype=np.uint8)
                                 mp.solutions.drawing_utils.draw_landmarks(
                                     topo_img,
                                     result.pose_landmarks,
@@ -2837,7 +2871,8 @@ class Noēsis:
                             期望動作.extend([[fb,r] for fa in fas for fb in fbs if not 全能ORB(fa,fb,similar=0.9)]) 
                     # 在path_a找 完整詳細的動作紀錄(str)
                     目標=read_json_content(path_a,"肌肉記憶","time_schedule") # 時間順序非時間 讀取 目標,目標危險,目標進度,動作危險
-                    使用=[np.array(目標[a]) for a in 曲線 if not "相似動作" in a]
+                    使用=find_array(目標,C(0)!=曲線) # 字串
+                    使用=[np.array(目標[a]) for a in 目標 for b in 曲線 if not b in 目標] 
                     if "相似動作" in 曲線:
                         # 一起、合併、同時、順便
                         # 避開、跳過、略過
