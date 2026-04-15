@@ -313,19 +313,72 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
     else:
         im2_orb(b)
 
+class Expr:
+    def __init__(self, func):
+        self.func = func
+    
+    def __add__(self, other):
+        return Expr(lambda x: self.func(x) + other.func(x))
+    
+    def __gt__(self, val):
+        return Cond(lambda x: self.func(x) > val)
+    
+    def __lt__(self, val):
+        return Cond(lambda x: self.func(x) < val)
 
-def array_find(a,i,array):
-    # [[1,2,3,4],[1,2,3,4],,,]。i副位 j主位，j主位的i副位若是同一值，列出此主位
-    return array[array[:, i] == a] # array[array([True, True, False])] ，只留下 True 對應的列
-def find_flex(array, funcs):
-    mask = np.ones(len(array), dtype=bool)
-    for f in funcs:
-        mask &= f(array)
-    return array[mask]
-find_flex(array, [
-    lambda x: x[:, 0] == 1,
-    lambda x: x[:, 1] > 5
-])
+
+class Cond:
+    def __init__(self, func):
+        self.func = func
+    
+    def __and__(self, other):
+        return Cond(lambda x: self.func(x) & other.func(x))
+    
+    def __or__(self, other):
+        return Cond(lambda x: self.func(x) | other.func(x))
+    
+    def apply(self, array):
+        return array[self.func(array)]
+
+
+class Col(Expr):
+    def __init__(self, idx):
+        super().__init__(lambda x: x[:, idx])
+    
+    def __eq__(self, val):
+        return Cond(lambda x: self.func(x) == val)
+    
+    def isin(self, values):
+        return Cond(lambda x: np.isin(self.func(x), values))
+    
+    def between(self, a, b):
+        return Cond(lambda x: (self.func(x) >= a) & (self.func(x) <= b))
+
+
+def C(i):
+    return Col(i)
+
+
+def find(array,cond):
+    """
+    find((C(0) == 1) & (C(1) > 5), array)
+    find((C(0) == 1) | (C(1) > 5), array)
+    find(C(0).between(1, 5), array)
+    find((C(0).between(1, 5)) & (C(1).isin([2,3,4])), array) 
+        np.isin(A, B)
+        A 裡每個元素
+        是否存在於 B
+    find(((C(0) == 1) & (C(1) > 5)) | (C(2) < 3), array)
+    find((C(0) + C(1)) > 10, array)
+    find(((C(0) + C(1)) > 10) & (C(2) == 3), array)
+    """
+    return cond.apply(array)
+
+
+# def array_find(a,i,array):
+#     # [[1,2,3,4],[1,2,3,4],,,]。i副位 j主位，j主位的i副位若是同一值a，列出array[此主位]
+#     return array[array[:, i] == a] # array[array([True, True, False])] ，只留下 True 對應的列
+
 
 def hide_file_windows(file_path):
     FILE_ATTRIBUTE_HIDDEN = 0x02
@@ -2933,9 +2986,10 @@ class Noēsis:
                                             # 重構基礎行為，找辭典的進階動作或前置動作
                                             # 等危險(事件)過去
                                             # 收割價值種子，埋進安穩的土裡。
-                                        schedule=find_life(進度a,2) # 圖片名稱:不適用的情境(目標危險)、動作衝突或限制(動作危險)
-                                        危險動作=any(全能ORB(a,schedule[3]) for a in 理想目標fs )
-                                        危險目標=any(全能ORB(a,schedule[1]) for a in 理想目標fs )
+                                        if 生存:
+                                            schedule = find(time_schedule,C(2).isin(進度a)) # 找到圖片名稱:不適用的情境(目標危險)、動作衝突或限制(動作危險)
+                                        危險動作=any(全能ORB(a,b) for a in 理想目標fs for b in schedule[3] )
+                                        危險目標=any(全能ORB(a,b) for a in 理想目標fs for b in schedule[1] )
                                         生存=schedule[2]>危險動作>危險目標 # 生存=目標進度>動作危險>目標危險
                                         長遠目標="先活下來"
                                         長遠目標=複利效應((1*(相關性+目標進度變化率)*(1-opportunity_cost))/Leverage) # 1代表原本的複利效應的位置                                            
