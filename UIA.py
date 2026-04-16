@@ -90,6 +90,17 @@ firebase_admin.initialize_app(cred, {
 })
 
 
+def get_ctime(path, filename):
+    # 1. 先拼接路徑
+    full_path = os.path.join(path, filename)
+    # 2. 檢查檔案是否存在
+    if os.path.exists(full_path):
+        # 3. 獲取時間並轉換
+        timestamp = os.path.getctime(full_path)
+        creation_time = datetime.datetime.fromtimestamp(timestamp)
+        return creation_time
+    return None
+
 def path_all(paths, target=None,exclude=None,time=None,use_orb=False):
     """
     預設排序為時間，由舊到新
@@ -139,7 +150,7 @@ def path_all(paths, target=None,exclude=None,time=None,use_orb=False):
                     key=lambda n: (root/n).stat().st_ctime)
                 files = sorted([f.name for f in current_all if f.is_file()], 
                     key=lambda n: (root/n).stat().st_ctime)
-
+            get_ctime = [root/f.stat() for f in files]
             # --- 目標檢索邏輯 ---
             # 1. 排除 (Exclude): 任一匹配即跳過is_hidden
             if exclude and any(e in (str(root) + "".join(files)) for e in exclude):
@@ -166,7 +177,7 @@ def path_all(paths, target=None,exclude=None,time=None,use_orb=False):
                 if match_all_targets:
                     # 僅保留包含 target 字眼的檔案 (符合你原本 files=... for t in target 邏輯)
                     matched_files = [f for f in files if any(t in f for t in target)]
-                    yield Path(str(root)), dirs, matched_files
+                    yield root, dirs, matched_files, get_ctime 
                     found_any = True
             elif time is not None:
                 # 找同時間（誤差0.5秒內）的檔案
@@ -175,11 +186,11 @@ def path_all(paths, target=None,exclude=None,time=None,use_orb=False):
                     if abs((root / f).stat().st_ctime - time) <= 0.5
                 ]
                 if matched_files:
-                    yield Path(str(root)), dirs, matched_files
+                    yield root, dirs, matched_files, get_ctime 
                     found_any = True
             else:
                 # 無 target 則全產出
-                yield Path(str(root)), dirs, files
+                yield root, dirs, files, get_ctime 
                 found_any = True
         if not found_any:
             yield False
@@ -435,7 +446,7 @@ def C(i):
 
 def find_array(array,cond):
     """
-    用法:find_array(資料陣列,C(順位) 運算符號 數值或文字)
+    用法:find_array(資料陣列,C(順位) 運算符號 數值或文字)，輸入對象請務必維持為 NumPy Array。
     -:find_array(目標,C(0)!="曲線")
     AND:find_array(array,(C(0) == 1) & (C(1) > 5)
     OR:find_array(array,(C(0) == 1) | (C(1) > 5)
@@ -448,7 +459,17 @@ def find_array(array,cond):
     +:find_array(array,(C(0) + C(1)) > 10)
     expression:find_array(array,((C(0) + C(1)) > 10) & (C(2) == 3)
     """
+    if not hasattr(cond, 'func'):
+        raise ValueError("cond 必須是 Cond 物件或 Expr 比較運算後的結果")
     return array[cond.func(array)]
+
+def row(i, data, func2=None):
+    # 如果是 List，這行會跑 List Comprehension (慢但相容性高)
+    # 如果是 NumPy，這行會跑向量化提取 (快)
+    column_data = np.asanyarray(data)[:, i] if isinstance(data, np.ndarray) else [r[i] for r in data]    
+    if func2:
+        return func2(column_data)
+    return column_data
 
 
 # def array_find_array(a,i,array):
@@ -2012,6 +2033,7 @@ class Backend(QObject):
                 # 不是等問題出現才處理，
                 # 而是在多維趨勢開始失衡時就中和。
         # 協作方式 # TODO:三元協作時的回覆策略，交流或觀察
+            # todo:******坍縮
                     # 立場、目的、局面:提高話題連續性和總長度、讓用戶感到有趣、
                     # 立場、目的、局面:真實世界的真實穩定性、增加真實知識、
             # 交流時
@@ -2819,8 +2841,7 @@ class Noēsis:
                             img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                             result = pose.process(img_rgb)
                             if result.pose_landmarks:
-                                
-                                 = np.zeros((h, w), dtype=np.uint8)
+                                topo_img = np.zeros((h, w), dtype=np.uint8)
                                 mp.solutions.drawing_utils.draw_landmarks(
                                     topo_img,
                                     result.pose_landmarks,
@@ -2870,26 +2891,37 @@ class Noēsis:
                         else:
                             期望動作.extend([[fb,r] for fa in fas for fb in fbs if not 全能ORB(fa,fb,similar=0.9)]) 
                     # 在path_a找 完整詳細的動作紀錄(str)
-                    目標=read_json_content(path_a,"肌肉記憶","time_schedule") # 時間順序非時間 讀取 目標,目標危險,目標進度,動作危險
-                    使用=find_array(目標,C(0)!=曲線) # 字串
-                    使用=[np.array(目標[a]) for a in 目標 for b in 曲線 if not b in 目標] 
+                    time_schedule=read_json_content(path_a,"肌肉記憶","time_schedule") # 時間順序非時間 讀取 目標,目標危險,目標進度,動作危險
+                    使用=find_array(time_schedule,C(0)!=曲線).tolist() # 字串。方便後續 append
+                        # 使用=[np.array(目標[a]) for a in 目標 for b in 曲線 if not b in 目標] 
                     if "相似動作" in 曲線:
                         # 一起、合併、同時、順便
                         # 避開、跳過、略過
                         # 類似的、相似的
                         節拍=節拍觸發(path_a) # 時間順序非時間 讀取 動作分支,相似動作
                         動作分支,相似動作=np.array(節拍[0]),np.array(節拍[1]) # 紀錄(str)
-                        
-                        使用的相似動作=[相似v.name 
-                            for 相似 in 相似動作 
-                            for 期望 in 期望動作[0] 
-                            for 相似v in path_all(期望[1],相似)
-                            if 全能ORB(期望,相似v,similar=0.9) ] # 期望 png，相似v str no png
-                        使用.append(使用的相似動作) 
+
+                        挑選 = np.array([[相似, 期望[0], 期望[1]] for 相似 in 相似動作 for 期望 in 期望動作])
+                        使用的相似動作 = find_array(挑選, 
+                            Cond(lambda x: [
+                                any(全能ORB(期望f, 相似png, similar=0.9) 
+                                    for 相似png in row(2, path_all(期望r, target=相似f)))
+                                for 相似f, 期望f, 期望r in x  # 直接用 x 跑 zip，原本就是對齊好的
+                            ])
+                        )
+                        # 直接拿第 0 欄（或第 2 欄對應的檔案(不含副檔名)）
+                        使用的相似動作名稱 = row(1, 使用的相似動作).tolist()
+                        # 使用的相似動作=[相似v.name 
+                            # for 相似 in 相似動作 #挑選
+                            # for 期望 in 期望動作[0] #挑選
+                            # for 相似v in path_all(期望[1],相似)#func
+                            # if 全能ORB(期望,相似v,similar=0.9) ] # func # 期望 png，相似v str no png
+                        使用.extend(使用的相似動作) # extend ，確保主清單是一維的
                     # 在path_b 找 png使用(str使用) 
                     for a in 使用:
-                        for _,fs in path_all(path_a,time=a[0]): 
-                            yield [a[1],fs] # 值,png
+                        c_time = get_ctime(path_a, a)
+                        for _, _, fs in path_all(path_a, time=c_time): 
+                            yield [a, fs] # 值,png
                 
                 def 前後詞(paths):
                     # 精準使用有需要的曲線
@@ -2897,7 +2929,7 @@ class Noēsis:
                         pal=path_all(pa)
                         if len(pal):
                             for r,da,fas in pal: # 語意,關聯,準確動作
-                                for d in da:
+                                for d in da: 
                                     if any(k in d for k in ["放棄", "刪除", "移除", "捨棄"]):
                                         路徑語意轉曲線並更新(path_a=r,fas=fas,path_b=r/d, 新增或移除=-1, 曲線=["相似動作","目標完整性","目標危險"]) # 放棄甚麼(目標)的甚麼
                                     elif any(k in d for k in ["新增", "加入", "增加"]):
