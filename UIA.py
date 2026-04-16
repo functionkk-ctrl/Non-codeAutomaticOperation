@@ -89,18 +89,6 @@ firebase_admin.initialize_app(cred, {
     "databaseURL": "https://你的專案-id.firebaseio.com/"
 })
 
-
-def get_ctime(path, filename):
-    # 1. 先拼接路徑
-    full_path = os.path.join(path, filename)
-    # 2. 檢查檔案是否存在
-    if os.path.exists(full_path):
-        # 3. 獲取時間並轉換
-        timestamp = os.path.getctime(full_path)
-        creation_time = datetime.datetime.fromtimestamp(timestamp)
-        return creation_time
-    return None
-
 def path_all(paths, target=None,exclude=None,time=None,use_orb=False):
     """
     預設排序為時間，由舊到新
@@ -403,6 +391,22 @@ class Expr:
         """回傳由小到大的索引排序"""
         return lambda x: np.argsort(self.func(x))
 
+    def is_peak(self):
+        """偵測波峰：i-1 < i > i+1"""
+        def peak_logic(x):
+            # 用 np.pad 補位，確保回傳的布林陣列跟原陣列一樣長
+            # 這樣你就永遠不用手動 +1
+            d = np.diff(x, prepend=x[0]) 
+            return (d > 0) & (np.append(np.diff(x) < 0, False))
+        return Cond(peak_logic)
+
+    def is_valley(self):
+        """偵測波谷"""
+        def valley_logic(x):
+            d = np.diff(x, prepend=x[0])
+            return (d < 0) & (np.append(np.diff(x) > 0, False))
+        return Cond(valley_logic)
+
 
 class Cond:
     def __init__(self, func):
@@ -463,18 +467,19 @@ def find_array(array,cond):
         raise ValueError("cond 必須是 Cond 物件或 Expr 比較運算後的結果")
     return array[cond.func(array)]
 
+    # def array_find_array(a,i,array):
+    #     # [[1,2,3,4],[1,2,3,4],,,]。i副位 j主位，j主位的i副位若是同一值a，列出array[此主位]
+    #     return array[array[:, i] == a] # array[array([True, True, False])] ，只留下 True 對應的列
+
+
 def row(i, data, func2=None):
-    # 如果是 List，這行會跑 List Comprehension (慢但相容性高)
-    # 如果是 NumPy，這行會跑向量化提取 (快)
-    column_data = np.asanyarray(data)[:, i] if isinstance(data, np.ndarray) else [r[i] for r in data]    
+    # 如果data是 List，這行會跑 List Comprehension (慢但相容性高)
+    # 如果data是 NumPy，這行會跑向量化提取 (快)
+    # i可以是list 
+    column_data = np.asanyarray(data)[:, i] if isinstance(data, np.ndarray) else [[r[idx] for idx in i] for r in data]
     if func2:
         return func2(column_data)
     return column_data
-
-
-# def array_find_array(a,i,array):
-#     # [[1,2,3,4],[1,2,3,4],,,]。i副位 j主位，j主位的i副位若是同一值a，列出array[此主位]
-#     return array[array[:, i] == a] # array[array([True, True, False])] ，只留下 True 對應的列
 
 
 def hide_file_windows(file_path):
@@ -2721,7 +2726,7 @@ class Noēsis:
                 肌肉記憶=[] 
                 time_skeleton=read_json_content(r,"肌肉記憶","time_skeleton") 
                 time_file=read_json_content(r,"肌肉記憶","time_file") 
-                for i,(r, _, _) in enumerate(path_all(dir, "_人體拓樸.png")):
+                for i,(r, _, _,_) in enumerate(path_all(dir, "_人體拓樸.png")):
                     if i==0:
                         continue
                     v=time_skeleton[i][1]-time_skeleton[i-1][1]
@@ -2731,25 +2736,39 @@ class Noēsis:
                     肌肉記憶.append((speed,time_skeleton[i][0]))
                 動作分支=[]
                 start=[]
-                end=0
-                for i in range(1,len(肌肉記憶)-1):
-                    # 獲得上波+下波
-                    if 肌肉記憶[i-1] < 肌肉記憶[i]  > 肌肉記憶[i+1]:
-                        start.append(i)
-                    elif 肌肉記憶[i-1] > 肌肉記憶[i]  < 肌肉記憶[i+1]:
-                        end=i
-                    elif len(start)>1:
-                        動作分支.append(肌肉記憶[start[0]:end+1])
-                        start.clear()
+                end=[]
+
+肌肉記憶_arr = np.array(肌肉記憶) 
+
+# 只針對 speed (第 0 欄) 做差分
+# 這樣 a 就會是一維的，後面的判斷才成立
+speeds = 肌肉記憶_arr[:, 0] 
+a = np.diff(speeds)
+
+                a=np.diff(肌肉記憶)
+                start=np.flatnonzero((a[:-1] < 0) & (a[1:] > 0))+1 # 所有下降的索引
+                end=np.flatnonzero((a[:-1] > 0) & (a[1:] < 0))+1 # 所有上升的索引
+                for i in range(min(len(start), len(end))):
+                    if end[i] > start[i]:
+                        segment = 肌肉記憶[start[i] : end[i]]
+                        動作分支.append(segment)
+                    
                 相似動作=[]
                 for i in range(len(動作分支)):
                     a=動作分支[i] # (動作幅度,時間)，肌肉記憶[start[0]:end+1]
                     for j in range(len(動作分支)):
                         b=動作分支[j] # (動作幅度,時間)，肌肉記憶[start[0]:end+1]
-                        sorce=np.sum(1 for aa in a for bb in b if bb[0]*(a[:-1][1]-a[0][1])/ (b[:-1][1]-b[0][1])==aa[0]) # 其實動作強度變化速度和時差有關，並不需要再用時差
+                        
+                        # 其實動作強度變化速度和時差有關，並不需要再用時差
+                        sorce=np.sum(1 for aa in a for bb in b 
+                            if bb[0]*(a[:-1][1]-a[0][1])/ (b[:-1][1]-b[0][1])==aa[0]) 
+                        
+                        sorce = len(find_array(動作分支, C(0).isin(row(0, b))))# 假!
+                        
+                        
                         if sorce>0.9*len(a):
                             相似動作.append(b)
-                return 動作分支,相似動作
+                return 動作分支,相似動作,row(2,動作分支) 
             
             def 優先級切換():
                 # TODO:**圖片特徵非預期結構或 肌肉記憶核危險時
@@ -2899,9 +2918,12 @@ class Noēsis:
                         # 避開、跳過、略過
                         # 類似的、相似的
                         節拍=節拍觸發(path_a) # 時間順序非時間 讀取 動作分支,相似動作
-                        動作分支,相似動作=np.array(節拍[0]),np.array(節拍[1]) # 紀錄(str)
-
-                        挑選 = np.array([[相似, 期望[0], 期望[1]] for 相似 in 相似動作 for 期望 in 期望動作])
+                        動作分支,相似動作,創建時間=np.array(節拍[0]),np.array(節拍[1]),np.array(節拍[2]) # 紀錄(str)
+                        挑選 = np.array([
+                            [相似f, 相似t, 期望[0], 期望[1]] 
+                            for 相似f, 相似t in zip(相似動作, 創建時間) 
+                            for 期望 in 期望動作
+                        ])
                         使用的相似動作 = find_array(挑選, 
                             Cond(lambda x: [
                                 any(全能ORB(期望f, 相似png, similar=0.9) 
@@ -2909,19 +2931,18 @@ class Noēsis:
                                 for 相似f, 期望f, 期望r in x  # 直接用 x 跑 zip，原本就是對齊好的
                             ])
                         )
-                        # 直接拿第 0 欄（或第 2 欄對應的檔案(不含副檔名)）
-                        使用的相似動作名稱 = row(1, 使用的相似動作).tolist()
+                        使用的相似動作名稱 = row([0, 1], 使用的相似動作).tolist() 
                         # 使用的相似動作=[相似v.name 
                             # for 相似 in 相似動作 #挑選
                             # for 期望 in 期望動作[0] #挑選
                             # for 相似v in path_all(期望[1],相似)#func
                             # if 全能ORB(期望,相似v,similar=0.9) ] # func # 期望 png，相似v str no png
-                        使用.extend(使用的相似動作) # extend ，確保主清單是一維的
+                        使用.extend(使用的相似動作名稱) # extend ，確保主清單是一維的
                     # 在path_b 找 png使用(str使用) 
                     for a in 使用:
-                        c_time = get_ctime(path_a, a)
-                        for _, _, fs in path_all(path_a, time=c_time): 
-                            yield [a, fs] # 值,png
+                        動作內容, c_time = a[0], a[1] 
+                        for _, _, fs, _ in path_all(path_a, time=c_time): 
+                            yield [動作內容, fs] # 值,png
                 
                 def 前後詞(paths):
                     # 精準使用有需要的曲線
