@@ -386,11 +386,28 @@ class Expr:
     
     def __lt__(self, val):
         return Cond(lambda x: self.func(x) < val)
+    
+    def __truediv__(self, other):
+        # 支援除法，自動處理除以 0 的風險
+        return Expr(lambda x: self.func(x) / np.where(other.func(x) == 0, 1, other.func(x)))
 
     def argsort(self):
         """回傳由小到大的索引排序"""
         return lambda x: np.argsort(self.func(x))
 
+    def diff(self):
+        """
+        對該欄位進行差分運算 (x[i] - x[i-1])
+        axis=0,第一筆差值必為 0（對應你原本 if i==0: continue 的邏輯）。
+        """
+        return Expr(lambda x: np.diff(self.func(x), axis=0, prepend=[self.func(x)[0]]))
+
+    def norm(self):
+        """計算歐氏距離 (常用於速度向量轉純量)"""
+        # 這裡假設傳入的是向量，或者你想對結果取絕對值
+        return Expr(lambda x: np.linalg.norm(self.func(x), axis=1) if x.ndim > 1 else np.abs(self.func(x)))
+
+    # np.diff [i]-[i-1]
     def is_peak(self):
         """偵測波峰：i-1 < i > i+1"""
         def peak_logic(x):
@@ -401,12 +418,19 @@ class Expr:
         return Cond(peak_logic)
 
     def is_valley(self):
-        """偵測波谷"""
+        """偵測波谷：i-1 > i < i+1"""
         def valley_logic(x):
             d = np.diff(x, prepend=x[0])
             return (d < 0) & (np.append(np.diff(x) > 0, False))
         return Cond(valley_logic)
+    
+    def is_up(self):
+        """上波：只要這格比前一格大 (diff > 0)"""
+        return Cond(lambda x: np.diff(self.func(x), prepend=self.func(x)[0]) > 0) # self.func 把那一欄「抽出來」再做 diff。避免全部起diff
 
+    def is_down(self):
+        """下波：只要這格比前一格小 (diff < 0)"""
+        return Cond(lambda x: np.diff(self.func(x), prepend=self.func(x)[0]) < 0) # self.func 把那一欄「抽出來」再做 diff。避免全部起diff
 
 class Cond:
     def __init__(self, func):
@@ -427,6 +451,7 @@ class Cond:
 
 
 class Col(Expr):
+    "Col 繼承自 Expr，把後面的函數交給父類別 Expr 的 __init__ 來儲存，這個函數存在 self.func 中"
     def __init__(self, idx):
         super().__init__(lambda x: x[:, idx])
     
@@ -444,8 +469,43 @@ class Col(Expr):
             return Cond(lambda x: ~np.isin(self.func(x), val)) # 這裡就是你要的 "排除"
         return Cond(lambda x: self.func(x) != val)
 
-def C(i):
-    return Col(i)
+class StackExpr(Expr):
+    """
+    這就是你說的：把多個 Expr 的組合函數
+    交給父類別 Expr 的 __init__ 儲存。
+    """
+    def __init__(self, *exprs):
+        # 這裡存入的是一個「執行所有子表達式並合併」的總函數
+        super().__init__(lambda x: np.column_stack([e.func(x) for e in exprs]))
+
+def C(*args):
+    """
+    【欄位選取器】與【邏輯封裝器】
+    這是一個工廠函數，回傳一個 Col(i) 物件。
+    
+    核心機制：
+    1. 延遲執行 (Lazy Evaluation): 
+       呼叫 C(i) 時並不執行計算，而是透過 Col 的 super().__init__ 
+       定義一個 'lambda x: x[:, i]' 函數(選取第 i 欄)，存入 self.func 中。
+       只有在最後執行 find_array 或 apply 時，才會把真正的 array 丟進去運算。
+
+    2. 運算子重載 (Operator Overloading): 
+       Expr 與 Cond 類別重新定義了 Python 原生的符號（如 +, >, <, ==, &, |），
+       讓你可以像寫 SQL 或 Pandas 一樣組合篩選條件。
+
+    3. 波形偵測 (Waveform Detection):
+       透過 is_peak() 與 is_valley()，在類別內部利用 np.diff 處理差分。
+       其中 prepend=x[0] 與 np.append 的設計，解決了 np.diff 長度少 1 的問題，
+       確保回傳的布林遮罩 (Mask) 與原陣列長度完全對齊，外層不需要手動修正索引 (+1)。
+
+    用法範例：
+        偵測特徵：mask = C(0).is_peak().get_mask(arr) -> 取得所有波峰的布林陣列
+    """
+    # 如果傳入多個 Expr，就回傳一個 StackExpr
+    if len(args) > 1:
+        return StackExpr(*args)
+    # 如果只傳入一個整數，就回傳原本的 Col
+    return Col(args[0])
 
 
 def find_array(array,cond):
@@ -2724,34 +2784,41 @@ class Noēsis:
                 if path is not None:
                     dir =path 
                 肌肉記憶=[] 
-                time_skeleton=read_json_content(r,"肌肉記憶","time_skeleton") 
-                time_file=read_json_content(r,"肌肉記憶","time_file") 
-                for i,(r, _, _,_) in enumerate(path_all(dir, "_人體拓樸.png")):
-                    if i==0:
-                        continue
-                    v=time_skeleton[i][1]-time_skeleton[i-1][1]
-                    t=time_file[i][1]-time_file[i-1][1]
-                    # 歐氏距離
-                    speed=np.linalg.norm(v/t)
-                    肌肉記憶.append((speed,time_skeleton[i][0]))
+                time_skeleton=read_json_content(dir,"肌肉記憶","time_skeleton") 
+                time_file=read_json_content(dir,"肌肉記憶","time_file") 
+                skel_arr = np.array(time_skeleton)
+                file_arr = np.array(time_file)
+                # 2. 定義 C(1) 為你要計算的那個欄位（索引 1）
+                # v = time_skeleton[i][1] - time_skeleton[i-1][1]
+                v = C(1).diff().func(skel_arr)
+                # t = time_file[i][1] - time_file[i-1][1]
+                t = C(1).diff().func(file_arr)
+                # 3. 計算速度 (避免 t=0 導致除以零)
+                # speed = np.linalg.norm(v/t) 
+                # 注意：如果 v, t 是純量，linalg.norm 就是 abs；如果是向量則計算長度
+                speed = np.abs(v / np.where(t == 0, 1, t))
+                # 4. 重新組合回你的 (speed, time) 結構
+                # time_skeleton[i][0] 是你的時間點/路徑標籤。np.column_stack 橫向合併， np.vstack 縱向合併
+                肌肉記憶_arr = np.column_stack((speed, skel_arr[:, 0]))
+                # 5. 排除 i=0 (對應你原本的 if i==0: continue)
+                # 因為 diff 的第一筆是 0，我們從索引 1 開始取
+                肌肉記憶_arr = 肌肉記憶_arr[1:]
+                                
                 動作分支=[]
-                start=[]
-                end=[]
-
-肌肉記憶_arr = np.array(肌肉記憶) 
-
-# 只針對 speed (第 0 欄) 做差分
-# 這樣 a 就會是一維的，後面的判斷才成立
-speeds = 肌肉記憶_arr[:, 0] 
-a = np.diff(speeds)
-
-                a=np.diff(肌肉記憶)
-                start=np.flatnonzero((a[:-1] < 0) & (a[1:] > 0))+1 # 所有下降的索引
-                end=np.flatnonzero((a[:-1] > 0) & (a[1:] < 0))+1 # 所有上升的索引
-                for i in range(min(len(start), len(end))):
-                    if end[i] > start[i]:
-                        segment = 肌肉記憶[start[i] : end[i]]
-                        動作分支.append(segment)
+                # np.flatnonzero(判斷式)=索引
+                # 1. 取得上升與下降的布林遮罩
+                up_mask = C(0).is_up().get_mask(肌肉記憶_arr)     # diff > 0
+                down_mask = C(0).is_down().get_mask(肌肉記憶_arr) # diff < 0
+                # 2. 找出「完整的波」
+                    # 只要是在上升或是在下降，都屬於這個「波」的範圍
+                wave_mask = up_mask | down_mask
+                # 3. 定義起點與落點
+                    # wave_mask 什麼時候從 False 變 True (起點)，什麼時候變回 False (落點)
+                change = np.diff(wave_mask.astype(int), prepend=0, append=0)
+                starts = np.flatnonzero(change == 1)   # 上升的第一個點
+                ends = np.flatnonzero(change == -1)    # 下降結束後的那個點
+                # 4. 切出完整的波 (包含上升段 + 下降段)
+                動作分支 = [肌肉記憶_arr[s:e] for s, e in zip(starts, ends)]
                     
                 相似動作=[]
                 for i in range(len(動作分支)):
