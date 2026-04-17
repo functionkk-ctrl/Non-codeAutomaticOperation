@@ -432,6 +432,20 @@ class Expr:
         """下波：只要這格比前一格小 (diff < 0)"""
         return Cond(lambda x: np.diff(self.func(x), prepend=self.func(x)[0]) < 0) # self.func 把那一欄「抽出來」再做 diff。避免全部起diff
 
+    # np
+    def unify(self):
+        """這就是你的『統一時間』邏輯：將數據壓縮到 0~1 的標準空間"""
+        def unify_logic(x):
+            val = self.func(x)
+            # t / (t_max - t_min)
+            diff = val[-1] - val[0]
+            return val / (diff if diff != 0 else 1)
+        return Expr(unify_logic)
+
+    def tile(self, reps):
+        """這就是你的『np.tile』邏輯：實現全向量化的鋪地磚比對"""
+        return Expr(lambda x: np.tile(self.func(x), reps))
+
 class Cond:
     def __init__(self, func):
         self.func = func
@@ -451,9 +465,18 @@ class Cond:
 
 
 class Col(Expr):
-    "Col 繼承自 Expr，把後面的函數交給父類別 Expr 的 __init__ 來儲存，這個函數存在 self.func 中"
-    def __init__(self, idx):
-        super().__init__(lambda x: x[:, idx])
+    """
+    用途:取得多維資料(array)的每一筆的某些幾維資料的內容(可能array)
+    Col 繼承自 Expr，把後面的函數交給父類別 Expr 的 __init__ 來儲存，這個函數存在 self.func 中
+    """
+    def __init__(self, arg):
+        if isinstance(arg, int):
+            # 如果是索引，保持原本選取欄位的邏輯
+            super().__init__(lambda x: x[:, arg])
+        else:
+            # 如果是直接給資料 (speed)，則封裝成一個直接回傳該資料的函數
+            # 這樣它就能參與後面的 .stack() 運算
+            super().__init__(lambda x: arg)
     
     def __eq__(self, val):
         return Cond(lambda x: self.func(x) == val)
@@ -469,44 +492,39 @@ class Col(Expr):
             return Cond(lambda x: ~np.isin(self.func(x), val)) # 這裡就是你要的 "排除"
         return Cond(lambda x: self.func(x) != val)
 
-class StackExpr(Expr):
-    """
-    這就是你說的：把多個 Expr 的組合函數
-    交給父類別 Expr 的 __init__ 儲存。
-    """
-    def __init__(self, *exprs):
-        # 這裡存入的是一個「執行所有子表達式並合併」的總函數
-        super().__init__(lambda x: np.column_stack([e.func(x) for e in exprs]))
-
 def C(*args):
     """
     【欄位選取器】與【邏輯封裝器】
     這是一個工廠函數，回傳一個 Col(i) 物件。
-    
     核心機制：
     1. 延遲執行 (Lazy Evaluation): 
        呼叫 C(i) 時並不執行計算，而是透過 Col 的 super().__init__ 
        定義一個 'lambda x: x[:, i]' 函數(選取第 i 欄)，存入 self.func 中。
        只有在最後執行 find_array 或 apply 時，才會把真正的 array 丟進去運算。
-
     2. 運算子重載 (Operator Overloading): 
        Expr 與 Cond 類別重新定義了 Python 原生的符號（如 +, >, <, ==, &, |），
        讓你可以像寫 SQL 或 Pandas 一樣組合篩選條件。
-
     3. 波形偵測 (Waveform Detection):
        透過 is_peak() 與 is_valley()，在類別內部利用 np.diff 處理差分。
        其中 prepend=x[0] 與 np.append 的設計，解決了 np.diff 長度少 1 的問題，
        確保回傳的布林遮罩 (Mask) 與原陣列長度完全對齊，外層不需要手動修正索引 (+1)。
-
     用法範例：
         偵測特徵：mask = C(0).is_peak().get_mask(arr) -> 取得所有波峰的布林陣列
+        # 必須先寫 find_array:
+            find_array(array,C(索引))
+            find_array(array,row(索引, array, C(索引)))
+    進化後的 C：
+    1. C(0, 1) -> 直接執行 np.column_stack (你的直覺用法)
+    2. C(0) -> 建立 Col(0)
+    3. C(speed_array) -> 建立資料封裝 Expr
     """
-    # 如果傳入多個 Expr，就回傳一個 StackExpr
     if len(args) > 1:
-        return StackExpr(*args)
-    # 如果只傳入一個整數，就回傳原本的 Col
+        # 這裡就是你說的：C(speed, skel_arr[:, 0]) 
+        # 直接執行原本要手寫的 np.column_stack
+        # 並且為了維持繼承功能，我們把結果封裝回 Expr
+        res = np.column_stack(args)
+        return Expr(lambda x: res) 
     return Col(args[0])
-
 
 def find_array(array,cond):
     """
@@ -533,9 +551,12 @@ def find_array(array,cond):
 
 
 def row(i, data, func2=None):
-    # 如果data是 List，這行會跑 List Comprehension (慢但相容性高)
-    # 如果data是 NumPy，這行會跑向量化提取 (快)
-    # i可以是list 
+    """
+    用途:取得多維資料(array)的某一筆資料的內容(可能array)
+    等同於 [r[i] for r i in data]，i可以是list
+    如果data是 List，這行會跑 List Comprehension (慢但相容性高)
+    如果data是 NumPy，這行會跑向量化提取 (快)
+    """
     column_data = np.asanyarray(data)[:, i] if isinstance(data, np.ndarray) else [[r[idx] for idx in i] for r in data]
     if func2:
         return func2(column_data)
@@ -2783,7 +2804,7 @@ class Noēsis:
                 """
                 if path is not None:
                     dir =path 
-                肌肉記憶=[] 
+                肌肉記憶=[] # [(動作幅度,時間),,,]
                 time_skeleton=read_json_content(dir,"肌肉記憶","time_skeleton") 
                 time_file=read_json_content(dir,"肌肉記憶","time_file") 
                 skel_arr = np.array(time_skeleton)
@@ -2798,13 +2819,12 @@ class Noēsis:
                 # 注意：如果 v, t 是純量，linalg.norm 就是 abs；如果是向量則計算長度
                 speed = np.abs(v / np.where(t == 0, 1, t))
                 # 4. 重新組合回你的 (speed, time) 結構
-                # time_skeleton[i][0] 是你的時間點/路徑標籤。np.column_stack 橫向合併， np.vstack 縱向合併
-                肌肉記憶_arr = np.column_stack((speed, skel_arr[:, 0]))
+                # time_skeleton[i][0] 是你的時間點/路徑標籤。
                 # 5. 排除 i=0 (對應你原本的 if i==0: continue)
                 # 因為 diff 的第一筆是 0，我們從索引 1 開始取
-                肌肉記憶_arr = 肌肉記憶_arr[1:]
-                                
-                動作分支=[]
+                肌肉記憶_arr = C(speed, skel_arr[:, 0]).func(None)[1:]
+                
+                動作分支=[] # [[(動作幅度,時間),(動作幅度,時間),,],[(動作幅度,時間),(動作幅度,時間),,],,,]
                 # np.flatnonzero(判斷式)=索引
                 # 1. 取得上升與下降的布林遮罩
                 up_mask = C(0).is_up().get_mask(肌肉記憶_arr)     # diff > 0
@@ -2819,14 +2839,23 @@ class Noēsis:
                 ends = np.flatnonzero(change == -1)    # 下降結束後的那個點
                 # 4. 切出完整的波 (包含上升段 + 下降段)
                 動作分支 = [肌肉記憶_arr[s:e] for s, e in zip(starts, ends)]
+
+                # 動作分支(含上下波)每一筆 相似的幅度，比對雙方時間歸一化(bt-at/bt=a)
+                # (動作幅度,時間)
+                相似動作=[] # [[動作分支,動作分支,,,],[動作分支,動作分支,,,],,,]。
+                # 時間上歸一化，diff不扭曲同來源資料，順便讓 動作幅度也歸一化，可以比較相似度
+                相似動作=row(0,find_array( 動作分支, (C(0)/ (row(-1,C(1)) - row(0,C(1)))) > (C(0)*0.9) ))
+
                     
-                相似動作=[]
+
                 for i in range(len(動作分支)):
                     a=動作分支[i] # (動作幅度,時間)，肌肉記憶[start[0]:end+1]
                     for j in range(len(動作分支)):
                         b=動作分支[j] # (動作幅度,時間)，肌肉記憶[start[0]:end+1]
                         
                         # 其實動作強度變化速度和時差有關，並不需要再用時差
+                        # 幅度 時間
+                        # 時間
                         sorce=np.sum(1 for aa in a for bb in b 
                             if bb[0]*(a[:-1][1]-a[0][1])/ (b[:-1][1]-b[0][1])==aa[0]) 
                         
