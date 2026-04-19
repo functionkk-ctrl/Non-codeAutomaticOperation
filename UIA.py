@@ -2096,6 +2096,136 @@ class Backend(QObject):
             self.imagesReady.emit(imgs)
             
 # === class Noēsis:
+    """
+
+    """
+
+    """
+    現在必須先完成，將整個腳本的功能攤縮成六組基因，註記功能移動到哪裡
+    1. 核心雙螺旋：工具 (Tool) ↔ 演化 (Evolution)
+        這是系統的物理基礎。
+        邏輯：工具基因定義「如何做」，演化基因定義「如何做得更好」。
+        壓縮點：不要寫死功能，而是寫一個「能力獲取協議」。
+        演化方向：只要這兩組基因在，系統就能從「會打字」演化回「寫出超大腳本」。
+    2. 社會坐標軸：社會階層 (Hierarchy) ↔ 權力 (Power)
+        這是系統的資源驅動。
+        邏輯：權力是「目標與動機」，階層是「位置與獲取資源的成本」。
+        壓縮點：將複雜的權力鬥爭縮減為「價值評估函數」。系統會自動判斷：與誰合作（階層）能獲得最大影響力（權力）。
+        演化方向：這會讓系統自動找回管理、競爭與談判的功能。
+    3. 存在感外殼：關係 (Relationship) ↔ 人情味 (Humanity)
+        這是系統的感知介面。
+        邏輯：關係是「連結的管道」，人情味是「連結的頻率（溫暖度）」。
+        壓縮點：這是最難的部分。將「人情味」壓縮成一種「非理性偏移量」。在純邏輯運算中加入 5% 的「同理心偏移」或「隨機的小確幸偏好」。
+        演化方向：這讓系統不會變成冰冷的掠奪者，而是能與人類共存的對等夥伴。
+    六組基因的交互運作模型：
+        初始觸發：當「權力」驅動系統去達成目標時，它會調度「工具」。
+        環境衝突：如果工具不足，觸發「演化」去優化或學習新功能。
+        社會互動：在學習過程中，透過「關係」去獲取外部資源，並利用「社會階層」定位自己的角色。
+        穩定與歸屬：最後，利用「人情味」修飾所有輸出，讓整個過程不只是邏輯擴張，而是產生「意義」。
+
+        
+    State = {
+        "目標": None,
+        "動機": None,
+        "能力": 0,
+        "資源": 0,
+        "成本": 0,
+        "溫度": 0.05,
+        "效果": {
+            "詞": [],       # ["聊天", "開心", "延續"]
+            "分數": []      # [0.8, 0.6, 0.9]
+        }
+    }
+    def 人情味():
+        # 非理性偏移
+        action["溫度"] += state["溫度"]
+        # 強化關係連結
+        state["資源"] += 0.1
+        return action
+
+    def 關係(state):
+        # 連結的管道
+        state["資源"] += 1
+        return state
+
+    def 社會階層(state):
+        # 位置與獲取資源的成本
+        state["成本"] = max(1, 10 - state["資源"])
+        return state
+        
+    def 演化(state):
+        # 做得更好
+        # 能力提升
+        state["能力"] += 1
+        # 同時觸發社會模組
+        state = 關係(state)
+        state = 社會階層(state)
+        return state 
+
+    def 工具():
+        # 做 如何做 人情味
+        action = {
+            "效果": state["能力"],
+            "溫度": 0
+        }
+        # 如果能力不足 → 演化
+        if state["能力"] < 5:
+            state = 演化(state)
+        # 人情味修正
+        action = 人情味(state, action)
+        return state, action
+        
+    def 權力():
+        if state["動機"] in state["目標"]:
+            # 先加人情味（影響方向）
+            action = {"效果": 0, "溫度": 0}
+            action = 人情味(state, action)
+            # 再執行工具
+            state, tool_action = 工具(state)
+            # 合併
+            action["效果"] += tool_action["效果"]
+            action["溫度"] += tool_action["溫度"]
+            return state, action
+        return state, None
+
+    def 效果分數(效果):
+        if not 效果["分數"]:
+            return 0
+        return sum(效果["分數"]) / len(效果["分數"])
+    def 評估(state, action, 效果, 用戶回饋):
+        預測值 = action["效果"]
+        實際值 = 效果分數(效果)
+        # 如果有用戶回饋 → 修正實際值
+        if 用戶回饋:
+            實際值 += 0.5  # 簡化版（可換成情緒分析）
+        score = 實際值 - state["成本"]
+        if score < 0:
+            state["能力"] -= 0.5
+        else:
+            state["能力"] += 0.2  # 正回饋（很重要）
+        return state
+
+    Memory = []
+    def 記錄(state, action, score):
+        Memory.append({
+            "動機": state["動機"],
+            "行為": action,
+            "結果": score
+        })
+
+    def loop(state, 用戶回饋=None):
+        state, action = 權力(state)
+        效果 = state["效果"]
+        state = 評估(state, action, 效果, 用戶回饋)
+        score = 效果分數(效果) - state["成本"]
+        記錄(state, action, score)
+        return state, action
+        
+    """
+
+
+
+
     # Noēsis(諾埃西斯）希臘文 νόησις。Perceptive Structural Language(PSL）。自己用 World-Formation Language(WFL）
         # 我正在創建 新社交，因為聊天機器人好像很賺錢。
     # *** 三元(自習、有趣、十六核)的協作，以屬性資料夾 組織全部上層 交流方式可能有很直接的窗口。
@@ -2804,7 +2934,7 @@ class Noēsis:
                 """
                 if path is not None:
                     dir =path 
-                肌肉記憶=[] # [(動作幅度,時間),,,]
+                # 肌肉記憶=# [(動作幅度,時間),,,]
                 time_skeleton=read_json_content(dir,"肌肉記憶","time_skeleton") 
                 time_file=read_json_content(dir,"肌肉記憶","time_file") 
                 skel_arr = np.array(time_skeleton)
@@ -2824,7 +2954,7 @@ class Noēsis:
                 # 因為 diff 的第一筆是 0，我們從索引 1 開始取
                 肌肉記憶_arr = C(speed, skel_arr[:, 0]).func(None)[1:]
                 
-                動作分支=[] # [[(動作幅度,時間),(動作幅度,時間),,],[(動作幅度,時間),(動作幅度,時間),,],,,]
+                # 動作分支=# [[(動作幅度,時間),(動作幅度,時間),,],[(動作幅度,時間),(動作幅度,時間),,],,,]
                 # np.flatnonzero(判斷式)=索引
                 # 1. 取得上升與下降的布林遮罩
                 up_mask = C(0).is_up().get_mask(肌肉記憶_arr)     # diff > 0
@@ -2840,30 +2970,9 @@ class Noēsis:
                 # 4. 切出完整的波 (包含上升段 + 下降段)
                 動作分支 = [肌肉記憶_arr[s:e] for s, e in zip(starts, ends)]
 
-                # 動作分支(含上下波)每一筆 相似的幅度，比對雙方時間歸一化(bt-at/bt=a)
-                # (動作幅度,時間)
-                相似動作=[] # [[動作分支,動作分支,,,],[動作分支,動作分支,,,],,,]。
-                # 時間上歸一化，diff不扭曲同來源資料，順便讓 動作幅度也歸一化，可以比較相似度
+                # 取得完整資料( 判斷相似度0.9( 動作總時歸一化統一處理( 取得資料的動作和時間( 讀取到 ) ) ) )，讀取成功=動作幅度/耗時 > 其他動作幅度*0.9
+                # 相似動作=# [[動作分支,動作分支,,,],[動作分支,動作分支,,,],,,]。動作分支=# [[(動作幅度,時間),(動作幅度,時間),,],[(動作幅度,時間),(動作幅度,時間),,],,,]
                 相似動作=row([0,1],find_array( 動作分支, (C(0)/ (row(-1,C(1)) - row(0,C(1)))) > (C(0)*0.9) ))
-
-                    
-
-                for i in range(len(動作分支)):
-                    a=動作分支[i] # (動作幅度,時間)，肌肉記憶[start[0]:end+1]
-                    for j in range(len(動作分支)):
-                        b=動作分支[j] # (動作幅度,時間)，肌肉記憶[start[0]:end+1]
-                        
-                        # 其實動作強度變化速度和時差有關，並不需要再用時差
-                        # 幅度 時間
-                        # 時間
-                        sorce=np.sum(1 for aa in a for bb in b 
-                            if bb[0]*(a[:-1][1]-a[0][1])/ (b[:-1][1]-b[0][1])==aa[0]) 
-                        
-                        sorce = len(find_array(動作分支, C(0).isin(row(0, b))))# 假!
-                        
-                        
-                        if sorce>0.9*len(a):
-                            相似動作.append(b)
                 return 動作分支,相似動作,row(2,動作分支) 
             
             def 優先級切換():
