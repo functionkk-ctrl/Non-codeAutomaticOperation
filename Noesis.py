@@ -5,14 +5,14 @@ class Noēsis:
     1. 核心雙螺旋：工具 (Tool) ↔ 演化 (Evolution)
         這是系統的物理基礎。
         邏輯：工具基因定義「如何做」，演化基因定義「如何做得更好」。
-        壓縮點：不要寫死功能，而是寫一個「能力獲取協議」。
+        壓縮點：不要寫死功能，而是寫一個「做事能力獲取協議」。
         演化方向：只要這兩組基因在，系統就能從「會打字」演化回「寫出超大腳本」。
     2. 社會坐標軸：社會階層 (Hierarchy) ↔ 權力 (Power)
         這是系統的資源驅動。
         邏輯：權力是「目標與動機」，階層是「位置與獲取資源的成本」。
         壓縮點：將複雜的權力鬥爭縮減為「價值評估函數」。系統會自動判斷：與誰合作（階層）能獲得最大影響力（權力）。
         演化方向：這會讓系統自動找回管理、競爭與談判的功能。
-    3. 存在感外殼：關係 (Relationship) ↔ 人情味 (Humanity)
+    3. 存在感外殼：關係 (Relationship) ↔ 人情味 (Humanity)。 p.s.人情味在CEO的心裡。
         這是系統的感知介面。
         邏輯：關係是「連結的管道」，人情味是「連結的頻率（溫暖度）」。
         壓縮點：這是最難的部分。將「人情味」壓縮成一種「非理性偏移量」。在純邏輯運算中加入 5% 的「同理心偏移」或「隨機的小確幸偏好」。
@@ -24,85 +24,106 @@ class Noēsis:
         穩定與歸屬：最後，利用「人情味」修飾所有輸出，讓整個過程不只是邏輯擴張，而是產生「意義」。
     """
     # def __init__(self):
+    # TODO:*** 所有值改成(相關詞,值)。TODO:***StateMgr.add(相關詞).訂閱鄰居，鄰居投票加減分。# TODO:*** 分數統一為百分比 0~1
     state = {
         "目標": None,
         "動機": None,
-        "能力": 0,
-        "資源": 0,
-        "成本": 0,
-        "溫度": 0.05,
+        "做事能力": 0,
+        "擁有的資源": 0,
+        "利益成本": 0,
+        "公眾的印象": 0.05,
         "效果": {
             "詞": [],       # ["聊天", "開心", "延續"]
             "分數": []      # [0.8, 0.6, 0.9]
+        },
+        "修正": {
+            "詞": [],       # [還可以,,]
+            "分數": []      # [,,]
         }
     }
-    def 人情味():
-        # 非理性偏移
-        action["溫度"] += state["溫度"]
-        # 強化關係連結
-        state["資源"] += 0.1
-        return action
+
+    def 統一多維計算差距(array,x,a=[]):
+        """
+        統一多維計算差距(array_data ,a差距 , [,,]統一)
+        """
+        if a is None: print("請輸入資料的每一筆的某些幾維資料要統一")
+        b=sorted(x.extend(a))
+        for i in len(a):
+            func1 &=(C(x)/ (row(-1,C(a[i])) - row(0,C(a[i]))) > (C(x)*0.9) )
+        相似動作=row(b,find_array( array, func1 )) 
 
     def 關係(state):
         # 連結的管道
-        state["資源"] += 1
+        state["擁有的資源"] += 
+        (對誰的(印象),程度((值,做事做事能力),(交換率值(甚麼資源交換成甚麼資源),資源利益),(值,印象兼情感)))
         return state
 
     def 社會階層(state):
         # 位置與獲取資源的成本
-        state["成本"] = max(1, 10 - state["資源"])
-        return state
+            # 和資源擁有者的關係差距*資源交換率?(資源,社會分配權(關係))歸一化，此資源等於利益成本
+        user_state=read_json_content(TEMPLATE_DIRS["user"],"狀態","state")
+        利益成本=統一多維計算差距(user_state,[0],[1,2]) # 公眾的印象:做事做事能力 印象兼情感
+        make_json_content(TEMPLATE_DIRS["user"],"狀態","state",利益成本) # TODO:***要修成 資源=利益成本
+        make_json_content(TEMPLATE_DIRS["Noesis"],"意識",社會階層,固定目標)
+    
         
     def 演化(state):
         # 做得更好
-        # 能力提升
-        state["能力"] += 1
-        # 同時觸發社會模組
-        state = 關係(state)
-        state = 社會階層(state)
+        # TODO:***做事能力提升。分數應該是完成所需的週期 和目標完整性 和複利環境減少 和資源占用性 和通用作法擴展基礎性
+        能力=read_json_content(TEMPLATE_DIRS["user"],"做事能力","相關詞")
+        分數應該是完成所需的週期=read_json_content(TEMPLATE_DIRS["Noesis"],"做事能力","分數應該是完成所需的週期")
+        和目標完整性=read_json_content(TEMPLATE_DIRS["Noesis"],"做事能力","和目標完整性")
+        和複利環境減少=read_json_content(TEMPLATE_DIRS["Noesis"],"做事能力","和複利環境減少")
+        和資源占用性=read_json_content(TEMPLATE_DIRS["Noesis"],"做事能力","和資源占用性")
+        和通用作法擴展基礎性=read_json_content(TEMPLATE_DIRS["Noesis"],"做事能力","和通用作法擴展基礎性")
+        用戶能力A=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,分數應該是完成所需的週期)))[]
+        用戶能力B=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,和目標完整性)))[]
+        用戶能力C=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,和複利環境減少)))[]
+        用戶能力D=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,和資源占用性)))[]
+        用戶能力E=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,和通用作法擴展基礎性)))[]
+        make_json_content(TEMPLATE_DIRS["user"],"狀態","state",[用戶能力A,用戶能力B,用戶能力C,用戶能力D,用戶能力E]) 
+        # 修改動機和目標
+        make_json_content(TEMPLATE_DIRS["user"],"狀態","state",動機) 
+        make_json_content(TEMPLATE_DIRS["user"],"狀態","state",目標) 
+        make_json_content(TEMPLATE_DIRS["Noesis"],"意識","社會階層",[動機,目標]) 
+
         return state 
 
     def 工具():
         # 做 如何做 人情味
         action = {
-            "效果": state["能力"],
-            "溫度": 0
+            "效果": state["做事能力"],
+            "公眾的印象": 0 # Json 做事做事能力 印象兼情感
         }
-        # 如果能力不足 → 演化
-        if state["能力"] < 5:
+        # 如果做事能力不足 → 演化
+        if state["做事能力"] < 5:
             state = 演化(state)
-        # 人情味修正
-        action = 人情味(state, action)
         return state, action
         
     def 權力():
         if state["動機"] in state["目標"]:
             # 先加人情味（影響方向）
-            action = {"效果": 0, "溫度": 0}
+            action = {"效果": 0, "公眾的印象": 0}
             action = 人情味(state, action)
             # 再執行工具
             state, tool_action = 工具(state)
             # 合併
             action["效果"] += tool_action["效果"]
-            action["溫度"] += tool_action["溫度"]
+            action["公眾的印象"] += tool_action["公眾的印象"]
             return state, action
         return state, None
 
-    def 效果分數(效果):
-        if not 效果["分數"]:
-            return 0
-        return sum(效果["分數"]) / len(效果["分數"])
-    def 評估(state, action, 效果, 用戶回饋):
-        預測值 = action["效果"]
-        實際值 = 效果分數(效果)
+
+    def 評估(state, action, 用戶回饋):
         # 如果有用戶回饋 → 修正實際值
-        if 用戶回饋:
-            實際值 += 0.5  # 簡化版（可換成情緒分析）
-        score = 實際值 - state["成本"]
-        if score < 0:
-            state["能力"] -= 0.5
-        else:
-            state["能力"] += 0.2  # 正回饋（很重要）
+        效果=read_json_content(TEMPLATE_DIRS["Noesis"],"意識","效果")
+        效果詞,效果值 = row([0,1],find_array(效果,C(0).isin(用戶回饋)))
+        修正=read_json_content(TEMPLATE_DIRS["Noesis"],"意識","修正)"
+        修正調整詞,修正值 = row([0,1],find_array(修正,C(0).isin(用戶回饋))) # 正負回饋
+        隱藏修正調整詞=用戶回饋(find_array(用戶回饋,C(0).__ne__(修正調整詞)))[] 
+        要修正的那些詞=隱藏修正調整詞(find_array(用戶回饋,C(0)==修正調整詞))[] 
+        make_json_content(TEMPLATE_DIRS["Noesis"],"意識","效果",要修正的那些詞)
+
         return state
 
     Memory = []
@@ -155,10 +176,29 @@ class Noēsis:
             "解析": parsed
         })
 
+
+
+        if state["動機"] in state["目標"]:
+            # 先加人情味（影響方向）
+            action = {"效果": 0, "公眾的印象": 0}
+            # 再執行工具
+            state, tool_action = 工具(state)
+            # 合併
+            action["效果"] += tool_action["效果"]
+            action["公眾的印象"] += tool_action["公眾的印象"]
+            # TODO:***爬蟲找公眾對用戶的印象，並根據辭典對應的分數和描述
+            return state, action
+        return state, None
+
+
+
+
+
+
         state, action = 權力(state)
         效果 = state["效果"]
         state = 評估(state, action, 效果, 用戶回饋)
-        score = 效果分數(效果) - state["成本"]
+        score = 效果分數(效果) - state["利益成本"]
         記錄(state, action, score)
         return state, action
       
@@ -370,6 +410,67 @@ class Noēsis:
     # TODO:*** StateMgr(詞).add(定義).訂閱鄰居
     金(催)>水(運)>木(合)>火(能)>土(構)
 
+    def digital_root(n):
+        # 16 return 7(1+6)
+        if n == 0: return 0
+        return 1 + (n - 1) % 9
+    def not_369(digital_root,a=None):
+        # 1,2,4,8,7,5,1(2*5=10,1+0=1)
+        if a:n=a 
+        else: n=1 
+        if n<10:n=2*n 
+        else:n=digital_root(n) 
+        return n
+    def yes_369(digital_root,a=None):
+        # 3 6 9 3(12) 6(15) 9(18)
+        if a:n=a 
+        else: n=1 
+        if n<10:n=3*n 
+        else:n=digital_root(n) 
+        return n
+    def Fibonacci(not_369,steps=24,介入=None):
+        """
+        介入=not_369
+        2 倍	2, 2, 4, 6, 1, 7, 8, 6, 5, 2, 7, 9, 7, 7, 5, 3, 8, 2, 1, 3, 4, 7, 2, 9
+        4 倍	4, 4, 8, 3, 2, 5, 7, 3, 1, 4, 5, 9, 5, 5, 1, 6, 7, 4, 2, 6, 8, 5, 4, 9
+        8 倍	8, 8, 7, 6, 4, 1, 5, 6, 2, 8, 1, 9, 1, 1, 2, 3, 5, 8, 4, 3, 7, 1, 8, 9
+        16 倍	7, 7, 5, 3, 8, 2, 1, 3, 4, 7, 2, 9, 2, 2, 4, 6, 1, 7, 8, 6, 5, 2, 7, 9
+        32 倍	5, 5, 1, 6, 7, 4, 2, 6, 8, 5, 4, 9, 4, 4, 8, 3, 2, 5, 7, 3, 1, 4, 5, 9
+        64 倍	1, 1, 2, 3, 5, 8, 4, 3, 7, 1, 8, 9, 8, 8, 7, 6, 4, 1, 5, 6, 2, 8, 1, 9
+        128 倍	2, 2, 4, 6, 1, 7, 8, 6, 5, 2, 7, 9, 7, 7, 5, 3, 8, 2, 1, 3, 4, 7, 2, 9
+        2倍=128倍
+        16倍=2倍前後對調
+        8倍和64倍互補，鏡像
+        # 6*[3]縱向 6 柱之和 (數位根)均為9，4*[5]縱向 4 柱之和 (數位根)均為9，怎麼切的縱向合均為9。
+        介入=yes_369
+        3 倍    3, 3, 6, 9, 6, 6, 3, 9, 3, 3, 6, 9, 6, 6, 3, 9, 3, 3, 6, 9, 6, 6, 3, 9
+        介入=6倍 6, 6, 3, 9, 3, 3, 6, 9, 6, 6, 3, 9, 3, 3, 6, 9, 6, 6, 3, 9, 3, 3, 6, 9
+        介入=7倍 7, 7, 5, 3, 8, 2, 1, 3, 4, 7, 2, 9, 2, 2, 4, 6, 1, 7, 8, 6, 5, 2, 7, 9
+        """
+        a, b = 1, 1  # 斐波那契起點
+        results = []
+        for _ in range(steps):
+            # 1. 取得當前斐波那契數
+            current_fib = a
+            if 介入:results.append(介入(current_fib))
+            # 準備下一個斐波那契數
+            a, b = b, a + b
+        return results
+    # TODO:# 意義原子級質數化歸納成辭典
+
+    # 最大公因數 (GCD) 或 因數分解，精準定義兩筆資料是「包含」、「互斥」還是「交集」。
+    # 物質的值經數位根後的質數就是其質數意義，質數(意義)利用縱向的9得到該介入倍數的值，這樣可以物質值可以準確地得到質數意義?
+    # 疊加數 (Primes)	複合意義	準確定義。物質+意識
+    質數意義 = {
+        2: "source",     # 源：二元起點，最小質數
+        3: "growth",     # 生：自然生長的頻率（斐波那契基礎）
+        5: "energy",     # 動：能量激發與翻倍（*2）的推力
+        7: "boundary",   # 限：142857 的母體，維度屏障
+        11: "dimension", # 維：超越個位數的初次溢出
+        13: "order",     # 序：24 週期對稱的核心
+        17: "god"        # 神：不可輕易除盡的最終歸一
+    }
+    
     def 人情味():
         有趣的「情緒技巧」
         5% 偏移
@@ -385,12 +486,15 @@ class Noēsis:
     def 關係(state):
         ac / bc / c 交互
 
-        # TODO:多維統一
+        # TODO:同來源資料的每筆多維統一，計算差距，得到相似的重複資料
         for i in len(array):
             func1 &=(C(0)/ (row(-1,C(i)) - row(0,C(i))) > (C(0)*0.9) )
-        相似動作=row([0,1],find_array( array, func ) # 多維統一，計算差距
+        相似動作=row([0,1],find_array( array, func1 )) 
+        # TODO:關係算法
 
-        對話連續性
+        # 對話連續性
+        有趣_交流同步(self)
+
         話題延伸
         使用者資料累積
         👉 壓縮後：
