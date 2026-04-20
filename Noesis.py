@@ -54,8 +54,11 @@ class Noēsis:
 
     def 關係(state):
         # 連結的管道
+        user_state=read_json_content(TEMPLATE_DIRS["user"],"狀態","state")
+        # (對誰的(印象),程度((值,做事做事能力),(交換率值(甚麼資源交換成甚麼資源),資源利益),(值,印象兼情感)))
         state["擁有的資源"] += 
-        (對誰的(印象),程度((值,做事做事能力),(交換率值(甚麼資源交換成甚麼資源),資源利益),(值,印象兼情感)))
+        =用戶回饋(orw([0,1,2],user_state))
+        
         return state
 
     def 社會階層(state):
