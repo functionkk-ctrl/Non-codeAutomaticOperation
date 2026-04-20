@@ -79,11 +79,11 @@ class Noēsis:
         和複利環境減少=read_json_content(TEMPLATE_DIRS["Noesis"],"做事能力","和複利環境減少")
         和資源占用性=read_json_content(TEMPLATE_DIRS["Noesis"],"做事能力","和資源占用性")
         和通用作法擴展基礎性=read_json_content(TEMPLATE_DIRS["Noesis"],"做事能力","和通用作法擴展基礎性")
-        用戶能力A=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,分數應該是完成所需的週期)))[]
-        用戶能力B=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,和目標完整性)))[]
-        用戶能力C=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,和複利環境減少)))[]
-        用戶能力D=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,和資源占用性)))[]
-        用戶能力E=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,和通用作法擴展基礎性)))[]
+        用戶能力A=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,分數應該是完成所需的週期))))[]
+        用戶能力B=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,和目標完整性))))[]
+        用戶能力C=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,和複利環境減少))))[]
+        用戶能力D=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,和資源占用性))))[]
+        用戶能力E=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,和通用作法擴展基礎性))))[]
         make_json_content(TEMPLATE_DIRS["user"],"狀態","state",[用戶能力A,用戶能力B,用戶能力C,用戶能力D,用戶能力E]) 
         # 修改動機和目標
         make_json_content(TEMPLATE_DIRS["user"],"狀態","state",動機) 
