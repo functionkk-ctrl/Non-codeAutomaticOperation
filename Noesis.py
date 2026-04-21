@@ -1,4 +1,4 @@
-   
+from UIA import *
 class Noēsis:
     """
     現在必須先完成，將整個腳本的功能攤縮成六組基因，註記功能移動到哪裡
@@ -24,24 +24,6 @@ class Noēsis:
         穩定與歸屬：最後，利用「人情味」修飾所有輸出，讓整個過程不只是邏輯擴張，而是產生「意義」。
     """
     # def __init__(self):
-    # TODO:*** 所有值改成(相關詞,值)。TODO:***StateMgr.add(相關詞).訂閱鄰居，鄰居投票加減分。# TODO:*** 分數統一為百分比 0~1
-    state = {
-        "目標": None,
-        "動機": None,
-        "做事能力": 0,
-        "擁有的資源": 0,
-        "利益成本": 0,
-        "公眾的印象": 0.05,
-        "效果": {
-            "詞": [],       # ["聊天", "開心", "延續"]
-            "分數": []      # [0.8, 0.6, 0.9]
-        },
-        "修正": {
-            "詞": [],       # [還可以,,]
-            "分數": []      # [,,]
-        }
-    }
-
     def 統一多維計算差距(array,x,a=[]):
         """
         統一多維計算差距(array_data ,a差距 , [,,]統一)
@@ -52,93 +34,11 @@ class Noēsis:
             func1 &=(C(x)/ (row(-1,C(a[i])) - row(0,C(a[i]))) > (C(x)*0.9) )
         相似動作=row(b,find_array( array, func1 )) 
 
-    def 關係(state):
-        # 連結的管道
-        user_state=read_json_content(TEMPLATE_DIRS["user"],"狀態","state")
-        # (對誰的(印象),程度((值,做事做事能力),(交換率值(甚麼資源交換成甚麼資源),資源利益),(值,印象兼情感)))
-        state["擁有的資源"] += 
-        =用戶回饋(orw([0,1,2],user_state))
-        
-        return state
-
-    def 社會階層(state):
-        # 位置與獲取資源的成本
-            # 和資源擁有者的關係差距*資源交換率?(資源,社會分配權(關係))歸一化，此資源等於利益成本
-        user_state=read_json_content(TEMPLATE_DIRS["user"],"狀態","state")
-        利益成本=統一多維計算差距(user_state,[0],[1,2]) # 公眾的印象:做事做事能力 印象兼情感
-        make_json_content(TEMPLATE_DIRS["user"],"狀態","state",利益成本) # TODO:***要修成 資源=利益成本
-        make_json_content(TEMPLATE_DIRS["Noesis"],"意識",社會階層,固定目標)
-    
-        
-    def 演化(state):
-        # 做得更好
-        # TODO:***做事能力提升。分數應該是完成所需的週期 和目標完整性 和複利環境減少 和資源占用性 和通用作法擴展基礎性
-        能力=read_json_content(TEMPLATE_DIRS["user"],"做事能力","相關詞")
-        分數應該是完成所需的週期=read_json_content(TEMPLATE_DIRS["Noesis"],"做事能力","分數應該是完成所需的週期")
-        和目標完整性=read_json_content(TEMPLATE_DIRS["Noesis"],"做事能力","和目標完整性")
-        和複利環境減少=read_json_content(TEMPLATE_DIRS["Noesis"],"做事能力","和複利環境減少")
-        和資源占用性=read_json_content(TEMPLATE_DIRS["Noesis"],"做事能力","和資源占用性")
-        和通用作法擴展基礎性=read_json_content(TEMPLATE_DIRS["Noesis"],"做事能力","和通用作法擴展基礎性")
-        用戶能力A=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,分數應該是完成所需的週期))))[]
-        用戶能力B=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,和目標完整性))))[]
-        用戶能力C=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,和複利環境減少))))[]
-        用戶能力D=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,和資源占用性))))[]
-        用戶能力E=用戶回饋(find_array(用戶回饋,C(0).isin(row(0,和通用作法擴展基礎性))))[]
-        make_json_content(TEMPLATE_DIRS["user"],"狀態","state",[用戶能力A,用戶能力B,用戶能力C,用戶能力D,用戶能力E]) 
-        # 修改動機和目標
-        make_json_content(TEMPLATE_DIRS["user"],"狀態","state",動機) 
-        make_json_content(TEMPLATE_DIRS["user"],"狀態","state",目標) 
-        make_json_content(TEMPLATE_DIRS["Noesis"],"意識","社會階層",[動機,目標]) 
-
-        return state 
-
-    def 工具():
-        # 做 如何做 人情味
-        action = {
-            "效果": state["做事能力"],
-            "公眾的印象": 0 # Json 做事做事能力 印象兼情感
-        }
-        # 如果做事能力不足 → 演化
-        if state["做事能力"] < 5:
-            state = 演化(state)
-        return state, action
-        
-    def 權力():
-        if state["動機"] in state["目標"]:
-            # 先加人情味（影響方向）
-            action = {"效果": 0, "公眾的印象": 0}
-            action = 人情味(state, action)
-            # 再執行工具
-            state, tool_action = 工具(state)
-            # 合併
-            action["效果"] += tool_action["效果"]
-            action["公眾的印象"] += tool_action["公眾的印象"]
-            return state, action
-        return state, None
-
-
-    def 評估(state, action, 用戶回饋):
-        # 如果有用戶回饋 → 修正實際值
-        效果=read_json_content(TEMPLATE_DIRS["Noesis"],"意識","效果")
-        效果詞,效果值 = row([0,1],find_array(效果,C(0).isin(用戶回饋)))
-        修正=read_json_content(TEMPLATE_DIRS["Noesis"],"意識","修正)"
-        修正調整詞,修正值 = row([0,1],find_array(修正,C(0).isin(用戶回饋))) # 正負回饋
-        隱藏修正調整詞=用戶回饋(find_array(用戶回饋,C(0).__ne__(修正調整詞)))[] 
-        要修正的那些詞=隱藏修正調整詞(find_array(用戶回饋,C(0)==修正調整詞))[] 
-        make_json_content(TEMPLATE_DIRS["Noesis"],"意識","效果",要修正的那些詞)
-
-        return state
-
-    Memory = []
-    def 記錄(state, action, score):
-        Memory.append({
-            "動機": state["動機"],
-            "行為": action,
-            "結果": score
-        })
+    def yo_0(a):
+        return a if a else 0
       
     def 解析輸入(c):
-        # 代表 Noesis 觀察
+        # 代表 Noesis 觀察。TODO:接收到用戶的訊息時啟動
         data = {
             "目標": None,
             "動機": None,
@@ -167,45 +67,101 @@ class Noēsis:
             data["社會階層"] = "平等"
         return data
 
+    # 開機
+    user_id=read_json_content(TEMPLATE_DIRS["user"],"設定檔","id") 
+    user_state=read_json_content(TEMPLATE_DIRS["Noesis"],"state",user_id) 
+    辭典=read_json_content(TEMPLATE_DIRS["Noesis"],"state","辭典") 
+    紀錄=read_json_content(TEMPLATE_DIRS["world"],"真實記錄","紀錄")
+       
+    
+    if 用戶回覆: # TODO:***等QML輸出時接受用戶的回覆
+        解析輸入(用戶回覆)
+        辭典=read_json_content(TEMPLATE_DIRS["Noesis"],"辭典",find_array("版本",max(C(0))))
+        效果=C(辭典.get("效果")) # 同時處理
+        修正=C(辭典.get("修正")) # 同時處理
+        # 對話中的修正的值 修改 對話中相對位置旁邊的效果的值
+        is_fix_word =C(np.array(用戶回覆.split())) .isin(修正["詞"]).get_mask(None) 
+        near_mask = C(效果["值"]).roll(1).func(is_fix_word) | C(效果["值"]).roll(-1).func(is_fix_word)
+        效果["值"][near_mask] += 修正["值"] 
+        辭典_content={
+            #"擁有的資源": 0, # 擁有的資源
+            "版本":辭典.get("版本"),
+            "效果": { # 辭典
+                "詞": 效果["詞"].tolist(),   # ["聊天", "開心", "延續"]
+                "值": 效果["值"].tolist()    # [0.8, 0.6, 0.9]
+            },
+            "修正": 辭典.get("修正") # 修改辭典的筆。p.s.由開發者調整
+                # [還可以,,]
+                # [,,]
+        }
+        make_json_content(TEMPLATE_DIRS["Noesis"],"state",辭典_content)
 
-    def loop(state, 用戶回饋=None):
-        # 代表 Noesis 交流
-        parsed = 解析輸入(c)
-        state["目標"] = parsed["目標"]
-        state["動機"] = parsed["動機"]
-        state["社會階層"] = parsed["社會階層"]
-        state["歷史"].append({
-            "輸入": c,
-            "解析": parsed
-        })
+        耗時=state["做事能力"]["完成所需的週期"]
+        目標完整性=state["做事能力"]["目標完整性"]
+        複利環境減少=state["做事能力"]["複利環境減少"]
+        資源占用性=state["做事能力"]["資源占用性"]
+        通用作法擴展基礎性=state["做事能力"]["通用作法擴展基礎性"]
+        耗時_value=紀錄(find_array(紀錄,C(0).isin(row(0,耗時))))[]
+        目標完整性_value=紀錄(find_array(紀錄,C(0).isin(row(0,目標完整性))))[]
+        複利環境減少_value=紀錄(find_array(紀錄,C(0).isin(row(0,複利環境減少))))[]
+        資源占用性_value=紀錄(find_array(紀錄,C(0).isin(row(0,資源占用性))))[]
+        通用作法擴展基礎性_value=紀錄(find_array(紀錄,C(0).isin(row(0,通用作法擴展基礎性))))[]
+        # 做事後同時更新公眾印象，TODO:***爬蟲找公眾的印象
 
+        # TODO:***做事能力太低則改變動機和目標(補充資源,降低利益成本,提升公眾的印象)
+        # TODO:***紀錄原本的 職業的動機和實際行為和目標和做事能力 和更改後的做事能力ㄖㄠ
 
+        # 
+        對方的暱稱="0" # 對方的暱稱(ID)
+        a_state=read_json_content(TEMPLATE_DIRS["Noesis"],"state",對方的暱稱) 
+        # TODO:****對方沒有的
+        利益成本=統一多維計算差距(a_state,[0],[1,2]) # 公眾的印象:做事做事能力 印象兼情感
 
-        if state["動機"] in state["目標"]:
-            # 先加人情味（影響方向）
-            action = {"效果": 0, "公眾的印象": 0}
-            # 再執行工具
-            state, tool_action = 工具(state)
-            # 合併
-            action["效果"] += tool_action["效果"]
-            action["公眾的印象"] += tool_action["公眾的印象"]
-            # TODO:***爬蟲找公眾對用戶的印象，並根據辭典對應的分數和描述
-            return state, action
-        return state, None
-
-
-
-
-
-
-        state, action = 權力(state)
-        效果 = state["效果"]
-        state = 評估(state, action, 效果, 用戶回饋)
-        score = 效果分數(效果) - state["利益成本"]
-        記錄(state, action, score)
-        return state, action
-      
-
+        # TODO:***StateMgr.add(相關詞).訂閱鄰居，鄰居投票加減分。# TODO:*** 分數統一為百分比 0~1
+        user_content={
+            "ID":user_id,
+            "目標": null, # 多個設定,優先權
+            "動機": null, # 正在執行(照優先權先執行)
+            "做事能力": { # 等同於目標
+                "完成所需的週期":yo_0(耗時_value),
+                "目標完整性":yo_0(目標完整性_value),
+                "複利環境減少":yo_0(複利環境減少_value),
+                "資源占用性":yo_0(資源占用性_value),
+                "通用作法擴展基礎性":yo_0(通用作法擴展基礎性_value)
+            }, # 紀錄執行。
+            "擁有的資源":{
+                "人脈":{
+                    "ID":null,
+                    "印象": null}, 
+                "做事能力":{
+                    "值":0,
+                    "職業":null}, # 等同於社會階層
+                "資源利益":{
+                    "以物易物交換比":0,
+                    "資源類型":null}, 
+                "印象兼情感":{
+                    "值":0,
+                    "兼情感":null}
+            }, 
+            "利益成本": {
+                "資源":null,
+                "交換比":利益成本
+            }, # 和對象沒有的 擁有的資源 統一降維後的成本
+            "公眾的印象":null, # TODO:***爬蟲找公眾對用戶的做事能力 印象兼情感
+            "效果": { # 辭典
+                "詞": [],       # ["聊天", "開心", "延續"]
+                "分數": []      # [0.8, 0.6, 0.9]
+            },
+            "修正": { 
+                "詞": [],       # [還可以,,]
+                "分數": []      # [,,]
+            } # 修改辭典的筆
+        }
+        make_json_content(
+            file_path=TEMPLATE_DIRS["Noesis"], 
+            file_name="state", # json
+            content=user_content 
+        ) 
 
 
     # Noēsis(諾埃西斯）希臘文 νόησις。Perceptive Structural Language(PSL）。自己用 World-Formation Language(WFL）

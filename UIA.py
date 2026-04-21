@@ -446,6 +446,10 @@ class Expr:
         """這就是你的『np.tile』邏輯：實現全向量化的鋪地磚比對"""
         return Expr(lambda x: np.tile(self.func(x), reps))
 
+    def roll(self,i):
+        """前i位判斷，>0是前i位，<0是後i位"""
+        return Expr(lambda x: np.roll(self.func(x), i))
+
 class Cond:
     def __init__(self, func):
         self.func = func
@@ -470,13 +474,16 @@ class Col(Expr):
     Col 繼承自 Expr，把後面的函數交給父類別 Expr 的 __init__ 來儲存，這個函數存在 self.func 中
     """
     def __init__(self, arg):
-        if isinstance(arg, int):
-            # 如果是索引，保持原本選取欄位的邏輯
-            super().__init__(lambda x: x[:, arg])
-        else:
-            # 如果是直接給資料 (speed)，則封裝成一個直接回傳該資料的函數
-            # 這樣它就能參與後面的 .stack() 運算
-            super().__init__(lambda x: arg)
+        def fn(x):
+            data = np.asarray(arg) if not isinstance(arg, int) else x[:, arg]
+            if data.ndim == 1:
+                # 如果是直接給資料 (speed)，則封裝成一個直接回傳該資料的函數
+                # 這樣它就能參與後面的 .stack() 運算
+                return data
+            else:
+                # 如果是索引，保持原本選取欄位的邏輯
+                return data
+        super().__init__(fn)
     
     def __eq__(self, val):
         return Cond(lambda x: self.func(x) == val)
@@ -540,6 +547,7 @@ def find_array(array,cond):
     :find_array(array,((C(0) == 1) & (C(1) > 5)) | (C(2) < 3)
     +:find_array(array,(C(0) + C(1)) > 10)
     expression:find_array(array,((C(0) + C(1)) > 10) & (C(2) == 3)
+    符合的列且不提取全部的欄:效果詞,效果值 = row([0,1],find_array(效果,C(0).isin(用戶回饋)))
     """
     if not hasattr(cond, 'func'):
         raise ValueError("cond 必須是 Cond 物件或 Expr 比較運算後的結果")
