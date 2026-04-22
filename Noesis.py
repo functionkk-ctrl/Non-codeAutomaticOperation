@@ -30,15 +30,54 @@ class Noēsis:
         """
         if a is None: print("請輸入資料的每一筆的某些幾維資料要統一")
         b=sorted(x.extend(a))
-        for i in len(a):
-            func1 &=(C(x)/ (row(-1,C(a[i])) - row(0,C(a[i]))) > (C(x)*0.9) )
+        for i in a:
+            func1 &=(C(x)/ (row(-1,C(i)) - row(0,C(i))) > (C(x)*0.9) )
         相似動作=row(b,find_array( array, func1 )) 
 
     def yo_0(a):
         return a if a else 0
-      
+    def 創建即手殺GPT(self):
+        sm=StateMgr.self
+        user_content=[
+            "目標",
+            "動機",
+            ["做事能力", [
+                ["完成所需的週期",["詞", "分數"]],
+                ["目標完整性",["詞", "分數"]],
+                ["複利環境減少",["詞", "分數"]],
+                ["資源占用性",["詞", "分數"]],
+                ["通用作法擴展基礎性,"["詞", "分數"]],
+            ]],
+            ["擁有的資源", [
+                ["人脈", ["ID", "印象"]],
+                ["做事能力", ["值", "職業"]],
+                ["資源利益", ["以物易物交換比", "資源類型"]],
+                ["印象兼情感", ["值", "兼情感"]]
+            ]],
+            ["利益成本", ["資源", "交換比"]],
+            ["公眾的印象",["詞", "分數"]],
+            ["效果", ["詞", "分數"]],
+            ["修正", ["詞", "分數"]]
+        ]
+        for i in user_content:
+            if isinstance(i, list):
+                for j in i[1]:
+                    if isinstance(j, list):
+                        for k in j[1]:
+                            sm.i.j.add(k)
+                            if isinstance(k, list):
+                                for l in k[1]:
+                                    sm.i.j.k.add(l)
+                    else: sm.i.add(j)
+            else: sm.add(i)
+
+
+            
     def 解析輸入(c):
-        # 代表 Noesis 觀察。TODO:接收到用戶的訊息時啟動
+        # 代表 Noesis 觀察。
+        # 用戶情緒*(對話量|資料容量)，因絕對的性能，故用戶需要昂貴繳費才能提升儲存資料，因此自然地調整資料量(全體用戶)的分布
+                #那計算的算法是?你說的不算喔，還有搜尋是其他的，甚麼被儲存也是其他的，都不是算法
+        # TODO:如何做
         data = {
             "目標": None,
             "動機": None,
@@ -70,19 +109,20 @@ class Noēsis:
     # 開機
     user_id=read_json_content(TEMPLATE_DIRS["user"],"設定檔","id") 
     user_state=read_json_content(TEMPLATE_DIRS["Noesis"],"state",user_id) 
+    user_印象=read_json_content(TEMPLATE_DIRS["Noesis"],"user",user_id) 
     辭典=read_json_content(TEMPLATE_DIRS["Noesis"],"state","辭典") 
     紀錄=read_json_content(TEMPLATE_DIRS["world"],"真實記錄","紀錄")
        
     
     if 用戶回覆: # TODO:***等QML輸出時接受用戶的回覆
         解析輸入(用戶回覆)
+        用戶回覆_arr=C(np.array(用戶回覆.split()))
         辭典=read_json_content(TEMPLATE_DIRS["Noesis"],"辭典",find_array("版本",max(C(0))))
         效果=C(辭典.get("效果")) # 同時處理
         修正=C(辭典.get("修正")) # 同時處理
-        # 對話中的修正的值 修改 對話中相對位置旁邊的效果的值
-        is_fix_word =C(np.array(用戶回覆.split())) .isin(修正["詞"]).get_mask(None) 
-        near_mask = C(效果["值"]).roll(1).func(is_fix_word) | C(效果["值"]).roll(-1).func(is_fix_word)
-        效果["值"][near_mask] += 修正["值"] 
+        # 對話中的修正的值 修改 對話中相對位置旁邊的效果的值 # a 想著修正效果並組合在一起，提交給 b 尋找詞的意義，同步更新意義
+        修正效果=find_array(用戶回覆_arr,C(0).a_neighbor_b(row(0,修正),row(0,效果))) 
+        效果["效果"][find_array(效果,(C(0).isin(row(0,修正效果))).get_mask)] = row(3,修正效果) # mask找要修的效果詞給 效果["值"][mask]+=修正值
         辭典_content={
             #"擁有的資源": 0, # 擁有的資源
             "版本":辭典.get("版本"),
@@ -96,26 +136,27 @@ class Noēsis:
         }
         make_json_content(TEMPLATE_DIRS["Noesis"],"state",辭典_content)
 
-        耗時=state["做事能力"]["完成所需的週期"]
-        目標完整性=state["做事能力"]["目標完整性"]
-        複利環境減少=state["做事能力"]["複利環境減少"]
-        資源占用性=state["做事能力"]["資源占用性"]
-        通用作法擴展基礎性=state["做事能力"]["通用作法擴展基礎性"]
-        耗時_value=紀錄(find_array(紀錄,C(0).isin(row(0,耗時))))[]
-        目標完整性_value=紀錄(find_array(紀錄,C(0).isin(row(0,目標完整性))))[]
-        複利環境減少_value=紀錄(find_array(紀錄,C(0).isin(row(0,複利環境減少))))[]
-        資源占用性_value=紀錄(find_array(紀錄,C(0).isin(row(0,資源占用性))))[]
-        通用作法擴展基礎性_value=紀錄(find_array(紀錄,C(0).isin(row(0,通用作法擴展基礎性))))[]
+        耗時=user_state["做事能力"]["完成所需的週期"]
+        目標完整性=user_state["做事能力"]["目標完整性"]
+        複利環境減少=user_state["做事能力"]["複利環境減少"]
+        資源占用性=user_state["做事能力"]["資源占用性"]
+        通用作法擴展基礎性=user_state["做事能力"]["通用作法擴展基礎性"]
+        耗時_value=row(0,find_array(紀錄,C(0).isin(row(0,耗時))))
+        目標完整性_value=row(0,find_array(紀錄,C(0).isin(row(0,目標完整性))))
+        複利環境減少_value=row(0,find_array(紀錄,C(0).isin(row(0,複利環境減少))))
+        資源占用性_value=row(0,find_array(紀錄,C(0).isin(row(0,資源占用性))))
+        通用作法擴展基礎性_value=row(0,find_array(紀錄,C(0).isin(row(0,通用作法擴展基礎性))))
         # 做事後同時更新公眾印象，TODO:***爬蟲找公眾的印象
 
-        # TODO:***做事能力太低則改變動機和目標(補充資源,降低利益成本,提升公眾的印象)
-        # TODO:***紀錄原本的 職業的動機和實際行為和目標和做事能力 和更改後的做事能力ㄖㄠ
+
+        # TODO:***做事能力太低則改變動機和目標(補充資源,重塑資源,降低利益成本,提升公眾的印象)。 # 代表如何做。向下找基礎
+        # TODO:***紀錄原本的 職業的動機和實際行為和目標和做事能力 和更改後的做事能力，依做事能力調整 做事 # 代表做得更好
 
         # 
         對方的暱稱="0" # 對方的暱稱(ID)
         a_state=read_json_content(TEMPLATE_DIRS["Noesis"],"state",對方的暱稱) 
-        # TODO:****對方沒有的
-        利益成本=統一多維計算差距(a_state,[0],[1,2]) # 公眾的印象:做事做事能力 印象兼情感
+        # TODO:****對方沒有的 做事能力
+        利益成本=統一多維計算差距(a_state,[0],[1,2]) # 公眾的印象:做事能力 印象兼情感
 
         # TODO:***StateMgr.add(相關詞).訂閱鄰居，鄰居投票加減分。# TODO:*** 分數統一為百分比 0~1
         user_content={
@@ -135,7 +176,7 @@ class Noēsis:
                     "印象": null}, 
                 "做事能力":{
                     "值":0,
-                    "職業":null}, # 等同於社會階層
+                    "職業":null}, # 等同於社會階層 # TODO:*** 調度能力，發展未來
                 "資源利益":{
                     "以物易物交換比":0,
                     "資源類型":null}, 
@@ -162,6 +203,10 @@ class Noēsis:
             file_name="state", # json
             content=user_content 
         ) 
+
+    # 被替代掉的人情味，用的是有趣元
+
+
 
 
     # Noēsis(諾埃西斯）希臘文 νόησις。Perceptive Structural Language(PSL）。自己用 World-Formation Language(WFL）
@@ -430,17 +475,6 @@ class Noēsis:
         17: "god"        # 神：不可輕易除盡的最終歸一
     }
     
-    def 人情味():
-        有趣的「情緒技巧」
-        5% 偏移
-        小確幸
-        故事、認可、共感
-        👉 壓縮後：
-        Humanity =
-        {
-        empathy_bias (~5%),
-        randomness,
-        }
 
     def 關係(state):
         ac / bc / c 交互
@@ -464,18 +498,6 @@ class Noēsis:
         resource_links,
         }
 
-    def 社會階層(state):
-        主導 / 參照 / 輔助
-        三元協作權限
-        資源取得成本
-        對話主導權
-        👉 壓縮後：
-        Hierarchy =
-        {
-        role_control (主導/參照/輔助),
-        cost_model,
-        }
-
     def 演化(state):
         創世 / 滅世
         absorb_count / reject_count
@@ -497,7 +519,6 @@ class Noēsis:
         有趣 → 技巧（對話技巧）
         自習 → ORB匹配
         檢索機制（不周山階梯）
-        手部操作 / 任務執行
         👉 壓縮後：
         Tool =
         {
@@ -505,6 +526,8 @@ class Noēsis:
         interaction_skills (有趣技巧),
         retrieval_system (ORB + 不周山),
         }
+    # StateMgr 統一算法(不全)
+    find_array(對象,C(0).isin(目標).get_mask) # 取得關係，狀態索引
 
     def 權力():
         立場 / 目的

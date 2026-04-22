@@ -450,6 +450,33 @@ class Expr:
         """前i位判斷，>0是前i位，<0是後i位"""
         return Expr(lambda x: np.roll(self.func(x), i))
 
+    def a_neighbor_b(self, target_a, neighbor_b):
+        def neighbor(x):
+            data = np.asarray(x)
+            # 1. 建立標籤（布林陣列）
+            is_a = np.isin(data, target_a)
+            is_b = np.isin(data, neighbor_b)
+            # 2. 核心：只要是 a，或「緊鄰 a 的 b」，都標記為 True
+            # np.roll(is_a, 1) | np.roll(is_a, -1) 是 a 的左右鄰居
+            keep_mask = is_a | (is_b & (np.roll(is_a, 1) | np.roll(is_a, -1)))
+            # 3. 處理「連續多個 b」的情況：如果一個 b 旁邊是「已經被標記的 b」，也把它標記起來
+            # 如果你的 b 可能很長 (如 b,b,b,a)，這裡可以用 while 或簡單的兩次 dilation
+            # 但最快的方式是直接找「連通區塊」中是否有 a
+            all_candidates = is_a | is_b
+            diff = np.diff(all_candidates.astype(int), prepend=0, append=0)
+            starts = np.where(diff == 1)[0]
+            ends = np.where(diff == -1)[0]
+
+            res = []
+            for s, e in zip(starts, ends):
+                chunk = data[s:e]
+                # DSL 邏輯：這組裡面必須「包含 a」且「不只有 a (也就是有旁邊的 b)」
+                if np.any(np.isin(chunk, target_a)) and len(chunk) > np.sum(np.isin(chunk, target_a)):
+                    res.append(chunk.tolist())
+            # data = [10, 10, 20, 30, 50, 20, 10], a=[20], b=[10, 30]
+            return res # [[10, 10, 20, 30], [20, 10]]
+        return Cond(neighbor)
+
 class Cond:
     def __init__(self, func):
         self.func = func
@@ -470,21 +497,24 @@ class Cond:
 
 class Col(Expr):
     """
-    用途:取得多維資料(array)的每一筆的某些幾維資料的內容(可能array)
+    用途:取得多維資料(array)的每一筆的某些幾維資料的內容(可能array)，一維[0,1]生成二維[[0],[1]]
     Col 繼承自 Expr，把後面的函數交給父類別 Expr 的 __init__ 來儲存，這個函數存在 self.func 中
     """
     def __init__(self, arg):
-        def fn(x):
-            data = np.asarray(arg) if not isinstance(arg, int) else x[:, arg]
-            if data.ndim == 1:
-                # 如果是直接給資料 (speed)，則封裝成一個直接回傳該資料的函數
-                # 這樣它就能參與後面的 .stack() 運算
-                return data
-            else:
-                # 如果是索引，保持原本選取欄位的邏輯
-                return data
-        super().__init__(fn)
-    
+        if isinstance(arg, int):
+            def fn(x):
+                x_arr = np.asarray(x)
+                # 🔑 關鍵：統一升維
+                if x_arr.ndim == 1:
+                    x_arr = x_arr.reshape(-1, 1)
+                return x_arr[:, arg]
+            super().__init__(fn)
+        else:
+            # 如果是直接給資料 (speed)，則封裝成一個直接回傳該資料的函數
+            # 這樣它就能參與後面的 .stack() 運算
+            arr = np.asarray(arg)
+            super().__init__(lambda x, arr=arr: arr)
+
     def __eq__(self, val):
         return Cond(lambda x: self.func(x) == val)
     
@@ -520,6 +550,7 @@ def C(*args):
         # 必須先寫 find_array:
             find_array(array,C(索引))
             find_array(array,row(索引, array, C(索引)))
+            可能的例外:C(int).func(array)
     進化後的 C：
     1. C(0, 1) -> 直接執行 np.column_stack (你的直覺用法)
     2. C(0) -> 建立 Col(0)
@@ -560,12 +591,24 @@ def find_array(array,cond):
 
 def row(i, data, func2=None):
     """
+    複雜用法:
+        一維轉二維篩選後 要轉回一維:func2=lambda x: x.reshape(-1)
+        row(None, data) 或 row(slice(None), data) 回傳全部資料
     用途:取得多維資料(array)的某一筆資料的內容(可能array)
     等同於 [r[i] for r i in data]，i可以是list
     如果data是 List，這行會跑 List Comprehension (慢但相容性高)
     如果data是 NumPy，這行會跑向量化提取 (快)
     """
-    column_data = np.asanyarray(data)[:, i] if isinstance(data, np.ndarray) else [[r[idx] for idx in i] for r in data]
+    data_arr = np.asarray(data)
+    # 🔑 一維升維
+    if data_arr.ndim == 1:
+        data_arr = data_arr.reshape(-1, 1)
+
+    if i is None or i == ":" or isinstance(i, slice):
+        column_data = data_arr
+    else:
+        idx = i if isinstance(i, (list, tuple, np.ndarray)) else [i]# 🔑 統一 i
+        column_data = data_arr[:, idx]
     if func2:
         return func2(column_data)
     return column_data
@@ -2965,23 +3008,17 @@ class Noēsis:
                 # 動作分支=# [[(動作幅度,時間),(動作幅度,時間),,],[(動作幅度,時間),(動作幅度,時間),,],,,]
                 # np.flatnonzero(判斷式)=索引
                 # 1. 取得上升與下降的布林遮罩
-                up_mask = C(0).is_up().get_mask(肌肉記憶_arr)     # diff > 0
-                down_mask = C(0).is_down().get_mask(肌肉記憶_arr) # diff < 0
-                # 2. 找出「完整的波」
                     # 只要是在上升或是在下降，都屬於這個「波」的範圍
-                wave_mask = up_mask | down_mask
-                # 3. 定義起點與落點
-                    # wave_mask 什麼時候從 False 變 True (起點)，什麼時候變回 False (落點)
-                change = np.diff(wave_mask.astype(int), prepend=0, append=0)
-                starts = np.flatnonzero(change == 1)   # 上升的第一個點
-                ends = np.flatnonzero(change == -1)    # 下降結束後的那個點
-                # 4. 切出完整的波 (包含上升段 + 下降段)
-                動作分支 = [肌肉記憶_arr[s:e] for s, e in zip(starts, ends)]
+                up_mask = C(0).is_up().get_mask()     # diff > 0
+                down_mask = C(0).is_down().get_mask() # diff < 0
+                動作分支起落點 =row([0,1], find_array(肌肉記憶_arr,up_mask | down_mask))
+                動作分支起加減速 =row([0,1], find_array(肌肉記憶_arr,up_mask | down_mask))
 
                 # 取得完整資料( 判斷相似度0.9( 動作總時歸一化統一處理( 取得資料的動作和時間( 讀取到 ) ) ) )，讀取成功=動作幅度/耗時 > 其他動作幅度*0.9
                 # 相似動作=# [[動作分支,動作分支,,,],[動作分支,動作分支,,,],,,]。動作分支=# [[(動作幅度,時間),(動作幅度,時間),,],[(動作幅度,時間),(動作幅度,時間),,],,,]
-                相似動作=row([0,1],find_array( 動作分支, (C(0)/ (row(-1,C(1)) - row(0,C(1)))) > (C(0)*0.9) ))
-                return 動作分支,相似動作,row(2,動作分支) 
+                相似動作=row([0,1],find_array( 動作分支起落點, (C(0)/ (row(-1,C(1)) - row(0,C(1)))) > (C(0)*0.9) ))
+                時間=row(1,動作分支起落點)
+                return 時間, 動作分支起落點,動作分支起加減速,相似動作
             
             def 優先級切換():
                 # TODO:**圖片特徵非預期結構或 肌肉記憶核危險時
