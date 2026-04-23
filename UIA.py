@@ -184,12 +184,22 @@ def path_all(paths, target=None,exclude=None,time=None,use_orb=False):
             yield False
 
 
-def make_folder(folder_name):
+def make_folder(folder_name,class_A=None,內容=None):
     """
-    在 base_path 下創建資料夾 folder_name（如果不存在）
+    在 base_path 下創建資料夾 folder_name（如果不存在）和腳本含內容
+    內容:\n    def __init__(self):\n        pass\n
     """
     folder_path = base_path / str(folder_name)
     folder_path.mkdir(parents=True, exist_ok=True)  # 確保父資料夾也創建
+    if class_A:
+        # 建立檔名，例如 folder_name.py 或對象名.py
+        file_path = folder_path / f"{class_A}.py"
+        
+        # 如果檔案不存在，直接寫入 class 定義
+        if not file_path.exists():
+            # 這裡可以把你的 asdf 統一算法模板寫進去
+            content = f"class {class_A}:{內容}" # \n    def __init__(self):\n        pass\n
+            file_path.write_text(content, encoding='utf-8')
     return folder_path
 
 
@@ -995,6 +1005,7 @@ def OverridingTechniques(cover_png=None,png_root=None,using=False):
             file_name="被覆蓋的技巧", # json
             content=content 
         ) 
+# TODO:*** ，提出的問題拆解經過2=128倍得到親子關係，鄰居關係，相差得到答案
 
 class StateMgr:
     __slots__ = ("_states",)
@@ -1008,12 +1019,14 @@ class StateMgr:
     執行轉移
         state_mgr.有趣.代價.transition("有趣", "爆炸")
     """
-
+    #　TODO:***同步創建資料夾後的腳本就是神經突觸，向上接收，向鄰居輸入輸出
+    # 最底層心跳(執行)最快，向旁邊作用時獲取值質數時獲得事件因子(權力)，並演化向旁邊(事件因子比自己弱的)抓取當作下層，向上傳遞事件因子，但最底層沒有權力，故上層得到事件因子*0=0
     def __init__(self):
         self.node = set()
         self._states = {}
 
     def add(self, name):
+        # TODO:***同路徑創建該腳本
         if isinstance(name, list):
             for n in name:
                 self._states.setdefault(n, State(n))
@@ -1022,6 +1035,9 @@ class StateMgr:
                 self.set(name[0])
         else:
             self._states.setdefault(name, State(name))
+            make_folder(TEMPLATE_DIRS["Noesis"]/"事件"/self/n,"StateMgr", content={
+                StateMgr() \n State()
+                }) # 創建資料夾下的腳本
         return self
 
     def __getattr__(self, name):
@@ -1052,6 +1068,7 @@ class State:
     
     # 移除子狀態
     def remove(self, name):
+        # TODO:***同路徑刪除該腳本，代表斷開神經
         if name in self._sub:
             # 如果被移除的是當前狀態，先清除 current
             if self.current == name:
