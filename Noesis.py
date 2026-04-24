@@ -23,8 +23,32 @@ class Noēsis:
         社會互動：在學習過程中，透過「關係」去獲取外部資源，並利用「社會階層」定位自己的角色。
         穩定與歸屬：最後，利用「人情味」修飾所有輸出，讓整個過程不只是邏輯擴張，而是產生「意義」。
     """
-    # def __init__(self):
-    sm = StateManager()
+    def __init__(self):
+        self.sm = StateMgr()
+        self.自己_path= Path(__file__).resolve().parent # __file__ 是自身檔案，但是路徑 (字串)
+    
+    def is_prime(n, k=24):  # k 是測試回合數，40 次足以應付絕大多數情況
+        if n <= 1: return False
+        if n <= 3: return True
+        if n % 2 == 0: return False
+        # 將 n-1 寫成 2^r * d
+        r, d = 0, n - 1
+        while d % 2 == 0:
+            r += 1
+            d //= 2
+
+        for _ in range(k):
+            a = random.randint(2, n - 2)
+            x = pow(a, d, n)  # 快速冪模運算，這是速度快的關鍵
+            if x == 1 or x == n - 1:
+                continue
+            for _ in range(r - 1):
+                x = pow(x, 2, n)
+                if x == n - 1:
+                    break
+            else:
+                return False
+        return True # 是質數
 
     def 統一多維計算差距(array,x,a=[]):
         """
@@ -39,7 +63,7 @@ class Noēsis:
     def yo_0(a):
         return a if a else 0
     def 創建即手殺GPT(self):
-        sm=StateMgr.self
+        sms=self.sm
         user_content=[
             "目標",
             "動機",
@@ -58,27 +82,88 @@ class Noēsis:
             ]],
             ["利益成本", ["資源", "交換比"]],
             ["公眾的印象",["詞", "分數"]],
-            ["效果", ["詞", "分數"]],
-            ["修正", ["詞", "分數"]]
+            ["效果", ["詞", "分數"]], # 免疫系統=關係網=辭典
+            ["修正", ["詞", "分數"]] # 免疫系統=關係網=辭典
         ]
         for i in user_content:
             if isinstance(i, list):
                 for j in i[1]:
                     if isinstance(j, list):
                         for k in j[1]:
-                            sm.i.j.add(k)
+                            sms.i.j.add(k)
                             if isinstance(k, list):
                                 for l in k[1]:
-                                    sm.i.j.k.add(l)
-                    else: sm.i.add(j)
-            else: sm.add(i)
+                                    sms.i.j.k.add(l)
+                    else: sms.i.add(j)
+            else: sms.add(i)
 
+    _成功率=1
+    _更新率=2
+    def 管理(self,對象,目標,輸出,sm,_成功率,_更新率):
+        # reject_count /absorb_count<?% and last_hit_time>? 移除上層，部分同層 不在預言中時 移除
+        a=row(0,path_all(base_path,self.自己_path))
+        滅世=read_json_content(a,"滅世",None)
+        # reject_count /absorb_count<?% and last_hit_time>? 
+        aa=find_array(滅世,((C(1) / C(0)) < _成功率) and (C(2) > _更新率)) 
+        if next(aa):
+            sm.a.remove
+        # 前後比對相似度 太重複的 刪除
+        b=find_array(a,全能ORB(C(0),C(0).roll(-1),similar=0.96)) 
+        os.remove(b)
+        # TODO:***** https://share.google/aimode/P6eIaHbfinRPJmLZP
+        """
+    插入 (stateMgr移動節點到自身)：
+    刪除 (非預存節點在範圍內排泄)：
+    更新 (根據邏輯(由代碼更新)向外作用)：
+    遍歷 (向上接收代碼更新)，節點深度為主，參與距離為副：
+    2. 蛋白質合成：
+    解碼 (節點的子節點索引拆解成計算子)：
+    排序 (節點設定吸引與排斥，自動分類)：
+    3. 免疫系統：
+    搜尋 (在 stateMgr 調查，排斥自己.子節點(關係系統)以外的節點)：
+    雜湊 (拓樸理解)：
+    4. 細胞分裂：
+    複製 (腳本分裂)：
+    5. 演化：
+    合併 (共生，stateMgr.節點.transition("狀態用來觸發")，非移動)：
 
+        """
+
+    # TODO:****StateMgr 統一算法(不全)
+    def 邏輯(self,對象,目標,輸出,sm):
+        state_對象=[row(0,find_array(sm.對象.eyes,C(0).isin(sm.i.狀態).get_mask)) for i in 目標 ]# 看見:取得關係，狀態索引
+        # 相差同對象同類型單筆 得到"起伏"，二次相差得到"加速度"
+        起伏=np.diff(state_對象)
+        加減速=np.diff(起伏)
+        # 相加不同對象同類型單筆 得到"合力結果"
+        相加=np.sum(state_對象+self, axis=0)
+        # 相除不同種型單筆，得到"單向交換率"，用一個(分母)換成多少(分子)
+        相除=np.zeros_like(np.divide(state_對象,self))
+        # 倒數 同對象同2個類型，單筆倒數得到"分子交換率"，知道"雙方交換率(關係)"，"判斷取捨"；sum後倒數，雙方的整體交換率
+        np.divide(1, 相除, out=倒數, where=相除!=0)
+        雙方關係=np.vstack(相除,倒數)
+        # 相乘 "作用力"
+        相乘=np.multiply(self,state_對象)
+        # 補數 不同對象同類型"有限制下"，一個對象類型補數 得到"對方的上限"，"二次判斷取捨"
+        對方上限=np.subtract(find_array(self.上層),self)
+        # 精簡化
+        簡化=np.zeros_like(self)
+        # 吸收資訊(或接收開發者代碼更新代碼) 應該是向對向輸出 合法(同類型)的作用力值，對象受到反作用力並反饋值
+    
+        # 三次判斷 ，。可以分析
+
+        # TODO:同來源資料的每筆多維統一，計算差距，得到相似的重複資料
+        for i in len(對象):
+            func1 &=(C(0)/ (row(-1,C(i)) - row(0,C(i))) > (C(0)*0.9) )
+        相似動作=row([0,1],find_array( self, row(None,find_array(對象,func1)) )) 
+        結果集 = (起伏, 加減速, 相加, 相除, 倒數, 相乘, 對方上限, 雙方關係, 簡化,相似動作)
+        return [a for a in 結果集[輸出]],[a for a in 結果集[輸出] if self.is_prime(a)]
             
     def 解析輸入(c):
         # 代表 Noesis 觀察。
+        # 被替代掉的人情味，用的是有趣元
         # 話題延續:用戶情緒*(對話量|資料容量)，因絕對的性能，故用戶需要昂貴繳費才能提升儲存資料，因此自然地調整資料量(全體用戶)的分布
-                #那計算的算法是?你說的不算喔，還有搜尋是其他的，甚麼被儲存也是其他的，都不是算法
+                
         # TODO:如何做
             # 話題技巧
         data = {
@@ -124,6 +209,7 @@ class Noēsis:
         效果=C(辭典.get("效果")) # 同時處理
         修正=C(辭典.get("修正")) # 同時處理
         # 對話中的修正的值 修改 對話中相對位置旁邊的效果的值 # a 想著修正效果並組合在一起，提交給 b 尋找詞的意義，同步更新意義
+        # 更新值，先把兩者的字和值個別合併，在範圍內找到兩者接近的關係，合併前要修的一者的舊值，與兩者接近關係遮罩提出有的，舊值加上接近的另一者的值
         修正效果=find_array(用戶回覆_arr,C(0).a_neighbor_b(row(0,修正),row(0,效果))) 
         效果["效果"][find_array(效果,(C(0).isin(row(0,修正效果))).get_mask)] = row(3,修正效果) # mask找要修的效果詞給 效果["值"][mask]+=修正值
         辭典_content={
@@ -210,7 +296,6 @@ class Noēsis:
             content=user_content 
         ) 
 
-    # 被替代掉的人情味，用的是有趣元
 
 
 
@@ -483,54 +568,3 @@ class Noēsis:
         13: "建構轉化子",     # 序：24 週期對稱的核心
         17: "鏡像歸一子"        # 神：不可輕易除盡的最終歸一
     }
-    
-
-    def 關係(state):
-        
-
-
-    def 演化(state):
-        創世 / 滅世
-        absorb_count / reject_count
-        預言系統
-        夢境生成
-        策略調整核（部分）
-        👉 壓縮後：
-        Evolution =
-        {
-        create_destroy (創世滅世),
-        learning_metrics (absorb/reject),
-        prediction (預言),
-        simulation (夢境),
-        }
-
-
-    # TODO:****StateMgr 統一算法(不全)
-    def asdf(self,對象,目標,輸出):
-        state_對象=[row(0,find_array(sm.對象.eyes,C(0).isin(sm.i.狀態).get_mask)) for i in 目標 ]# 看見:取得關係，狀態索引
-        # 相差同對象同類型單筆 得到"起伏"，二次相差得到"加速度"
-        起伏=np.diff(state_對象)
-        加減速=np.diff(起伏)
-        # 相加不同對象同類型單筆 得到"合力結果"
-        相加=np.sum(state_對象+self, axis=0)
-        # 相除不同種型單筆，得到"單向交換率"，用一個(分母)換成多少(分子)
-        相除=np.zeros_like(np.divide(state_對象,self))
-        # 倒數 同對象同2個類型，單筆倒數得到"分子交換率"，知道"雙方交換率(關係)"，"判斷取捨"；sum後倒數，雙方的整體交換率
-        np.divide(1, 相除, out=倒數, where=相除!=0)
-        雙方關係=np.vstack(相除,倒數)
-        # 相乘 "作用力"
-        相乘=np.multiply(self,state_對象)
-        # 補數 不同對象同類型"有限制下"，一個對象類型補數 得到"對方的上限"，"二次判斷取捨"
-        對方上限=np.subtract(find_array(self.上層),self)
-        # 精簡化
-        簡化=np.zeros_like(self)
-        # 吸收資訊(或接收開發者代碼更新代碼) 應該是向對向輸出 合法(同類型)的作用力值，對象受到反作用力並反饋值
-    
-        # 三次判斷 ，。可以分析
-
-        # TODO:同來源資料的每筆多維統一，計算差距，得到相似的重複資料
-        for i in len(對象):
-            func1 &=(C(0)/ (row(-1,C(i)) - row(0,C(i))) > (C(0)*0.9) )
-        相似動作=row([0,1],find_array( self, row(None,find_array(對象,func1)) )) 
-        結果集 = (起伏, 加減速, 相加, 相除, 倒數, 相乘, 對方上限, 雙方關係, 簡化,相似動作)
-        return [a for a in 結果集[輸出]]

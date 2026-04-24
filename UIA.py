@@ -183,23 +183,25 @@ def path_all(paths, target=None,exclude=None,time=None,use_orb=False):
         if not found_any:
             yield False
 
-
-def make_folder(folder_name,class_A=None,內容=None):
+import inspect
+def make_folder(folder_name, class_name, content_classes):
     """
     在 base_path 下創建資料夾 folder_name（如果不存在）和腳本含內容
-    內容:\n    def __init__(self):\n        pass\n
+    inspect.getsource(Class )，複製原始碼
     """
     folder_path = base_path / str(folder_name)
     folder_path.mkdir(parents=True, exist_ok=True)  # 確保父資料夾也創建
-    if class_A:
+    if class_name:
         # 建立檔名，例如 folder_name.py 或對象名.py
-        file_path = folder_path / f"{class_A}.py"
+        file_path = folder_path / f"{class_name}.py"
         
         # 如果檔案不存在，直接寫入 class 定義
         if not file_path.exists():
             # 這裡可以把你的 asdf 統一算法模板寫進去
-            content = f"class {class_A}:{內容}" # \n    def __init__(self):\n        pass\n
-            file_path.write_text(content, encoding='utf-8')
+            source_code = "\n\n".join([inspect.getsource(cls) for cls in content_classes])
+            # 加入該節點的專屬初始化代碼
+            instance_code = f"\n\n# 當前節點：{class_name}\nnode = {class_name}()\n"
+            file_path.write_text(source_code + instance_code, encoding='utf-8')
     return folder_path
 
 
@@ -247,13 +249,15 @@ def make_json_content(file_path, file_name, content):
     temp_path.replace(path)
 
 def read_json_content(file_path, file_name,  key):
-    """讀取失敗時回傳[]，成功回傳 key 的內容"""
+    """讀取失敗時回傳[]，成功回傳 key(None=全部) 的內容"""
     path = base_path/file_path / f"{file_name}.json"
     if path.exists():  # 有檔案
         try:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                if isinstance(data, dict):
+                if key is None:
+                    return list(data.values()) # 全部[key:value]，Json{} 規定一定要有 Key
+                elif isinstance(data, dict):
                     return data.get(key, []) # {不同key:value}
                 elif isinstance(data, list):
                     return data[key] # [不同key:value]
@@ -1006,7 +1010,7 @@ def OverridingTechniques(cover_png=None,png_root=None,using=False):
             content=content 
         ) 
 # TODO:*** ，提出的問題拆解經過2=128倍得到親子關係，鄰居關係，相差得到答案
-
+自己=StateMgr.add("自己")
 class StateMgr:
     __slots__ = ("_states",)
     """
@@ -1018,8 +1022,13 @@ class StateMgr:
         state_mgr.有趣.代價.set("普通")
     執行轉移
         state_mgr.有趣.代價.transition("有趣", "爆炸")
+    不怕:
+        自己記得找不到的對像的狀態。
+        重複新增狀態
     """
     #　TODO:***同步創建資料夾後的腳本就是神經突觸，向上接收，向鄰居輸入輸出
+        # 先付給時間差，接觸，反應，吞噬，融合成共生，代謝非吸收物
+        # 先付給光，聚合物體，感光，視力，針孔鏡像，成像精細度，物體大小因精細度而看不見，自然無法對看不見的實體輸出入。
     # 最底層心跳(執行)最快，向旁邊作用時獲取值質數時獲得事件因子(權力)，並演化向旁邊(事件因子比自己弱的)抓取當作下層，向上傳遞事件因子，但最底層沒有權力，故上層得到事件因子*0=0
     def __init__(self):
         self.node = set()
@@ -1035,16 +1044,13 @@ class StateMgr:
                 self.set(name[0])
         else:
             self._states.setdefault(name, State(name))
-            make_folder(TEMPLATE_DIRS["Noesis"]/"事件"/self/n,"StateMgr", content={
-                StateMgr() \n State()
-                }) # 創建資料夾下的腳本
+        make_folder(TEMPLATE_DIRS["Noesis"]/"事件"/str(n),"StateMgr", content_classes=[StateMgr, State]) # 創建資料夾下的腳本
         return self
 
     def __getattr__(self, name):
-        try:
-            return self._states[name]
-        except KeyError:
-            raise AttributeError(f"狀態 '{name}' 不存在")
+        if name not in self._states:
+            return 自己._states["追蹤失敗"].transition(name)
+        return self._states[name]
 
 
 class State:
@@ -1083,10 +1089,9 @@ class State:
 
     # 動態存取子狀態
     def __getattr__(self, name):
-        try:
-            return self._sub[name]
-        except KeyError:
-            raise AttributeError(f"{self.name} 沒有子狀態 '{name}'")
+        if name not in self._sub:
+            return 自己._sub["追蹤失敗"].transition(name)
+        return self._sub[name]
 
     # 設定當前子狀態
     def set(self, name):
@@ -1132,6 +1137,7 @@ class State:
 
     # 執行轉移 # 左鄰右舍情感熱絡 neighbor(event)
     def transition(self, event, tickets=False):
+        # TODO:***禁止輸入目標的現在狀態，只要輸入要觸發用的狀態
         to_state, invariably = self._trans_get(event)
 
         # 投票不是由self決定，而是由self.下面的全部層級狀態決定，全局面性
@@ -3286,6 +3292,13 @@ class Noēsis:
                         for a in ass
                         for b in bs
                     ])
+                    time_file=read_json_content(TEMPLATE_DIRS["live_capture"],"肌肉記憶","time_file"): # time,png
+                    目標完成png=path_all(TEMPLATE_DIRS["user"],"_目標完成".png)
+                    肌肉記憶與進度=C(time_file,目標完成png) # time,png
+                    降頻=find_array(肌肉記憶與進度,)
+    
+
+
                     low_cut=math.floor(len(進度狀態)*0.1)
                     進度變化=np.sort(np.diff(進度狀態[:, 0])) # TODO:*只計算x[0]為進度變化
                     降頻=進度變化[:low_cut]
