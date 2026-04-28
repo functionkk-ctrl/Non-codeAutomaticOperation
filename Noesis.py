@@ -60,65 +60,44 @@ class Noēsis:
     第六步:打包自己為特定目標的軟體程式
 
     """
+    DATA_BASE = Path(getattr(sys, '_MEIPASS', os.path.dirname(
+    os.path.abspath(__file__))))
+    base_path = Path.home() / ".your_app_name"      # 可寫
+    TEMPLATE_DIRS = {
+        "live_capture": DATA_BASE/ 'live_capture',
+        "attributes": DATA_BASE/ "attributes",
+        "world": DATA_BASE/ "world",
+        "user": DATA_BASE/ "user",  # 用戶隱私
+        "communication": DATA_BASE/ "communication",  # 用戶交流的訊息
+        "dark_matter": DATA_BASE/ "dark_matter",
+        "thinking": DATA_BASE/ "thinking",  # 中轉站
+        "thinking2": DATA_BASE/ "thinking2",  # 中轉站
+        "speak": DATA_BASE/ "speak",  # 交流的回覆
+        "absorb": DATA_BASE/ "absorb",  # Nosis吸收的知識
+        "background": DATA_BASE/ "background",  # background節點
+    }
+
     def __init__(self):
         self.sm=StateMgr
-        self.base_path=Path(__file__).parent
 
 
-    # TODO:*** 第零步 py
-    # SIFT 1024 物理種子採集
-    def SIFT_1024採集(self,path=TEMPLATE_DIRS["live_capture"]):
-        img = cv2.imread(path)
-        # 強制鎖定 1024 個特徵點，確保物理格柵滿載 # nfeatures 最強的 1024 個特徵點 # detectAndCompute 保留原始位置
-        sift = cv2.SIFT_create(nfeatures=1024) 
-        kp, des = sift.detectAndCompute(img, None) 
-        h, w = img.shape[:2]
-        return {
-            "pos": np.array([k.pt for k in kp]) / [w, h], # 座標歸一化
-            "des": des, # 128維動量強度
-            "time": os.path.getctime(path)
-        }
-
-    def 拓樸比對_SIFT(self,desA, desB, ratio=0.75):
-        """
-        用於第零步過濾：相似度過高直接移除。
-        desA, desB: 1024x128 的 SIFT 描述子矩陣
-        """
-        if desA is None or desB is None: return 0
-        bf = cv2.BFMatcher()
-        matches = bf.knnMatch(desA, desB, k=2)
-        m_data = np.array([[m.distance, n.distance] for m, n in matches])
-        good_mask = m_data[:, 0] < (ratio * m_data[:, 1])
-        # 3. 返回相似率 (%)：
-        # 若相似率 > 96% (現實過程高度重複)，第零步直接移除該輸入，不進第一步
-        return (good_mask.sum() / 1024) * 100 
-
-    # TODO:*** 第一步 全json
-    def 建立基礎單元(self):
-        for i in range(1024):
-            # 這裡檔案名稱與 SIFT 索引 1:1 對齊
-            a_path = base_path / f"{i}.json.tmp"
-            neighbors=[i-33,i-32,i-31,i-1,i+1,i+31,i+32,i+33] # 32*32=1024
-            data = {
-                "ID": i,
-                "pos": i,
-                "背景":[],
-                "neighbors": [nb for nb in neighbors if 0 <= nb < 1024],
-                "des":0  # 吸收des "des":des 中傳遞des 排斥 刪掉des "des":0
-            }
-            with open(a_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=4)
-
-            current_node = getattr(self.sm,base_path)
-            for nb_idx in data["neighbors"]:
-                # 確保索引不越界
-                if 0 <= nb_idx < 1024:
-                    neighbor_node = getattr(self.sm, str(nb_idx)+ str(i))
-                    current_node.define(from_state="靜止", neighbor=[neighbor_node], to_state="激發")
-    def 基礎物理(self):
-        b=SIFT_1024採集(self)
-        a=[read_json_content(row(1,a),row(2,a)) for a in path_all(base_path)]
-        find_array(a,(C(1)==C(0).func(b) )& C(4)>)
+    # TODO:*** 第零一二步 吸收資訊為背景節點
+    def input(self):
+        patterns = ('*.jpg', '*.jpeg', '*.png', '*.gif', '*.bmp', '*.webp') # 該層有無此類型檔案
+        轉圖_path =row(1,path_all(TEMPLATE_DIRS["background"])) # 該層無圖，dirs才有圖
+        if  any(any(轉圖_path.glob(p)) for p in patterns):
+            f_creat=row([0,2],path_all(轉圖_path)) # 初始創建
+            for a in f_creat:
+                全能ORB(path=a[1],npy="npy") # 全面低壓通道
+                os.remove(a[1])
+        
+        f_in=row(2,path_all(TEMPLATE_DIRS["live_capture"]))
+        f_out_kp=row(2,path_all(TEMPLATE_DIRS["background"],"*_kp.npy"))
+        f_out_des = row(2, path_all(TEMPLATE_DIRS["background"], "*_des.npy")) 
+        中性=read_json_content(DATA_BASE,"物理","中性")
+        for out in C(f_out_kp,f_out_des) :
+            for a in f_in :
+                res= 全能ORB(a,b=out,ratio=中性,npy="b") # 像不像(吸收 排斥) 幾乎是比對值(中性)
            
     # TODO:*** 第二步
 

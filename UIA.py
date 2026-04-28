@@ -268,23 +268,55 @@ def read_json_content(file_path, file_name,  key):
         print(f"讀取失敗: {file_path}") 
         return []
 
-def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_ratio=None):
+def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_ratio=None,npy=None):
     """
     a : 該圖，return 特徵點,描述子
+        npy:npy，圖片轉NPY。"a"，a=NPY的kp,des
         color，return 特徵點(正規化),描述子,顏色度數
     b: 比對的圖，ab圖相似的拓樸結構圖，儲存在path
+        npy:"b"，b=NPY的kp,des
         b="human"，a和人體拓樸結構比對
         b=字串，a中的(b字串)目標完整圖片，含紋理和彩度
         path:imwrite存放路徑，預設為a的同路徑
         ratio:ab圖相似的拓樸結構圖，去掉 不明顯相似的。0.75 是經典值
     similar:ab圖相似率要多少，最多100，return bool
     similar_ratio:return ab圖相似率，最多100%
+    npy:["a","b"]，NPY直接比對
     """
+    if ["a","b"] in npy:
+        # 你傻B，繳罰金。   NPY寫在一起
+        kp1, desA =  np.load(row(0,a)),  np.load(row(1,a))
+        kp2, desB =  np.load(row(0,b)),  np.load(row(1,b))
+        # 1. 暴力比對 (BFMatcher) 拿到所有初步匹配點
+        matches = bf.knnMatch(desA, desB, k=2)
+
+        # 2. 用你那套 C 系統邏輯進行 Ratio Test 篩選 (排除模糊點)
+        # 欄位：dist_m, dist_n, queryIdx, trainIdx
+        m_data = np.array([[m.distance, n.distance, m.queryIdx, m.trainIdx] for m, n in matches])
+        good_data =find_array(m_data,C(0)<(C(1)*ratio))
+        if len(good_data) < 4: return 0
+
+        # 3. 提取座標進行 RANSAC 幾何驗證 (這是精準的核心)
+        # kp_raw 的 [0,1] 欄位就是 x, y
+        src_pts = kp1[good_data[:, 2].astype(int), :2].reshape(-1, 1, 2)
+        dst_pts = kp2[good_data[:, 3].astype(int), :2].reshape(-1, 1, 2)
+
+        # 算出變換矩陣 H 與 遮罩 mask
+        H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+
+        # 4. 返回相似度 (中性值)：精準匹配數 / 總初步匹配數 * 100
+        if H is None or mask is None: return 0
+        return (mask.sum() / len(good_data) * 100)
+    
     def im2_orb(b,png="_相似拓樸結構"):
-        img2 = cv2.imread(b) 
-        if img2 is None:
-            raise ValueError(f"讀取圖檔失敗: {b}")
-        kp2, desB = sift.detectAndCompute(img2, None)
+        if "b" in npy:
+            kp2, desB =  np.load(row(0,b)),  np.load(row(1,b))
+        else:
+            img2 = cv2.imread(b) 
+            if img2 is None:
+                raise ValueError(f"讀取圖檔失敗: {b}")
+            kp2, desB = sift.detectAndCompute(img2, None)
+            
         matches = bf.knnMatch(desA, desB, k=2)
         if desA is None or desB is None:
             return False if similar is not None else None
@@ -332,15 +364,23 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
     
     if path is None:
         # row[0] 只存（Index 0）比起[:,0]整個 path_all 轉成 np.array，記憶體佔用會小很多。
-        path = [row[0] for row in path_all(base_path, a)]
-    sift = cv2.SIFT_create()
+        path = row(0,path_all(base_path, a))
+    sift = cv2.SIFT_create(nfeatures=4200, contrastThreshold=0.03, edgeThreshold=10)
     img1 =( cv2.imread(aa) for aa in a)
     if img1 is None:
         raise ValueError(f"讀取圖檔失敗: {a}")
-    kp1, desA = sift.detectAndCompute(img1, None)
+    if "a" in npy:
+        kp1, desA =  np.load(row(0,a)),  np.load(row(1,a))
+    else:
+        kp1, desA = sift.detectAndCompute(img1, None)
     if color=="color":
         hsv = cv2.cvtColor(img1, cv2.COLOR_BGR2HSV)
         feature_nodes = []
+        if "npy" in npy:
+            kp_data = np.array([[p.pt[0], p.pt[1], p.size, p.angle, p.response, p.octave] for p in kp1], dtype=np.float32)
+            np.save(f"{a.name}_des.npy", desA) 
+            np.save(f"{a.name}_kp.npy", kp_data) # 儲存成NPY檔案
+            return kp_data
         for i, k in enumerate(kp1):
             x, y = int(k.pt[0]), int(k.pt[1])
             h, s, v = hsv[y, x]
