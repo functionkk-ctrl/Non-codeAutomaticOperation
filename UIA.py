@@ -287,26 +287,13 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
         # 你傻B，繳罰金。   NPY寫在一起
         kp1, desA =  np.load(row(0,a)),  np.load(row(1,a))
         kp2, desB =  np.load(row(0,b)),  np.load(row(1,b))
-        # 1. 暴力比對 (BFMatcher) 拿到所有初步匹配點
-        matches = bf.knnMatch(desA, desB, k=2)
+        distances = np.linalg.norm(desA - desB, axis=1)
+        similarities = 1 / (1 + distances)
+        
 
-        # 2. 用你那套 C 系統邏輯進行 Ratio Test 篩選 (排除模糊點)
-        # 欄位：dist_m, dist_n, queryIdx, trainIdx
-        m_data = np.array([[m.distance, n.distance, m.queryIdx, m.trainIdx] for m, n in matches])
-        good_data =find_array(m_data,C(0)<(C(1)*ratio))
-        if len(good_data) < 4: return 0
 
-        # 3. 提取座標進行 RANSAC 幾何驗證 (這是精準的核心)
-        # kp_raw 的 [0,1] 欄位就是 x, y
-        src_pts = kp1[good_data[:, 2].astype(int), :2].reshape(-1, 1, 2)
-        dst_pts = kp2[good_data[:, 3].astype(int), :2].reshape(-1, 1, 2)
 
-        # 算出變換矩陣 H 與 遮罩 mask
-        H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
 
-        # 4. 返回相似度 (中性值)：精準匹配數 / 總初步匹配數 * 100
-        if H is None or mask is None: return 0
-        return (mask.sum() / len(good_data) * 100)
     
     def im2_orb(b,png="_相似拓樸結構"):
         if "b" in npy:

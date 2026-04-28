@@ -95,9 +95,9 @@ class Noēsis:
         f_out_kp=row(2,path_all(TEMPLATE_DIRS["background"],"*_kp.npy"))
         f_out_des = row(2, path_all(TEMPLATE_DIRS["background"], "*_des.npy")) 
         中性=read_json_content(DATA_BASE,"物理","中性")
-        for out in C(f_out_kp,f_out_des) :
+        for out in C(f_out_kp,f_out_des).argsort :
             for a in f_in :
-                res= 全能ORB(a,b=out,ratio=中性,npy="b") # 像不像(吸收 排斥) 幾乎是比對值(中性)
+                res= 全能ORB(a,b=out,ratio=中性,npy="b") # 像不像(吸收 排斥) 幾乎是比對值(中性)。中性低容易通，中性高容易卡。
            
     # TODO:*** 第二步
 
