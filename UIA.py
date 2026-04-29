@@ -3720,11 +3720,15 @@ class Noēsis:
 視窗標題,目標的多重路徑,多重操作，:多重路徑、<>錄製。
 視窗標題,GPT:食指,全選:按下::視窗標題,GPT:肛門,位置深處:放開
 """
+import PySide6.QtQml as Qml
 if __name__ == "__main__":
     TARGET_DEVICE_ID = r"你的設備ID填在這裡" 
     monitor = EventMonitor()
     ic = InputCommand(monitor=monitor)
     rec = Recorder()
+    
+    # ✅ 在背景啟動 watchdog 執行緒 # ***app關閉時， watchdog沒有跟著關閉
+    threading.Thread(target=watchdog, daemon=True).start()
 
     app = QApplication(sys.argv)
     ic.app = app
@@ -3740,7 +3744,6 @@ if __name__ == "__main__":
     qml_file = base / "ui.qml"  # 確保路徑正確
     engine.addImportPath(str(base))
 
-    import PySide6.QtQml as Qml
     for p in Qml.QQmlEngine().importPathList():
         print("IMPORT PATH:", p)
 
@@ -3759,8 +3762,7 @@ if __name__ == "__main__":
 
     sys.exit(app.exec())
 
-    # ✅ 在背景啟動 watchdog 執行緒 # ***app關閉時， watchdog沒有跟著關閉
-    threading.Thread(target=watchdog, daemon=True).start()
+    
     while True:
         alive_event.set()   # 通知 watchdog「我還活著」
         alive_event.clear()  # 清除狀態，等下一次再送

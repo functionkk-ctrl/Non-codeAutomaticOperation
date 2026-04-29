@@ -83,7 +83,7 @@ class Noēsis:
 
 
     def input(self):
-        # 第零一二步 吸收資訊為背景節點
+        """第零一二三步 吸收資訊為背景的子節點"""
         patterns = ('*.jpg', '*.jpeg', '*.png', '*.gif', '*.bmp', '*.webp') # 該層有無此類型檔案
         轉圖_path =row(1,path_all(TEMPLATE_DIRS["background"])) # 該層無圖，dirs才有圖
         if  any(any(轉圖_path.glob(p)) for p in patterns):
@@ -100,7 +100,7 @@ class Noēsis:
                     e=全能ORB(a,b=out,npy=["a","b"],path=TEMPLATE_DIRS["speak"]) # 邏輯圖特徵點(位置) 描述子(邏輯閘)，轉成NPY 
                     self.重複輸出而進步(e)
                     self.動靜反比的邏輯合成(e) # TODO:***減少執行頻率
-    # TODO:*** 第二三四步  
+    # TODO:*** 第二三四五步  
     import subprocess
     def GitHub_同步(self):
         # 這是真正的「向上傳遞事件因子」
@@ -136,6 +136,7 @@ class Noēsis:
             os.rename(old_v, old_old_v)
             os.rename(new_v, old_v) 
             self.GitHub_同步()
+
     def 動靜反比的邏輯合成(self):
         # 此背景節點為執行者，找出靜態低壓、動態高相似
         a=path_all(TEMPLATE_DIRS["background"]) 
@@ -170,11 +171,10 @@ class Noēsis:
                 for idx,d in enumerate(ds):
                     old_path = r / d
                     os.rename(old_path, r / f"{d}_idx{idx}")
+                np.save(r/f"{r}_des.npy", idx) # TODO:** 0~idx
+                    
 
-
-                
-
-    def 個性決策(self,目標=None):
+    def 個性決策(self,輸入=None):
         """
         子節點:背景
         處理各種背景的相似意義、相反意義、
@@ -186,7 +186,18 @@ class Noēsis:
         基礎個性必須含倫理道德、所有技術的重疊部分(高階操作)
         """     
         # TODO:***輸入目標
-
+        if 輸入:
+            a=path_all(TEMPLATE_DIRS["Noesis"],"個性決策")
+            if next(a):
+                for r,d,f in a:
+                    輸出= np.load(r/"個性決策.npy")
+            輸入_arr=np.array(輸入.split())
+            YES=[]
+            NO=[]
+            加強目標=find_array(a,C(0).a_neighbor_b(輸入_arr,YES)) 
+            加強目標=find_array(a,C(0).a_neighbor_b(輸入_arr,NO)) 
+            
+            # npy重新存檔
 
 
     # TODO:*** 第五步
@@ -197,6 +208,7 @@ class Noēsis:
         基礎適應必須含生存、輸入的重大目標
         """
         # TODO:***輸入重大目標
+
 
     # TODO:*** 第六步
     def 自主性打包(self):
