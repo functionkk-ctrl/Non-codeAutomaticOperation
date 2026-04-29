@@ -25,6 +25,7 @@ class Noēsis:
     第一步:物理基礎，記憶。接觸式return
     動態儲存在Json中，由此節點的子節點的多維索引儲存每個動的位置，動 因同性排斥將動量來向 傳遞動量給出向的索引。
     動與動互斥的間距形成低壓。  周圍的動競爭地流向低壓， max(周圍的動量/低壓範圍)。
+    # 輸入後，儲存(新向量/低壓吸引)、傳遞(向量不變/中性)、抵銷(向量互撞/高壓排斥)
 
     第二步:生態，邏輯，一次好中壞。def式return
     python理解拓樸關係，自己.關係. ，好的 低壓通道吸收 拓樸；壞的 高壓外殼排斥；中性 一樣的傳遞能量。
@@ -39,7 +40,7 @@ class Noēsis:
         作用力(當前-前者(算起伏、加速度)、分子分母對調得到雙方的交換率 代表雙方利益平衡、不同意義相乘得到作用結果)
         時間、
         物品、
-        有趣對話技巧、
+        有  趣對話技巧、
         十六核操作技巧、
         易經(金(催化)>水(運輸)>木(聚合)>火(轉換能量)>土(結構化))
     動態網以輸入動態拓樸查表應對，照理說進階版就是多個一行也是子節點接收動量。此父節點當成子節點便可以判斷物品數量或完整性
@@ -81,8 +82,8 @@ class Noēsis:
         self.sm=StateMgr
 
 
-    # TODO:*** 第零一二步 吸收資訊為背景節點
     def input(self):
+        # 第零一二步 吸收資訊為背景節點
         patterns = ('*.jpg', '*.jpeg', '*.png', '*.gif', '*.bmp', '*.webp') # 該層有無此類型檔案
         轉圖_path =row(1,path_all(TEMPLATE_DIRS["background"])) # 該層無圖，dirs才有圖
         if  any(any(轉圖_path.glob(p)) for p in patterns):
@@ -90,16 +91,72 @@ class Noēsis:
             for a in f_creat:
                 全能ORB(path=a[1],npy="npy") # 全面低壓通道
                 os.remove(a[1])
-        
         f_in=row(2,path_all(TEMPLATE_DIRS["live_capture"]))
-        f_out_kp=row(2,path_all(TEMPLATE_DIRS["background"],"*_kp.npy"))
-        f_out_des = row(2, path_all(TEMPLATE_DIRS["background"], "*_des.npy")) 
-        中性=read_json_content(DATA_BASE,"物理","中性")
-        for out in C(f_out_kp,f_out_des).argsort :
-            for a in f_in :
-                res= 全能ORB(a,b=out,ratio=中性,npy="b") # 像不像(吸收 排斥) 幾乎是比對值(中性)。中性低容易通，中性高容易卡。
-           
-    # TODO:*** 第二步
+        if next(f_in):
+            f_out_kp=row(2,path_all(TEMPLATE_DIRS["background"],"*_kp.npy"))
+            f_out_des = row(2, path_all(TEMPLATE_DIRS["background"], "*_des.npy")) 
+            for out in C(f_out_kp,f_out_des) :
+                for a in f_in :
+                    e=全能ORB(a,b=out,npy=["a","b"],path=TEMPLATE_DIRS["speak"]) # 邏輯圖特徵點(位置) 描述子(邏輯閘)，轉成NPY 
+                    self.重複輸出而進步(e)
+                    self.動靜反比的邏輯合成(e) # TODO:***減少執行頻率
+    # TODO:*** 第二步  
+    import subprocess
+    def GitHub_同步(self):
+        # 這是真正的「向上傳遞事件因子」
+        try:
+            # 1. 追蹤變動 (含 .npy 與新建的腳本資料夾)
+            subprocess.run(["git", "add", "."], check=True)
+            # 2. 提交變動 (描述子演化)
+            subprocess.run(["git", "commit", "-m", "神經元演化：穩定特徵更新"], check=True)
+            # 3. 推送到雲端突觸
+            subprocess.run(["git", "push", "origin", "main"], check=True)
+            print("GitHub 突觸同步完成")
+        except Exception as e:
+            print(f"同步失敗：{e}")
+
+    def 重複輸出而進步(self,e):
+        # 子節點為執行者
+        old_v =f"{e.stem}_v2.npy"# 舊節點
+        new_v = f"{e.stem}_v3.npy" # 新節點
+        def 偵測():
+            if not Path(old_v).exists(): return False 
+            相似度= 全能ORB(e, b=old_v, npy=["a", "b"],similar_ratio="similar_ratio")
+            stats = C(e.stat(), 相似度) 
+            sorted_idx = row(0, stats).argsort()
+            b=find_array(sorted_idx,C(1).diff<0.1) # 時間段落最長的
+            return row(0,b[-1]-b[0])>3 # 超過3秒/次
+
+        if 偵測():
+            old_old_v = f"{e.stem}_v1.npy" # 舊舊節點
+            # 2. 物理刪除舊舊節點
+            if Path(old_old_v).exists():
+                os.remove(old_old_v) 
+            # 3. 滾動更新命名 (保留舊，迎接新)
+            os.rename(old_v, old_old_v)
+            os.rename(new_v, old_v) 
+            self.GitHub_同步()
+    def 動靜反比的邏輯合成(self):
+        # 父節點為執行者，找出靜態低壓、動態高相似
+        a=path_all(TEMPLATE_DIRS["background"]) 
+        動=row(2,path_all(a,"*.npy")) # 動態輸出
+        動了=[全能ORB(a,b,npy=["a","b"],similar_ratio="similar_ratio") for a in 動 for b in 動] # 靜態儲存邏輯圖(kp,des)
+        靜=[全能ORB(a,b,npy=["a","b"],similar_ratio="similar_ratio") for a in row(2,a) for b in row(2,a)] # 靜態儲存邏輯圖(kp,des)
+        動靜=C(動了,靜)
+        零=1e-5 
+        mask=find_array(動靜,((C(0)/C(1))==零 or (C(1)/C(0))==零).get_mask() ) # 反比距離很大的 
+        for a in 動[mask]:
+            old_v =f"{a.stem}_v2.npy"# 舊節點
+            new_v = f"{a.stem}_v3.npy" # 新節點
+            old_old_v = f"{a.stem}_v1.npy" # 舊舊節點
+            # 2. 物理刪除舊舊節點
+            if Path(old_old_v).exists():
+                os.remove(old_old_v) 
+            # 3. 滾動更新命名 (保留舊，迎接新)
+            os.rename(old_v, old_old_v)
+            os.rename(new_v, old_v) 
+        self.GitHub_同步()
+
 
     # TODO:*** 第三步
 

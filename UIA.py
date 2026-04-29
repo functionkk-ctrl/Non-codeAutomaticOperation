@@ -282,18 +282,52 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
     similar:ab圖相似率要多少，最多100，return bool
     similar_ratio:return ab圖相似率，最多100%
     npy:["a","b"]，NPY直接比對
+        similar_ratio:回傳相似度
     """
     if ["a","b"] in npy:
-        # 你傻B，繳罰金。   NPY寫在一起
         kp1, desA =  np.load(row(0,a)),  np.load(row(1,a))
         kp2, desB =  np.load(row(0,b)),  np.load(row(1,b))
-        distances = np.linalg.norm(desA - desB, axis=1)
-        similarities = 1 / (1 + distances)
-        
+        # 輸入後，儲存(新向量)、傳遞(向量不變)、抵銷(向量互撞)
+        result_des = np.zeros_like(desA)
+        kp_dataA=C(kp1, desA)
+        result_kp = kp_dataA.copy()
 
+        # 2. 計算點對點的餘弦相似度 (Cosine Similarity)
+        # 透過矩陣運算一次算出所有點的對撞角度
+        normA = np.linalg.norm(desA, axis=1)
+        normB = np.linalg.norm(desB, axis=1)
+        # 避免除以零（防止空向量撞擊出錯）
+        similarity = np.sum(desA *  desB, axis=1) / (normA * normB + 1e-8) # 每個特徵點的描述子對撞
 
+        # 3. 定義邏輯分流遮罩 (Masks)
+        cancel_mask = similarity > 0.9                     # 相似度極高 -> 抵銷
+        store_mask = (similarity <= 0.9) & (similarity > 0.4) # 中等相似度 -> 儲存(融合)
+        pass_mask = similarity <= 0.4                      # 相似度極低 -> 傳遞(穿透)
 
+        # --- 執行物理邏輯運算 ---
 
+        # A. 抵銷 (Cancel): 向量互撞，能量歸零
+        result_des[cancel_mask] = 0
+        result_kp[cancel_mask, 4] = 0  # Response 強度歸零，點位熄滅
+
+        # B. 儲存 (Store): 向量相加，產生新演化特徵
+        result_des[store_mask] = desA[store_mask] + desB[store_mask]
+        result_kp[store_mask, 4] = kp_dataA[store_mask, 4] + kp_dataB[store_mask, 4] # 強度疊加
+
+        # C. 傳遞 (Pass): 向量不變，資訊原樣穿透
+        result_des[pass_mask] = desA[pass_mask]
+        result_kp[pass_mask, 4] = kp_dataA[pass_mask, 4] # 強度維持
+
+        if path is None:
+            path = row(0,path_all(base_path, a))
+        des_path =path/ f"{a.name}_des.npy"  # 使用 e (傳入的對象) 而非 a
+        kp_path =path/ f"{a.name}_kp.npy"
+        # --- 儲存成NPY檔案 ---
+        np.save(des_path, result_des)
+        np.save(kp_path, result_kp)
+        if similar_ratio  is not None:
+            return np.mean(similarity) # 相似度
+        return a 
     
     def im2_orb(b,png="_相似拓樸結構"):
         if "b" in npy:
