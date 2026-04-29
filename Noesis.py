@@ -100,7 +100,7 @@ class Noēsis:
                     e=全能ORB(a,b=out,npy=["a","b"],path=TEMPLATE_DIRS["speak"]) # 邏輯圖特徵點(位置) 描述子(邏輯閘)，轉成NPY 
                     self.重複輸出而進步(e)
                     self.動靜反比的邏輯合成(e) # TODO:***減少執行頻率
-    # TODO:*** 第二步  
+    # TODO:*** 第二三四步  
     import subprocess
     def GitHub_同步(self):
         # 這是真正的「向上傳遞事件因子」
@@ -137,7 +137,7 @@ class Noēsis:
             os.rename(new_v, old_v) 
             self.GitHub_同步()
     def 動靜反比的邏輯合成(self):
-        # 父節點為執行者，找出靜態低壓、動態高相似
+        # 此背景節點為執行者，找出靜態低壓、動態高相似
         a=path_all(TEMPLATE_DIRS["background"]) 
         動=row(2,path_all(a,"*.npy")) # 動態輸出
         動了=[全能ORB(a,b,npy=["a","b"],similar_ratio="similar_ratio") for a in 動 for b in 動] # 靜態儲存邏輯圖(kp,des)
@@ -156,16 +156,56 @@ class Noēsis:
             os.rename(old_v, old_old_v)
             os.rename(new_v, old_v) 
         self.GitHub_同步()
+    
+    def 編織關係(self):
+        """
+        整個視界線更新(對接)，差之毫釐，謬以千里
+        父節點將子節點輸出轉成SIFT版NPY，邏輯(高低壓 持中)處理各種子節點的輸出，代表子節點的輸出位置會固定在父節點的邏輯圖上的特徵點
+        """
+        de=row(1,path_all(TEMPLATE_DIRS["background"]))
+        p=path_all(TEMPLATE_DIRS["Noesis"],exclude=de)
+        if next(p):
+            os.rename(row(0,p)/row(1,p)) # 對子節點重新命名，所有節點輸出時附上自己名稱後的標記索引
+            for r,ds,fs in p:
+                for idx,d in enumerate(ds):
+                    old_path = r / d
+                    os.rename(old_path, r / f"{d}_idx{idx}")
 
 
-    # TODO:*** 第三步
+                
 
-    # TODO:*** 第四步
+    def 個性決策(self,目標=None):
+        """
+        子節點:背景
+        處理各種背景的相似意義、相反意義、
+        作用力(當前-前者(算起伏、加速度)、
+        分子分母對調得到雙方的交換率 代表雙方利益平衡、
+        不同意義相乘得到作用結果)
+
+        個性決策節點獲得，輸入目標(對話或圖片)形成偏好，並培養關聯關係。
+        基礎個性必須含倫理道德、所有技術的重疊部分(高階操作)
+        """     
+        # TODO:***輸入目標
+
+
 
     # TODO:*** 第五步
+    def 適應節點(self):
+        """
+        子節點:個性決策
+        處理各種個性的優缺點影響力
+        基礎適應必須含生存、輸入的重大目標
+        """
+        # TODO:***輸入重大目標
 
     # TODO:*** 第六步
+    def 自主性打包(self):
+        """
+        子節點:適應
 
+        適應各種疑難雜症的軟體程式
+        """
+        # TODO:***輸入疑難雜症
 
 
 
