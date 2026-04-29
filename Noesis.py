@@ -195,9 +195,23 @@ class Noēsis:
             YES=[]
             NO=[]
             加強目標=find_array(a,C(0).a_neighbor_b(輸入_arr,YES)) 
-            加強目標=find_array(a,C(0).a_neighbor_b(輸入_arr,NO)) 
+            減弱目標=find_array(a,C(0).a_neighbor_b(輸入_arr,NO)) 
+            # 4. 精確修補 (Slicing Update)
+            # 透過 split("idx") 拿到純數字索引，直接對 輸出[idx] 進行加減
+            for item in 加強目標:
+                idx = int(item.split("idx")[-1])
+                # 動量傳導：將原有的特徵向量向『輸入目標』的特徵微調
+                # 這是真正的「演化」，改變了節點的『長相』使其更吸引同類
+                輸出[idx] = 0.9 * 輸出[idx] + 0.1 * 目標特徵_vec 
+                
+            for item in 減弱目標:
+                idx = int(item.split("idx")[-1])
+                # 排斥：將該索引的特徵向量打亂或轉向，使其不再產生共鳴
+                輸出[idx] = np.random.normal(size=128) # 變成高壓噪音牆
+
+            # 5. 記憶固化
+            np.save(r / "個性決策.npy", 輸出)
             
-            # npy重新存檔
 
 
     # TODO:*** 第五步
