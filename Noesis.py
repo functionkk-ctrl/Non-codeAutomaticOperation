@@ -1,26 +1,8 @@
-from UIA import *
+from UIA import path_all,全能ORB,find_array,C,TEMPLATE_DIRS,row,os,subprocess,np,Path
 class Noēsis:
     """
     Noēsis(諾埃西斯）希臘文 νόησις。Perceptive Structural Language(PSL）。自己用 World-Formation Language(WFL）
     """
-    DATA_BASE = Path(getattr(sys, '_MEIPASS', os.path.dirname(
-    os.path.abspath(__file__))))
-    base_path = Path.home() / ".your_app_name"      # 可寫
-    TEMPLATE_DIRS = {
-        "live_capture": DATA_BASE/ 'live_capture',
-        "attributes": DATA_BASE/ "attributes",
-        "world": DATA_BASE/ "world",
-        "user": DATA_BASE/ "user",  # 用戶隱私
-        "communication": DATA_BASE/ "communication",  # 用戶交流的訊息
-        "dark_matter": DATA_BASE/ "dark_matter",
-        "thinking": DATA_BASE/ "thinking",  # 中轉站
-        "thinking2": DATA_BASE/ "thinking2",  # 中轉站
-        "speak": DATA_BASE/ "speak",  # 交流的回覆
-        "absorb": DATA_BASE/ "absorb",  # Nosis吸收的知識
-        "background": DATA_BASE/ "background",  # background節點
-    }
-
-
     def input(self):
         """第零一二三步 吸收資訊為背景的子節點"""
         patterns = ('*.jpg', '*.jpeg', '*.png', '*.gif', '*.bmp', '*.webp') # 該層有無此類型檔案
@@ -40,7 +22,6 @@ class Noēsis:
                     self.重複輸出而進步(e)
                     self.動靜反比的邏輯合成(e) # TODO:***減少執行頻率
     # TODO:*** 第二三四五步  
-    import subprocess
     def GitHub_同步(self):
         # 這是真正的「向上傳遞事件因子」
         try:
@@ -116,27 +97,32 @@ class Noēsis:
 
     def 輸入(self,輸入內容):
         # TODO:***輸入時
-        父節點=find_array(np.array(輸入內容.split()),["個性決策","適應"] in C(0))
-        if next(父節點):
-            a=path_all(TEMPLATE_DIRS["Noesis"],父節點)
-            if next(a):
-                for r,d,f in a:
-                    輸出位置= np.load(r/f"{父節點}_kp.npy")
-                    輸出強度= np.load(r/f"{父節點}_des.npy")
-            輸入_arr=np.array(輸入.split())
-            YES=[]
-            NO=[]
-            加強目標=find_array(a,C(0).a_neighbor_b(輸入_arr,YES)) 
-            減弱目標=find_array(a,C(0).a_neighbor_b(輸入_arr,NO)) 
-            temp = 輸出強度.astype(np.float32)
-            for item in 加強目標:
-                idx = int(item.split("idx")[-1]) # 子節點名稱後的標記的索引
-                temp[idx] *= 1.1 
-                
-            for item in 減弱目標:
-                idx = int(item.split("idx")[-1]) # 子節點名稱後的標記的索引
-                temp[idx] *=0.9 
-            np.save(r / f"{父節點}_kp.npy", temp) # np.save矩陣的維度、型態、數值直接二進位化。
+        輸入_arr=np.array(輸入內容)
+        父節點=find_array(輸入_arr,["個性決策","適應"] in C(0)) 
+        if next(父節點) :
+            for 父 in 父節點:
+                父_path=path_all(TEMPLATE_DIRS["Noesis"],父)
+                if next(父_path):
+                    for r,d,f in 父_path:
+                        kp_file = r / f"{父}_kp.npy"
+                        des_file = r / f"{父}_des.npy"
+                        if not (kp_file.exists() and des_file.exists()): continue
+                        kp_data = np.load(kp_file).astype(np.float32) # 二進位 轉成 浮點數
+                        des_data = np.load(des_file).astype(np.float32)  # 父節點資料夾下的 父節點邏輯 管理 子節點_NPY
+                YES=row(0,path_all(TEMPLATE_DIRS["background"]/"語言","肯定")) # 肯定總辭典
+                NO=row(0,path_all(TEMPLATE_DIRS["background"]/"語言","否定"))
+                加強目標=find_array(輸入_arr,C(0).a_neighbor_b(row(1,父_path),YES)) # 對應的用到的詞
+                減弱目標=find_array(輸入_arr,C(0).a_neighbor_b(row(1,父_path),NO)) 
+                for item in 加強目標:
+                    idx = int(str(item).split("idx")[-1]) # 子節點名稱後的標記的索引
+                    des_data[idx] *= 1.1 
+                    kp_data[idx, 4] *= 1.1 
+                for item in 減弱目標:
+                    idx = int(str(item).split("idx")[-1]) # 子節點名稱後的標記的索引
+                    des_data[idx] *=0.9 
+                    kp_data[idx, 4] *=0.9 
+                np.save(des_file, des_data) # np.save矩陣的維度、型態、數值直接二進位化。
+                np.save(kp_file, kp_data)
 
     def 個性決策(self):
         """
@@ -158,6 +144,7 @@ class Noēsis:
         基礎適應必須含生存、輸入的重大目標
         """
         # self.輸入("適應節點") # TODO:***輸入重大目標
+        pass
 
     # TODO:*** 第六步
     def 自主性打包(self):
@@ -167,6 +154,7 @@ class Noēsis:
         適應各種疑難雜症的軟體程式
         """
         # TODO:***輸入疑難雜症
+        pass
 
 
 
@@ -307,6 +295,7 @@ class GGD:
     第六步:打包自己為特定目標的軟體程式
 
     """
+    pass
 
 class 質數證明易經:
     def digital_root(n):

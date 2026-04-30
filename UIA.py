@@ -1,4 +1,5 @@
 import json
+import Noesis
 import shutil
 import mediapipe as mp
 from geographiclib.geodesic import Geodesic
@@ -26,12 +27,19 @@ from OpenGL.GLU import *
 from OpenGL.GL import *
 import psutil
 from PySide6.QtGui import QSurfaceFormat
-from PySide6.QtCore import QObject, Slot
+from PySide6.QtCore import QObject, Slot, QTimer 
 from geopy.geocoders import Nominatim
+import subprocess
+
+# .venv 一次性安裝 uv add mediapipe geographiclib firebase-admin PySide6 numpy opencv-python Pillow PyOpenGL PyOpenGL-accelerate geopy pynput pyautogui pytesseract psutil pywinauto
+# uv run pyinstaller --clean UIA.spec
+# uv run UIA.py
+
+
 # Android
-from plyer import gps
-from kivy.clock import Clock
-from kivy.utils import platform
+# from plyer import gps
+# from kivy.clock import Clock
+# from kivy.utils import platform
 
 
 def on_location(**kwargs):
@@ -43,13 +51,13 @@ def on_location(**kwargs):
     )
 
 
-gps.configure(on_location=on_location)
-gps.start(minTime=1000, minDistance=0)
-
+# gps.configure(on_location=on_location)
+# gps.start(minTime=1000, minDistance=0)
+"""
 if platform == 'android':
     from plyer import accelerometer
     accelerometer.enable()
-
+"""
 
 def read_imu(dt):
     val = accelerometer.acceleration
@@ -58,12 +66,11 @@ def read_imu(dt):
     print(ax, ay, az)
 
 
-Clock.schedule_interval(read_imu, 1/50)
+# Clock.schedule_interval(read_imu, 1/50)
 
 # --- 基礎設定 --- python "D:\Python\Non-codeAutomaticOperation\UIA.py"
 pytesseract.pytesseract.tesseract_cmd = r"C:\Users\USER\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
-DATA_BASE = Path(getattr(sys, '_MEIPASS', os.path.dirname(
-    os.path.abspath(__file__))))
+DATA_BASE = Path(os.getcwd()) 
 base_path = Path.home() / ".your_app_name"      # 可寫
 TEMPLATE_DIRS = {
     "live_capture": DATA_BASE/ 'live_capture',
@@ -85,9 +92,11 @@ bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
 # --- 共用工具 ---
 alive_event = threading.Event()
 cred = credentials.Certificate("serviceAccountKey.json")
-firebase_admin.initialize_app(cred, {
-    "databaseURL": "https://你的專案-id.firebaseio.com/"
-})
+if not firebase_admin._apps:
+    firebase_admin.initialize_app(cred, {
+        "databaseURL": "firebase-adminsdk-fbsvc@uia-a-3c57f.iam.gserviceaccount.com"
+    })
+
 
 def path_all(paths, target=None,exclude=None,time=None,use_orb=False):
     """
@@ -714,7 +723,7 @@ def watchdog():
 def send_heartbeat():
     alive_event.set()
     # 這裡可以順便觸發 Noesis 的低壓掃描
-    # noesis.input() 
+    noesis.編織關係() # 編織關係 
 
 heartbeat_timer = QTimer()
 heartbeat_timer.timeout.connect(send_heartbeat)
@@ -1082,8 +1091,7 @@ def OverridingTechniques(cover_png=None,png_root=None,using=False):
             file_name="被覆蓋的技巧", # json
             content=content 
         ) 
-# TODO:*** ，提出的問題拆解經過2=128倍得到親子關係，鄰居關係，相差得到答案
-自己=StateMgr.add("自己")
+        
 class StateMgr:
     __slots__ = ("_states",)
     """
@@ -1240,10 +1248,10 @@ class State:
         self.current = to_state
         return self
 
-
-class InputCommand(QObject,monitor):
-    def __init__(self):
+class InputCommand(QObject):
+    def __init__(self, monitor_data):
         super().__init__()
+        self.monitor = monitor_data 
         self.vars = {}
         self.current_window = None
         self.cache = {}
@@ -2258,13 +2266,16 @@ class Backend(QObject):
 視窗標題,GPT:食指,全選:按下::視窗標題,GPT:肛門,位置深處:放開
 """
 import PySide6.QtQml as Qml
-import Noesis
 if __name__ == "__main__":
+    monitor_info = {"width": 1920, "height": 1080} 
+    # 實例化
+    ic = InputCommand(monitor_info)
     TARGET_DEVICE_ID = r"你的設備ID填在這裡" 
     monitor = EventMonitor()
-    ic = InputCommand(monitor=monitor)
     rec = Recorder()
-    noesis=Noesis()
+    noesis_input=noesis.input
+    noesis_編織關係=noesis.編織關係
+    noesis_輸入=noesis.輸入
     
     # ✅ 在背景啟動 watchdog 執行緒 # ***app關閉時， watchdog沒有跟著關閉
     send_heartbeat()
@@ -2277,6 +2288,10 @@ if __name__ == "__main__":
     fmt.setProfile(QSurfaceFormat.CoreProfile)
     fmt.setVersion(4, 1)
     QSurfaceFormat.setDefaultFormat(fmt)
+    
+    # TODO:*** ，提出的問題拆解經過2=128倍得到親子關係，鄰居關係，相差得到答案
+    sm=StateMgr
+    自己=StateMgr.add("自己")
 
     engine = QQmlApplicationEngine()
     base = Path(os.path.dirname(os.path.abspath(__file__)))
