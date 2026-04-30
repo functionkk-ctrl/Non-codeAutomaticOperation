@@ -702,11 +702,23 @@ def unhide_file_windows(file_path):
         raise ctypes.WinError()
 
 def watchdog():
-    while not alive_event.wait(timeout=10):
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        cv2.imwrite(f"debug_{ts}.png", screenshot())
-        print(f"[Watchdog] 主線程可能卡死，已保存 debug_{ts}.png")
+     while True:
+        # 如果主線程 10 秒沒 set，代表卡死
+        if not alive_event.wait(timeout=10):
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            cv2.imwrite(f"debug_{ts}.png", screenshot())
+            print(f"[Watchdog] 主線程可能卡死，已保存 debug_{ts}.png")
+        alive_event.clear() # 重置，等待下一波心跳
 
+# 在 engine.load 之前定義一個物理心跳
+def send_heartbeat():
+    alive_event.set()
+    # 這裡可以順便觸發 Noesis 的低壓掃描
+    # noesis.input() 
+
+heartbeat_timer = QTimer()
+heartbeat_timer.timeout.connect(send_heartbeat)
+heartbeat_timer.start(5000) # 每 5 秒報一次平安
 
 def screenshot():
     """截取全屏並轉成OpenCV圖像  RGB → BGR """
@@ -1318,6 +1330,9 @@ class InputCommand(QObject,monitor):
                                 while i < len(action):
                                     act = action[i]
                                     match act:
+                                        case "第零一二三步": noesis.input
+                                        case "Noesis編織關係": noesis.編織關係()
+                                        case "Noesis輸入": noesis.輸入(action[i+1:])
                                         # Unity
                                         case "點擊": click(sp[0])
                                         case "雙擊": pyautogui.doubleClick(sp[0])
@@ -2243,14 +2258,16 @@ class Backend(QObject):
 視窗標題,GPT:食指,全選:按下::視窗標題,GPT:肛門,位置深處:放開
 """
 import PySide6.QtQml as Qml
+import Noesis
 if __name__ == "__main__":
     TARGET_DEVICE_ID = r"你的設備ID填在這裡" 
     monitor = EventMonitor()
     ic = InputCommand(monitor=monitor)
     rec = Recorder()
+    noesis=Noesis()
     
     # ✅ 在背景啟動 watchdog 執行緒 # ***app關閉時， watchdog沒有跟著關閉
-    threading.Thread(target=watchdog, daemon=True).start()
+    send_heartbeat()
 
     app = QApplication(sys.argv)
     ic.app = app
@@ -2284,10 +2301,7 @@ if __name__ == "__main__":
 
     sys.exit(app.exec())
 
-    
-    while True:
-        alive_event.set()   # 通知 watchdog「我還活著」
-        alive_event.clear()  # 清除狀態，等下一次再送
+
 
 # self 實體
 # 可能需要考慮安全風險

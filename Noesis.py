@@ -114,10 +114,10 @@ class Noēsis:
                 np.save(r/f"{r}_des.npy", result_idx) # 0~idx 
         self.GitHub_同步()
 
-    def 輸入(self,父節點):
+    def 輸入(self,輸入內容):
         # TODO:***輸入時
-        輸入=None
-        if 輸入:
+        父節點=find_array(np.array(輸入內容.split()),["個性決策","適應"] in C(0))
+        if next(父節點):
             a=path_all(TEMPLATE_DIRS["Noesis"],父節點)
             if next(a):
                 for r,d,f in a:
@@ -136,7 +136,7 @@ class Noēsis:
             for item in 減弱目標:
                 idx = int(item.split("idx")[-1]) # 子節點名稱後的標記的索引
                 temp[idx] *=0.9 
-            np.save(r / "個性決策_kp.npy", temp) # np.save矩陣的維度、型態、數值直接二進位化。
+            np.save(r / f"{父節點}_kp.npy", temp) # np.save矩陣的維度、型態、數值直接二進位化。
 
     def 個性決策(self):
         """
@@ -149,15 +149,15 @@ class Noēsis:
         個性決策節點獲得，輸入目標(對話或圖片)形成偏好，並培養關聯關係。
         基礎個性必須含倫理道德、所有技術的重疊部分(高階操作)
         """   
-        self.輸入("個性決策") # 輸入目標
+        # self.輸入("個性決策") # 輸入目標
 
-    def 適應節點(self):
+    def 適應(self):
         """
         子節點:個性決策
         處理各種個性的優缺點影響力
         基礎適應必須含生存、輸入的重大目標
         """
-        self.輸入("適應節點") # TODO:***輸入重大目標
+        # self.輸入("適應節點") # TODO:***輸入重大目標
 
     # TODO:*** 第六步
     def 自主性打包(self):
