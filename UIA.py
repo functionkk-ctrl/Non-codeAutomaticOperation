@@ -815,6 +815,7 @@ def locate_text(keyword, sort=1, num=1, classA=None):
         if t.strip() and SequenceMatcher(None, t.lower(), keyword.lower()).ratio() >= 0.7
     ]
     if not pts:
+        print("not pts")
         tar=TargetExtractor()
         tar.select_polygon_roi()
         if DEBUG:
@@ -829,11 +830,13 @@ def locate_text(keyword, sort=1, num=1, classA=None):
         pts = pts[1::2]
     elif isinstance(sort, int):
         idx = sort - 1 if sort > 0 else sort
+        print(pts[idx])
         return pts[idx] if -len(pts) <= idx < len(pts) else None
     # 處理 num(正數取前 num，負數取倒數 abs(num)）
     if num != 1:
         pts = pts[:num] if num > 0 else pts[num:]
     if classA is None:
+        print(pts)
         return pts
     else:
         # * 找classA 的內容，預設是 # 找 classA 的這一行 classA後面
@@ -883,6 +886,7 @@ def locate_text(keyword, sort=1, num=1, classA=None):
             distance = (aLocation.latitude - bLocation.latitude)**2 + \
                 (aLocation.longitude - bLocation.longitude)**2
             time.sleep(0.05)
+            print(distance)
             return distance
         # 間距太近(firestore.client().reference(太近的地址)，起點和太近地址的距離為 間距)的一些地址為一分支 manifest[分支]，離起點太遠(firestore 太遠地址)額外安排 manifest2
         NEAR_DISTANCE = dist(nearP, startP)
@@ -939,7 +943,10 @@ def locate_text(keyword, sort=1, num=1, classA=None):
 
 def click(pos): 
     #  * 解包，將 [x, y] 轉為 x, y
-    pyautogui.moveTo(*pos, duration=0.2); pyautogui.click(); time.sleep(0.1)
+    print("點擊")
+    pyautogui.moveTo(*pos, duration=0.2)
+    pyautogui.click()
+    time.sleep(0.1)
     
 from firebase_admin import credentials, auth
 
@@ -1301,6 +1308,7 @@ class InputCommand(QObject):
         if "<img>" in str:
             return locate_template_orb_cached(str, sort, num)
         else:
+            print("找字中...")
             return locate_text(str, sort, num, classA)
 
     @Slot(str)
@@ -1345,6 +1353,7 @@ class InputCommand(QObject):
                     print(f"⚠️ 未知指令: {cmd_type}")
         else:
             # 普通命令直接執行
+            print("普通命令直接執行")
             cmds = user_input.split("::")
             ic.execute_line(cmds)
 
@@ -1358,27 +1367,32 @@ class InputCommand(QObject):
                     time.sleep(0.5)
                 for pa in path.split(":"):
                     # [(x,y),(x,y),(x,y),...]，sp[0]=x,y，sp[0][1]=y，打死GPT
-                    sps = self.selected(pa)
+                    print(f"pa:{pa}")
+                    sps = [self.selected(pa)]
+                    print(f"sps:{row(None,sps)}")
                     if sps is not None:
                         for sp in sps:
+                            print(f"sp:{sp}")
                             if pa != path.split(":")[-1]:
                                 click(sp)
                             elif pa == path.split(":")[-1]:
                                 for act in action.split(":"):
                                     i = 0
                                     while i < len(action):
-                                        act = action[i]
+                                        print(f"act:{act}")
+                                        # act = action[i]
+                                        print(f"act:{act}")
                                         match act:
                                             case "第0123步": noesis.input()
                                             case "Noesis編織關係": noesis.編織關係()
                                             case "Noesis輸入": noesis.輸入(action[i+1:])
                                             # Unity
-                                            case "點擊": click(sp[0])
-                                            case "雙擊": pyautogui.doubleClick(sp[0])
-                                            case "右鍵": pyautogui.rightClick(sp[0])
-                                            case "中鍵": pyautogui.middleClick(sp[0])
-                                            case "按下": pyautogui.mouseDown(sp[0])
-                                            case "放開": pyautogui.mouseUp(sp[0])
+                                            case "點擊": click(sp)
+                                            case "雙擊": pyautogui.doubleClick(sp)
+                                            case "右鍵": pyautogui.rightClick(sp)
+                                            case "中鍵": pyautogui.middleClick(sp)
+                                            case "按下": pyautogui.mouseDown(sp)
+                                            case "放開": pyautogui.mouseUp(sp)
                                             case "儲存": pyautogui.hotkey("ctrl", "s")
                                             case "複製": pyautogui.hotkey("ctrl", "c")
                                             case "貼上": pyautogui.hotkey("ctrl", "v")

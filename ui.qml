@@ -58,7 +58,7 @@ Window {
         // == == == == GLB 模型 == == == ==
         Ilulu { 
             id: iluluModel
-            scale: Qt.vector3d(scaleFactor, scaleFactor, scaleFactor)
+            scale: Qt.vector3d(scaleFactor*0.1, scaleFactor*0.1, scaleFactor*0.1)
             position: Qt.vector3d(0, 0, 0)
             
             SequentialAnimation on eulerRotation.y {
