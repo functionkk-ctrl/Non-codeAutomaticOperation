@@ -1,7 +1,7 @@
 import QtQuick 
+import QtQuick3D 
 import QtQuick.Window 
 import QtQuick.Controls 
-import QtQuick3D 
 
 
 Window {
@@ -18,7 +18,7 @@ Window {
     color: "transparent"
     visible: true
     flags: Qt.FramelessWindowHint | Qt.Tool | Qt.WindowStaysOnTopHint
-    property real scaleFactor: 1.0
+    property real scaleFactor: 50
     property vector2d lastMousePos: Qt.vector2d(0, 0)
     property bool draggingWindow: false
     property bool rotatingModel: false
@@ -27,6 +27,7 @@ Window {
     property Node selectedNode: null
 
     property string userInput: "" 
+    property real swY:30
 
     property var keyword_map: {
     "開心": {"happy": 1.0},
@@ -39,7 +40,7 @@ Window {
     View3D {
         id: view
         anchors.fill: parent
-        spacing: 10
+        //importScene: sceneRoot
 
         environment: SceneEnvironment {
             backgroundMode: SceneEnvironment.Color
@@ -47,35 +48,35 @@ Window {
         }
         PerspectiveCamera {
             id: cam
-            position: Qt.vector3d(0, 150, 350)
-            eulerRotation.x: -15
+            position: Qt.vector3d(20, 158, 100)
+            eulerRotation.x: -30
         }
         DirectionalLight {
             eulerRotation: Qt.vector3d(-45, 0, 0)
             brightness: 1.8
         }
         // == == == == GLB 模型 == == == ==
-        Model {
-            id: ilulu
-            source: "ilulu.glb"
+        Ilulu { 
+            id: iluluModel
             scale: Qt.vector3d(scaleFactor, scaleFactor, scaleFactor)
             position: Qt.vector3d(0, 0, 0)
-            MouseArea { // TODO:***Model 下的MouseArea不會生效
-                anchors.fill: parent
-                onClicked: {
-                    var node = view.pick(mouse.x, mouse.y)
-                    if (node) {
-                        console.log("Selected Node:", node.objectName)
-                    }
+            
+            SequentialAnimation on eulerRotation.y {
+                loops: Animation.Infinite // 無限循環
+                running: true             // 確保自動開始
+                NumberAnimation {
+                    from: -swY
+                    to: swY+18
+                    duration: 1230
+                    easing.type: Easing.InOutQuad // 加入緩動效果，轉向時更平滑
+                }
+                NumberAnimation {
+                    from: swY+18
+                    to: -swY
+                    duration: 1230
+                    easing.type: Easing.InOutQuad
                 }
             }
-        }
-        // == == == == 加載 Rocking Chair 模型 == == == ==
-        Model {
-            id: rockingChair
-            source: "uploads_files_3351752_Rocking_Chair2.obj"
-            scale: Qt.vector3d(scaleFactor, scaleFactor, scaleFactor)
-            position: Qt.vector3d(100, 0, 0) // 調整 Rocking Chair 的位置，避免與 ilulu 重疊
         }
     }
 
@@ -94,12 +95,13 @@ Window {
 
         // 監聽文本變化
         onTextChanged: {
-            if() // *** 進入 計算物體實際大小的 抓取模式
-                if (!/^(.*)_W(\d+)_H(\d+)_Z([\d.]+)\.png$/.test(text)) Pass
+            if(text.length > 0) {  // *** 進入 計算物體實際大小的 抓取模式
+                if (!/^(.*)_W(\d+)_H(\d+)_Z([\d.]+)\.png$/.test(text)) {}
             // 當用戶輸入時更新 `userInput`
             userInput = text
+            }
         }
-        Keys.onPressed: {
+        Keys.onPressed: (event) => {
             // 當按下回車鍵時，執行提交操作
             if([Qt.Key_Return,Qt.Key_Enter].includes(event.key)){
                 event.accepted = true
@@ -126,20 +128,21 @@ Window {
         // TODO:*** 打開路徑下的所有圖片
         // TODO:*** 點擊某個詞，顯示該詞對應路徑下的圖片集
         // TODO:*** 動態圖片：每次撥放幾張圖，循環撥放
+        // pyside6-balsam *.glb 另存成 iluluModel.qml and meshes/*.mesh and maps/模型使用的貼圖 
     Column {
         spacing: 10
         Text {
             id: dialogue
-            text: backend.path_dir
+            text: Backend.path_dir
             color: "white"
             font.pixelSize: 16
 
             MouseArea {
                 anchors.fill: parent
-                onClicked: { // 點擊文字請求圖片列表
+                onClicked: (mouse) => { // 點擊文字請求圖片列表
                 imgTimer.stop()       // 切換前先停止播放
-                backend.getImages(dialogue.text) // 傳文字給後端
-            }  
+                Backend.getImages(dialogue.text) // 傳文字給後端
+                }  
             }
         }
 
@@ -169,8 +172,7 @@ Window {
         property int currentIndex: 0
 
         Connections {
-            target: backend
-            // onImagesReady: {
+            target: Backend
             function onImagesReady(images) {
                 imageList = images
                 currentIndex = 0
@@ -188,32 +190,34 @@ Window {
 
 
 
-    // ***讀取到模型，卻看不見
     Button {
         id: animButton
         text: "輸出動畫"
-        onClicked: {
+        opacity: listErrandButton.x < 50 ? 0 : 1
+        Behavior on opacity { NumberAnimation { duration: 300 } }
+
+        onClicked: (mouse) => {
             // 拆字判斷動畫
             var target = keyword_map[userInput];
             if (!target) {
-                console.log("❌ 找不到 userInput", userInput);
+                console.log("動畫❌ 找不到 userInput", userInput);
                 return;
             }
             var clipName  =Object.keys(target)[0];
             // 搜尋 glTF 中的動畫列表
-            for (real i = 0; i < ilulu.animations.length; i++) {
-                var a = ilulu.animations[i];
+            for (var i = 0; i < iluluModel.animations.length; i++) {
+                var a = iluluModel.animations[i];
                 if (a.name === clipName) {
                     console.log("▶ 播放動畫:", clipName);
-                    ilulu.animations[i].position = a.start;
-                    ilulu.animations[i].duration = a.duration;
-                    ilulu.animations[i].running = true;
+                    iluluModel.animations[i].position = a.start;
+                    iluluModel.animations[i].duration = a.duration;
+                    iluluModel.animations[i].running = true;
                     return;
                 }else if (a.name === "Idle"){
                     console.log("▶ 播放待機動畫:", clipName);
-                    ilulu.animations[i].position = a.start;
-                    ilulu.animations[i].duration = a.duration;
-                    ilulu.animations[i].running = true;
+                    iluluModel.animations[i].position = a.start;
+                    iluluModel.animations[i].duration = a.duration;
+                    iluluModel.animations[i].running = true;
                 }
             }
         }
@@ -224,9 +228,11 @@ Window {
         text: "關閉"
         y: 10 + 2 * margin
         z: 99
-        onClicked: {
+        opacity: listErrandButton.x < 50 ? 0 : 1
+        Behavior on opacity { NumberAnimation { duration: 300 } }
+
+        onClicked: (mouse) => {
             Qt.quit()
-            IC.quitApp()
         }
     }
     
@@ -252,7 +258,7 @@ Window {
 
 
         TextField {
-            id: ListNameField
+            id: listNameField
             anchors.top: parent.top
             width: 240
             placeholderText: "輸入名稱"
@@ -260,7 +266,8 @@ Window {
 
         TextField {
             id: nameField
-            anchors.top: parent.top+25
+            anchors.top: parent.top 
+            anchors.topMargin: 25  // 偏移量要分開寫
             width: 240
             placeholderText: "輸入名稱"
         }
@@ -268,14 +275,14 @@ Window {
         MouseArea{
             anchors.fill: parent
             drag.target: listErrandButton
-            property real dx =0
-            property real dy =0
+            property real dx :0
+            property real dy :0
             acceptedButtons: Qt.LeftButton
             onPressed: {
                 if (mouse.button === Qt.LeftButton) {
-                    lastMousePos = Qt.vector2d(mouse.x, mouse.y)
+                    lastMousePos = Qt.point(mouse.x, mouse.y)
                     // **重新命名
-                    title.text = ListNameField.text
+                    title.text = listNameField.text
                 }
             }
 
@@ -327,7 +334,7 @@ Window {
                                     acceptedButtons: Qt.LeftButton
                                     onPressed: {
                                         if (mouse.button === Qt.LeftButton) {
-                                            lastMousePos = Qt.vector2d(mouse.x, mouse.y)
+                                            lastMousePos = Qt.point(mouse.x, mouse.y)
                                         }
                                     }
                                     
@@ -381,16 +388,16 @@ Window {
             if (mouse.button === Qt.LeftButton) {
                 if (!rotatingModel && !panningModel) {
                 draggingWindow = true;
-                lastMousePos = Qt.vector2d(mouse.x, mouse.y);
+                lastMousePos = Qt.point(mouse.x, mouse.y);
                 } 
             }
             else if (mouse.button === Qt.RightButton) { 
                 rotatingModel = true;
-                lastMousePos = Qt.vector2d(mouse.x, mouse.y);
+                lastMousePos = Qt.point(mouse.x, mouse.y);
             }
             else if (mouse.button === Qt.MiddleButton) {
             panningModel = true;
-            lastMousePos = Qt.vector2d(mouse.x, mouse.y);
+            lastMousePos = Qt.point(mouse.x, mouse.y);
             }
         }
 
@@ -400,14 +407,14 @@ Window {
                 root.y += mouse.y - lastMousePos.y;
             }
             if (rotatingModel) {
-                ilulu.eulerRotation.y += mouse.x - lastMousePos.x;
-                ilulu.eulerRotation.x += mouse.y - lastMousePos.y;
-                lastMousePos = Qt.vector2d(mouse.x, mouse.y);
+                iluluModel.eulerRotation.y += mouse.x - lastMousePos.x;
+                iluluModel.eulerRotation.x += mouse.y - lastMousePos.y;
+                lastMousePos = Qt.point(mouse.x, mouse.y);
             }
             if (panningModel) {
-                ilulu.position.x += (mouse.x - lastMousePos.x) * 0.5;
-                ilulu.position.y -= (mouse.y - lastMousePos.y) * 0.5;
-                lastMousePos = Qt.vector2d(mouse.x, mouse.y);
+                iluluModel.position.x += (mouse.x - lastMousePos.x) * 0.5;
+                iluluModel.position.y -= (mouse.y - lastMousePos.y) * 0.5;
+                lastMousePos = Qt.point(mouse.x, mouse.y);
             }
         }
 
@@ -417,12 +424,12 @@ Window {
     MouseArea {
         anchors.fill: parent
 
-        onPressed: {
-            lastMousePos = Qt.vector2d(mouse.x, mouse.y);
+        onPressed:(mouse)=> {
+            lastMousePos = Qt.point(mouse.x, mouse.y);
             draggingWindow = true;
         }
 
-        onPositionChanged: {
+        onPositionChanged:(mouse)=> {
             if (draggingWindow) {
                 root.x += mouse.x - lastMousePos.x;
                 root.y += mouse.y - lastMousePos.y;
@@ -448,9 +455,9 @@ Window {
 
     // == = 滾輪縮放 == =
 
-    WheelHandler {
-        onWheel: root.scaleFactor += wheel.angleDelta.y * 0.001
-    }
+//    WheelHandler {
+//        onWheel: root.scaleFactor += wheel.angleDelta.y * 0.001
+//    }
 
     // == == == == UI：重新掛載子物件 == == == ==
 
@@ -470,16 +477,16 @@ Window {
                 color: "white"
             }
             Button {
-                text: "掛到 ilulu (root)"
-                onClicked: {
+                text: "掛到 iluluModel (root)"
+                onClicked: (mouse) => {
                     if (selectedNode)
-                        selectedNode.parent = ilulu;
+                        selectedNode.parent = iluluModel;
                 }
             }
 
             Button {
                 text: "掛到 cam"
-                onClicked: {
+                onClicked: (mouse) => {
                     if (selectedNode)
                         selectedNode.parent = cam;
                 }

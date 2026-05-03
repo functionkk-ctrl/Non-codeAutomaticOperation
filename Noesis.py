@@ -1,10 +1,11 @@
-from UIA import path_all,全能ORB,find_array,C,TEMPLATE_DIRS,row,os,subprocess,np,Path
-class Noēsis:
+class Noesis:
     """
     Noēsis(諾埃西斯）希臘文 νόησις。Perceptive Structural Language(PSL）。自己用 World-Formation Language(WFL）
     """
+
     def input(self):
         """第零一二三步 吸收資訊為背景的子節點"""
+        from UIA import path_all,全能ORB,find_array,C,TEMPLATE_DIRS,row,os,subprocess,np,Path
         patterns = ('*.jpg', '*.jpeg', '*.png', '*.gif', '*.bmp', '*.webp') # 該層有無此類型檔案
         轉圖_path =row(1,path_all(TEMPLATE_DIRS["background"])) # 該層無圖，dirs才有圖
         if  any(any(轉圖_path.glob(p)) for p in patterns):
@@ -23,6 +24,7 @@ class Noēsis:
                     self.動靜反比的邏輯合成(e) # TODO:***減少執行頻率
     # TODO:*** 第二三四五步  
     def GitHub_同步(self):
+        from UIA import path_all,全能ORB,find_array,C,TEMPLATE_DIRS,row,os,subprocess,np,Path
         # 這是真正的「向上傳遞事件因子」
         try:
             # 1. 追蹤變動 (含 .npy 與新建的腳本資料夾)
@@ -36,6 +38,7 @@ class Noēsis:
             print(f"同步失敗：{e}")
 
     def 重複輸出而進步(self,e):
+        from UIA import path_all,全能ORB,find_array,C,TEMPLATE_DIRS,row,os,subprocess,np,Path
         # 子節點為執行者
         old_v =f"{e.stem}_v2.npy"# 舊節點
         new_v = f"{e.stem}_v3.npy" # 新節點
@@ -59,6 +62,7 @@ class Noēsis:
 
     def 動靜反比的邏輯合成(self):
         # 此背景節點為執行者，找出靜態低壓、動態高相似
+        from UIA import path_all,全能ORB,find_array,C,TEMPLATE_DIRS,row,os,subprocess,np,Path
         a=path_all(TEMPLATE_DIRS["background"]) 
         動=row(2,path_all(a,"*.npy")) # 動態輸出
         動了=[全能ORB(a,b,npy=["a","b"],similar_ratio="similar_ratio") for a in 動 for b in 動] # 靜態儲存邏輯圖(kp,des)
@@ -81,7 +85,9 @@ class Noēsis:
         """
         整個視界線更新(對接)，差之毫釐，謬以千里
         父節點將子節點輸出轉成SIFT版NPY，邏輯(高低壓 持中)處理各種子節點的輸出，代表子節點的輸出位置會固定在父節點的邏輯圖上的特徵點
+        TODO:*** 同義 反義 干涉它為新義 主從義
         """
+        from UIA import path_all,全能ORB,find_array,C,TEMPLATE_DIRS,row,os,subprocess,np,Path
         de=row(1,path_all(TEMPLATE_DIRS["background"]))
         p=path_all(TEMPLATE_DIRS["Noesis"],exclude=de)
         if next(p):
@@ -97,6 +103,7 @@ class Noēsis:
 
     def 輸入(self,輸入內容):
         # TODO:***輸入時
+        from UIA import path_all,全能ORB,find_array,C,TEMPLATE_DIRS,row,os,subprocess,np,Path
         輸入_arr=np.array(輸入內容)
         父節點=find_array(輸入_arr,["個性決策","適應"] in C(0)) 
         if next(父節點) :
@@ -295,9 +302,26 @@ class GGD:
     第六步:打包自己為特定目標的軟體程式
 
     """
+    """
+    睡前聽到黎曼猜想,我在夢裡思考到
+    一階函數是 C(0).diff==0 x[i]-x[i-1]=0
+    二階函數是 C(0).非黎曼的甚麼函數==0 計算過程
+    三階函數是 C(0).非黎曼的甚麼函數==0 計算過程
+    四階函數是 C(0).非黎曼的甚麼函數==0 計算過程
+    一階函數是
+    二階函數是
+    三階函數是
+    四階函數是
+    """
+
     pass
 
 class 質數證明易經:
+    def is_prem():
+        """
+        2,3,5,7,11,13,17,19。偶數均有公因數，二位數以上的個位數均為 1 or 3 or 7 or 9
+        """
+
     def digital_root(n):
         # 16 return 7(1+6)
         if n == 0: return 0

@@ -63,3 +63,12 @@ exe = EXE(
     console=True, # 你的「火星」日誌輸出需要 console
     icon='icon.ico'
 )
+# python -m venv .venv
+# .\.venv\Scripts\Activate.ps1
+# python -m pip install --upgrade pip
+# uv add mediapipe geographiclib firebase-admin PySide6 numpy opencv-python Pillow PyOpenGL PyOpenGL-accelerate geopy pynput pyautogui pytesseract psutil pywinauto
+# uv run pyinstaller --clean UIA.spec
+# uv run UIA.py
+
+# pyinstaller --clean UIA.spec
+# python UIA.py

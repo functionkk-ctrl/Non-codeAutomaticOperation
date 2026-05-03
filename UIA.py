@@ -1,10 +1,15 @@
+import os
+# os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
+os.environ["QT_SCALE_FACTOR_ROUNDING_POLICY"] = "PassThrough" # 避免Qt二次修改DPI(?)
 import json
-import Noesis
 import shutil
 import mediapipe as mp
 from geographiclib.geodesic import Geodesic
 import firebase_admin
 from firebase_admin import credentials, firestore, db
+from pywinauto.application import Application
+from pynput import mouse, keyboard
+import PySide6
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QApplication
 from pathlib import Path
@@ -12,11 +17,8 @@ import sys
 from datetime import datetime
 import threading
 from difflib import SequenceMatcher
-from pywinauto import application
 import math
-from pynput import mouse, keyboard
 import re
-import os
 import time
 import numpy as np
 import pyautogui
@@ -27,19 +29,18 @@ from OpenGL.GLU import *
 from OpenGL.GL import *
 import psutil
 from PySide6.QtGui import QSurfaceFormat
-from PySide6.QtCore import QObject, Slot, QTimer 
+from PySide6.QtCore import QObject, Slot, QTimer ,Qt
 from geopy.geocoders import Nominatim
 import subprocess
-
-# .venv 一次性安裝 uv add mediapipe geographiclib firebase-admin PySide6 numpy opencv-python Pillow PyOpenGL PyOpenGL-accelerate geopy pynput pyautogui pytesseract psutil pywinauto
-# uv run pyinstaller --clean UIA.spec
-# uv run UIA.py
-
+from Noesis import Noesis
 
 # Android
 # from plyer import gps
 # from kivy.clock import Clock
 # from kivy.utils import platform
+
+# import warnings
+# warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 def on_location(**kwargs):
@@ -65,24 +66,25 @@ def read_imu(dt):
         ax, ay, az = val
     print(ax, ay, az)
 
-
 # Clock.schedule_interval(read_imu, 1/50)
 
-# --- 基礎設定 --- python "D:\Python\Non-codeAutomaticOperation\UIA.py"
+# --- 基礎設定 --- python *.py
+# D:\Python\Non-codeAutomaticOperation\Non-codeAutomaticOperation # C:\Users\USER\AppData\Local\Programs\Tesseract-OCR\tesseract.exe
 pytesseract.pytesseract.tesseract_cmd = r"C:\Users\USER\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
-DATA_BASE = Path(os.getcwd()) 
+# 這是最穩定的寫法：獲取「目前這個 Python 檔案」所在的資料夾
+if getattr(sys, 'frozen', False):
+    # 如果是打包後的 .exe
+    DATA_BASE = Path(sys.executable).parent
+else:
+    # 如果是直接跑 .py
+    DATA_BASE = Path(__file__).resolve().parent
 base_path = Path.home() / ".your_app_name"      # 可寫
 TEMPLATE_DIRS = {
-    "live_capture": DATA_BASE/ 'live_capture',
-    "attributes": DATA_BASE/ "attributes",
-    "world": DATA_BASE/ "world",
-    "user": DATA_BASE/ "user",  # 用戶隱私
-    "communication": DATA_BASE/ "communication",  # 用戶交流的訊息
-    "dark_matter": DATA_BASE/ "dark_matter",
-    "thinking": DATA_BASE/ "thinking",  # 中轉站
-    "thinking2": DATA_BASE/ "thinking2",  # 中轉站
-    "speak": DATA_BASE/ "speak",  # 交流的回覆
-    "absorb": DATA_BASE/ "absorb",  # Nosis吸收的知識
+    "live_capture": base_path/ 'Live_capture',
+    "User": base_path/ "User",  # 用戶隱私
+    "communication": base_path/ "Communication",  # 用戶交流的訊息
+    "speak": base_path/ "Speak",  # 交流的回覆
+    "Noesis": base_path/ "Noesis",  # Noesis 吸收的知識
 }
 
 MATCH_THRESHOLD = 0.85
@@ -91,14 +93,13 @@ DEBUG = True
 bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
 # --- 共用工具 ---
 alive_event = threading.Event()
-cred = credentials.Certificate("serviceAccountKey.json")
+cred = credentials.Certificate(DATA_BASE / "serviceAccountKey.json")
 if not firebase_admin._apps:
     firebase_admin.initialize_app(cred, {
-        "databaseURL": "firebase-adminsdk-fbsvc@uia-a-3c57f.iam.gserviceaccount.com"
+        "databaseURL": "https://console.firebase.google.com/u/1/project/uia-a-3c57f/database?fb_gclid=Cj0KCQjwn4qWBhCvARIsAFNAMigLRmhzV2i4mMqLSaBwKTlaQ37VHiYDnZqI-MS2gxBCVVFUR9SXTH4aAi5rEALw_wcB"
     })
 
-
-def path_all(paths, target=None,exclude=None,time=None,use_orb=False):
+def path_all(self,paths, target=None,exclude=None,time=None,use_orb=False):
     """
     預設排序為時間，由舊到新
     yield root(完整目錄), dirs(下一層的全部資料夾名), files(這層全部檔案含檔名)
@@ -193,7 +194,7 @@ def path_all(paths, target=None,exclude=None,time=None,use_orb=False):
             yield False
 
 import inspect
-def make_folder(folder_name, class_name, content_classes):
+def make_folder(folder_name, class_name=None, content_classes=None):
     """
     在 base_path 下創建資料夾 folder_name（如果不存在）和腳本含內容
     inspect.getsource(Class )，複製原始碼
@@ -715,7 +716,7 @@ def watchdog():
         # 如果主線程 10 秒沒 set，代表卡死
         if not alive_event.wait(timeout=10):
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            cv2.imwrite(f"debug_{ts}.png", screenshot())
+            cv2.imwrite(f"debug_{ts}.png", get_screenshot())
             print(f"[Watchdog] 主線程可能卡死，已保存 debug_{ts}.png")
         alive_event.clear() # 重置，等待下一波心跳
 
@@ -723,26 +724,25 @@ def watchdog():
 def send_heartbeat():
     alive_event.set()
     # 這裡可以順便觸發 Noesis 的低壓掃描
-    noesis.編織關係() # 編織關係 
+    # 編織關係() # 編織關係 
 
-heartbeat_timer = QTimer()
-heartbeat_timer.timeout.connect(send_heartbeat)
-heartbeat_timer.start(5000) # 每 5 秒報一次平安
-
-def screenshot():
+def get_screenshot():
     """截取全屏並轉成OpenCV圖像  RGB → BGR """
-    img = np.array(ImageGrab.grab())
-    return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    imgs = np.array(ImageGrab.grab())
+    return cv2.cvtColor(imgs, cv2.COLOR_RGB2BGR)
+    # return pytesseract.image_to_data(cv2.cvtColor(img, cv2.COLOR_RGB2BGR), lang=LANGS, output_type=pytesseract.Output.DICT)
 
 
-def locate_template_orb(name, sort=1, num=1, extractor=False, dir=TEMPLATE_DIRS["live_capture"]):
-    """ORB 特徵匹配找圖像 screenshot() → 灰階 """
+def locate_template_orb(name, sort=1, num=1, dir=TEMPLATE_DIRS["live_capture"]):
+    """ORB 特徵匹配找圖像 get_screenshot() → 灰階 """
     name = name.split("<img>")[1]
     path = os.path.join(dir, f"{name}.png")
     if not os.path.exists(path):
+        tar=TargetExtractor()
+        tar.select_polygon_roi()
         return None
     tpl = cv2.imread(path, 0)
-    screen_gray = cv2.cvtColor(screenshot(), cv2.COLOR_BGR2GRAY)
+    screen_gray = get_screenshot()
     # 可調整特徵數，越少越快，100小圖標或按鈕、300一般GUI元素、500複雜畫面(例如 Hierarchy)
     orb = cv2.ORB_create(400)
     kp1, des1 = orb.detectAndCompute(tpl, None)
@@ -757,7 +757,8 @@ def locate_template_orb(name, sort=1, num=1, extractor=False, dir=TEMPLATE_DIRS[
         
     pts.sort(key=lambda p: (p[0], p[1]))  # 左上排序
     if not pts:
-        TargetExtractor().select_polygon_roi()
+        tar=TargetExtractor()
+        tar.select_polygon_roi()
 
     # 選取點
     if sort == "奇數":
@@ -776,18 +777,17 @@ def locate_template_orb(name, sort=1, num=1, extractor=False, dir=TEMPLATE_DIRS[
 
 
 def locate_template_orb_cached(obj, name, sort=1, num=1):
-    obj.extractor=TargetExtractor()
     if name in obj.cache:
         pos = obj.cache[name]
         if validate_cache(name, pos):
             return pos
-    pos = locate_template_orb(name, sort, num, extractor=obj.extractor)
+    pos = locate_template_orb(name, sort, num)
     if pos:
         obj.cache[name] = pos
     return pos
 
 def validate_cache(name, pos, tolerance=10, dir=TEMPLATE_DIRS["live_capture"]):
-    screen_gray = cv2.cvtColor(screenshot(), cv2.COLOR_BGR2GRAY)
+    screen_gray = cv2.cvtColor(get_screenshot(), cv2.COLOR_BGR2GRAY) 
     h, w = screen_gray.shape[:2]
     x, y = pos
     # 安全邊界
@@ -805,8 +805,7 @@ def validate_cache(name, pos, tolerance=10, dir=TEMPLATE_DIRS["live_capture"]):
 def locate_text(keyword, sort=1, num=1, classA=None):
     """找字"""
     # OCR識別文字
-    data = pytesseract.image_to_data(cv2.cvtColor(screenshot(
-    ), cv2.COLOR_BGR2GRAY), lang=LANGS, output_type=pytesseract.Output.DICT)
+    data = pytesseract.image_to_data(get_screenshot(), lang=LANGS, output_type=pytesseract.Output.DICT)
     # 收集匹配點
     pts = [
         (data['left'][i] + data['width'][i] // 2,
@@ -816,6 +815,8 @@ def locate_text(keyword, sort=1, num=1, classA=None):
         if t.strip() and SequenceMatcher(None, t.lower(), keyword.lower()).ratio() >= 0.7
     ]
     if not pts:
+        tar=TargetExtractor()
+        tar.select_polygon_roi()
         if DEBUG:
             print(f"⚠️ 找不到匹配點：{keyword}。若目標在場則建議")
         return None
@@ -937,8 +938,9 @@ def locate_text(keyword, sort=1, num=1, classA=None):
 
 
 def click(pos): 
-    pyautogui.moveTo(*pos, duration=0.2); pyautogui.click(); time.sleep(0.05)
-
+    #  * 解包，將 [x, y] 轉為 x, y
+    pyautogui.moveTo(*pos, duration=0.2); pyautogui.click(); time.sleep(0.1)
+    
 from firebase_admin import credentials, auth
 
 def OverridingTechniques(cover_png=None,png_root=None,using=False):
@@ -967,7 +969,7 @@ def OverridingTechniques(cover_png=None,png_root=None,using=False):
                 print("驗證失敗：", e)
 
         if UID(): # TODO:**驗證是否為用戶?
-            found1=path_all(TEMPLATE_DIRS["user"],"被覆蓋的技巧")
+            found1=path_all(TEMPLATE_DIRS["User"],"被覆蓋的技巧")
             # 在用戶說 技巧(直覺)甚麼之前，就先判斷出，並處理，不要馬後炮
             attributes=path_all(TEMPLATE_DIRS["attributes"])
             communication=path_all(TEMPLATE_DIRS["communication"])
@@ -1000,7 +1002,7 @@ def OverridingTechniques(cover_png=None,png_root=None,using=False):
                         # 直覺標的應該是具體的檔案物件（或包裹成列表）
                         直覺標的 = [nouns_f[target_idx][1]] 
                         for a in 直覺標的:
-                            shutil.copy2(make_folder(TEMPLATE_DIRS["user"]/"直覺要用的"),a) # TODO:** 直覺前兆觸發！抓到的『東西』
+                            shutil.copy2(make_folder(TEMPLATE_DIRS["User"]/"直覺要用的"),a) # TODO:** 直覺前兆觸發！抓到的『東西』
             # 3. 主詞與語態的「確定性偏移」 (Certainty Shift)
                 # 語氣變得短促且篤定。語氣的「重音轉移」從「詢問/討論」變成「宣告」。
                 # 延遲一段時間後，使用絕對肯定詞 「沉默」之後出現的第一個「名詞」視為直覺的導向標的。
@@ -1008,7 +1010,7 @@ def OverridingTechniques(cover_png=None,png_root=None,using=False):
                         直覺導向標的 = nouns_f[對話節奏變慢索引 + 1]
                         # 輸出抓到的直覺本體（檔案名稱通常代表該詞）
                         for a in 直覺導向標的:
-                            shutil.copy2(make_folder(TEMPLATE_DIRS["user"]/"直覺要用的"),a) # TODO:** 捕捉到直覺實體
+                            shutil.copy2(make_folder(TEMPLATE_DIRS["User"]/"直覺要用的"),a) # TODO:** 捕捉到直覺實體
         else:
             found1=path_all(TEMPLATE_DIRS["Noesis"],"被覆蓋的技巧")
             found2=path_all(TEMPLATE_DIRS["Noesis"]/"直覺要用的")
@@ -1247,7 +1249,7 @@ class State:
             return self
         self.current = to_state
         return self
-
+import win32gui, win32con, win32api  
 class InputCommand(QObject):
     def __init__(self, monitor_data):
         super().__init__()
@@ -1258,15 +1260,42 @@ class InputCommand(QObject):
         self.extractor = True
         self.app = None
 
+
     def focus_window(self, title):
         title_pattern = fr'^{title}.*'
         try:
-            app = application(backend="uia").connect(title_re=title_pattern)
-            app.window(title_re=title_pattern).set_focus()
+            # 使用 connect 獲取 app
+            target_win = Application(backend="uia").connect(title_re=title_pattern, timeout=5)
+            # 關鍵修正：如果視窗被最小化，先還原
+            if target_win.get_show_state() == 6:  # 6 代表最小化
+                target_win.restore()
+            # 嘗試強制置頂並聚焦
+            target_win.window(title_re=title_pattern).set_focus()
             self.current_window = title
             print(f"🧠 聚焦 [{title}]")
-        except Exception as e:
-            print(f"❌ 無法聚焦 [{title}]: {e}")
+            return
+        except Exception:
+            pass # 失敗了，進入暴力模式
+        # 2. 暴力模式 (Win32 API)
+        def _enum_cb(hwnd, results):
+            if win32gui.IsWindowVisible(hwnd):
+                if title.lower() in win32gui.GetWindowText(hwnd).lower():
+                    results.append(hwnd)
+        hwnds = []
+        win32gui.EnumWindows(_enum_cb, hwnds)
+        if hwnds:
+            hwnd = hwnds[0] # 抓第一個符合條件的
+            try:
+                # 強制解除 Windows 的對焦鎖定 (Alt 鍵大法)
+                win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
+                win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+                win32gui.SetForegroundWindow(hwnd)
+                self.current_window = title
+                print(f"🔨 暴力聚焦成功 [{title}]") # <--- 現在它該出現了
+            except Exception as e:
+                print(f"❌ 暴力聚焦也失敗 [{title}]: {e}")
+        else:
+            print(f"❓ 找不到任何視窗包含 [{title}]")
 
     def selected(self, str, sort=1, num=1, classA=None):
         if "<img>" in str:
@@ -1320,149 +1349,152 @@ class InputCommand(QObject):
             ic.execute_line(cmds)
 
     def execute_line(self, lines):
+        noesis = Noesis() 
         for line in lines:
             try:
                 window, path, action = [x.strip() for x in line.split(',', 2)]
                 if self.current_window != window:
                     self.focus_window(window)
-                    time.sleep(0.3)
+                    time.sleep(0.5)
                 for pa in path.split(":"):
                     # [(x,y),(x,y),(x,y),...]，sp[0]=x,y，sp[0][1]=y，打死GPT
-                    sp = self.selected(pa)
-                    if sp is not None:
-                        if pa != path.split(":")[-1]:
-                            click(sp[0])
-                        elif pa == path.split(":")[-1]:
-                            for act in action.split(":"):
-                                i = 0
-                                while i < len(action):
-                                    act = action[i]
-                                    match act:
-                                        case "第零一二三步": noesis.input
-                                        case "Noesis編織關係": noesis.編織關係()
-                                        case "Noesis輸入": noesis.輸入(action[i+1:])
-                                        # Unity
-                                        case "點擊": click(sp[0])
-                                        case "雙擊": pyautogui.doubleClick(sp[0])
-                                        case "右鍵": pyautogui.rightClick(sp[0])
-                                        case "中鍵": pyautogui.middleClick(sp[0])
-                                        case "按下": pyautogui.mouseDown(sp[0])
-                                        case "放開": pyautogui.mouseUp(sp[0])
-                                        case "儲存": pyautogui.hotkey("ctrl", "s")
-                                        case "複製": pyautogui.hotkey("ctrl", "c")
-                                        case "貼上": pyautogui.hotkey("ctrl", "v")
-                                        case "全選": pyautogui.hotkey("ctrl", "a")
-                                        case "剪下": pyautogui.hotkey("ctrl", "x")
-                                        case "復原": pyautogui.hotkey("ctrl", "z")
-                                        case "取消復原": pyautogui.hotkey("ctrl", "y")
-                                        case "刪除": pyautogui.press("delete")
-                                        case "聚焦該物件": pyautogui.press("f")
-                                        case "關閉視窗": pyautogui.hotkey("alt", "f4")
-                                        case "滾上": pyautogui.scroll(300)
-                                        case "滾下": pyautogui.scroll(-300)
-                                        case "左滑":
-                                            pyautogui.dragRel(-200,0, duration=0.5)
-                                        case "右滑":
-                                            pyautogui.dragRel(
-                                                200, 0, duration=0.5)
-                                        # 計算出最左邊最上面的依序的第S位N個，selected(pa)，-3為倒數第三位
-                                        case act if re.fullmatch(r"第(-?\d+)位(\d+)個", act):
-                                            m = re.fullmatch(
-                                                r"第(-?\d+)位(\d+)個", act)
-                                            self.selected(
-                                                pa, int(m.group(1)), int(m.group(2)))
-                                        # 計算出最左邊最上面的依序的偶數個
-                                        case act if re.fullmatch(r"偶數(\d+)個", act):
-                                            m = re.fullmatch(r"偶數(\d+)個", act)
-                                            self.selected(
-                                                pa, "偶數", int(m.group(1)))
-                                        case act if re.fullmatch(r"奇數(\d+)個", act):
-                                            m = re.fullmatch(r"奇數(\d+)個", act)
-                                            self.selected(
-                                                pa, "奇數", int(m.group(1)))
-                                        case act if re.fullmatch(r"排序儲存的(\s+)", act):
-                                            m = re.fullmatch(
-                                                r"排序儲存的(\s+)", act)  # ***(對象)排序
-                                            a = []+m.group(1)
-                                            a.sort()
-                                        case act if re.fullmatch(r"輸入\s*(.+)", act):
-                                            s = re.fullmatch(r"輸入\s*(.+)", act)
-                                            keyboard.write(
-                                                s.group(1), delay=0.05)
-                                        case act if re.fullmatch(r"組合鍵\s*(.+)", act):
-                                            m = re.fullmatch(
-                                                r"組合鍵\s*(.+)", act)
-                                            keys = m.group(
-                                                1).split()  # 空格分開每個按鍵
-                                            pyautogui.hotkey(*keys)
-                                        case act if re.fullmatch(r"等待(\d+(?:\.\d+)?)秒", act):
-                                            m = re.fullmatch(
-                                                r"等待(\d+(?:\.\d+)?)秒", act)
-                                            time.sleep(float(m.group(1)))
-                                        case act if re.fullmatch(r"距離\s*(.+)([<>=]+)(\d+\.?\d*)結束", act):
-                                            # 即時座標，距離 對象 有 多遠，未達成時繼續
-                                            m = re.fullmatch(
-                                                r"距離\s*(.+)([<>=]+)(\d+\.?\d*)", act)
-                                            distance = math.dist(
-                                                sp[0], m.group(1)[0])
-                                            if eval(f"{distance:.2f}{m.group(2)}{float(m.group(3))}"):
-                                                i += 2  # 跳到「下下個」act
-                                                continue
-                                            else:
-                                                i += 1  # 正常往下
-                                                continue
-                                        case "顯示該目標座標":
-                                            print(f"📍 {pa}: {sp[0]}")
-                                        case "顯示時間":
-                                            print(
-                                                f"🕒 現在時間：{time.strftime('%H:%M:%S')}")
-                                        case act if re.fullmatch(r"\s*(.+)的邏輯對\s*(.+)性能\s*(.+)結束", act):
-                                            # 訂閱事件，監聽m1對m2、m2的m3 達成時結束並取消訂閱
-                                            # 監聽中的事件 m1對m2，有修正需求則回報作法，甚至使用者補充作法
-                                            # 監聽中的事件 m2的m3，目前性能低於目標的70%則回報作法，甚至使用者補充作法
-                                            m = re.fullmatch(
-                                                r"\s*(.+)的邏輯對\s*(.+)性能\s*(.+)結束", act)
-                                            monitor.subscribe_event(
-                                                m.group(1), m.group(2), m.group(3))
-                                            # EventMonitor 持續執行 後續指令，這行指令可以跳過了
-                                            monitor.ic_em = re.search(
-                                                fr"{m.group(2)}性能{m.group(3)}結束\s*(.+)", action).group(1)
-                                            print(
-                                                f"已註冊事件監聽 {m.group(1)}->{m.group(2)}->{m.group(3)}，後續指令交由 EventMonitor 執行 {self.ic_em}")
-                                            break
-                                        case act if re.fullmatch(r"移除\s*(.+)的邏輯對\s*(.+)性能\s*(.+)", act):
-                                            # 取消監聽中的事件 m1對m2、m2的m3
-                                            m = re.fullmatch(
-                                                r"移除\s*(.+)的邏輯對\s*(.+)性能\s*(.+)", act)
-                                            monitor.remove_subscription(
-                                                m.group(1), m.group(2), m.group(3))
-                                        case "排序":
-                                            pass
-                                        case "顯示何物":
-                                            pass
-                                        case "排定任務":
+                    sps = self.selected(pa)
+                    if sps is not None:
+                        for sp in sps:
+                            if pa != path.split(":")[-1]:
+                                click(sp)
+                            elif pa == path.split(":")[-1]:
+                                for act in action.split(":"):
+                                    i = 0
+                                    while i < len(action):
+                                        act = action[i]
+                                        match act:
+                                            case "第0123步": noesis.input()
+                                            case "Noesis編織關係": noesis.編織關係()
+                                            case "Noesis輸入": noesis.輸入(action[i+1:])
+                                            # Unity
+                                            case "點擊": click(sp[0])
+                                            case "雙擊": pyautogui.doubleClick(sp[0])
+                                            case "右鍵": pyautogui.rightClick(sp[0])
+                                            case "中鍵": pyautogui.middleClick(sp[0])
+                                            case "按下": pyautogui.mouseDown(sp[0])
+                                            case "放開": pyautogui.mouseUp(sp[0])
+                                            case "儲存": pyautogui.hotkey("ctrl", "s")
+                                            case "複製": pyautogui.hotkey("ctrl", "c")
+                                            case "貼上": pyautogui.hotkey("ctrl", "v")
+                                            case "全選": pyautogui.hotkey("ctrl", "a")
+                                            case "剪下": pyautogui.hotkey("ctrl", "x")
+                                            case "復原": pyautogui.hotkey("ctrl", "z")
+                                            case "取消復原": pyautogui.hotkey("ctrl", "y")
+                                            case "刪除": pyautogui.press("delete")
+                                            case "聚焦該物件": pyautogui.press("f")
+                                            case "關閉視窗": pyautogui.hotkey("alt", "f4")
+                                            case "滾上": pyautogui.scroll(300)
+                                            case "滾下": pyautogui.scroll(-300)
+                                            case "左滑":
+                                                pyautogui.dragRel(-200,0, duration=0.5)
+                                            case "右滑":
+                                                pyautogui.dragRel(
+                                                    200, 0, duration=0.5)
+                                            # 計算出最左邊最上面的依序的第S位N個，selected(pa)，-3為倒數第三位
+                                            case act if re.fullmatch(r"第(-?\d+)位(\d+)個", act):
+                                                m = re.fullmatch(
+                                                    r"第(-?\d+)位(\d+)個", act)
+                                                self.selected(
+                                                    pa, int(m.group(1)), int(m.group(2)))
+                                            # 計算出最左邊最上面的依序的偶數個
+                                            case act if re.fullmatch(r"偶數(\d+)個", act):
+                                                m = re.fullmatch(r"偶數(\d+)個", act)
+                                                self.selected(
+                                                    pa, "偶數", int(m.group(1)))
+                                            case act if re.fullmatch(r"奇數(\d+)個", act):
+                                                m = re.fullmatch(r"奇數(\d+)個", act)
+                                                self.selected(
+                                                    pa, "奇數", int(m.group(1)))
+                                            case act if re.fullmatch(r"排序儲存的(\s+)", act):
+                                                m = re.fullmatch(
+                                                    r"排序儲存的(\s+)", act)  # ***(對象)排序
+                                                a = []+m.group(1)
+                                                a.sort()
+                                            case act if re.fullmatch(r"輸入\s*(.+)", act):
+                                                s = re.fullmatch(r"輸入\s*(.+)", act)
+                                                keyboard.write(
+                                                    s.group(1), delay=0.05)
+                                            case act if re.fullmatch(r"組合鍵\s*(.+)", act):
+                                                m = re.fullmatch(
+                                                    r"組合鍵\s*(.+)", act)
+                                                keys = m.group(
+                                                    1).split()  # 空格分開每個按鍵
+                                                pyautogui.hotkey(*keys)
+                                            case act if re.fullmatch(r"等待(\d+(?:\.\d+)?)秒", act):
+                                                m = re.fullmatch(
+                                                    r"等待(\d+(?:\.\d+)?)秒", act)
+                                                time.sleep(float(m.group(1)))
+                                            case act if re.fullmatch(r"距離\s*(.+)([<>=]+)(\d+\.?\d*)結束", act):
+                                                # 即時座標，距離 對象 有 多遠，未達成時繼續
+                                                m = re.fullmatch(
+                                                    r"距離\s*(.+)([<>=]+)(\d+\.?\d*)", act)
+                                                distance = math.dist(
+                                                    sp[0], m.group(1)[0])
+                                                if eval(f"{distance:.2f}{m.group(2)}{float(m.group(3))}"):
+                                                    i += 2  # 跳到「下下個」act
+                                                    continue
+                                                else:
+                                                    i += 1  # 正常往下
+                                                    continue
+                                            case "顯示該目標座標":
+                                                print(f"📍 {pa}: {sp[0]}")
+                                            case "顯示時間":
+                                                print(
+                                                    f"🕒 現在時間：{time.strftime('%H:%M:%S')}")
+                                            case act if re.fullmatch(r"\s*(.+)的邏輯對\s*(.+)性能\s*(.+)結束", act):
+                                                # 訂閱事件，監聽m1對m2、m2的m3 達成時結束並取消訂閱
+                                                # 監聽中的事件 m1對m2，有修正需求則回報作法，甚至使用者補充作法
+                                                # 監聽中的事件 m2的m3，目前性能低於目標的70%則回報作法，甚至使用者補充作法
+                                                m = re.fullmatch(
+                                                    r"\s*(.+)的邏輯對\s*(.+)性能\s*(.+)結束", act)
+                                                monitor.subscribe_event(
+                                                    m.group(1), m.group(2), m.group(3))
+                                                # EventMonitor 持續執行 後續指令，這行指令可以跳過了
+                                                monitor.ic_em = re.search(
+                                                    fr"{m.group(2)}性能{m.group(3)}結束\s*(.+)", action).group(1)
+                                                print(
+                                                    f"已註冊事件監聽 {m.group(1)}->{m.group(2)}->{m.group(3)}，後續指令交由 EventMonitor 執行 {self.ic_em}")
+                                                break
+                                            case act if re.fullmatch(r"移除\s*(.+)的邏輯對\s*(.+)性能\s*(.+)", act):
+                                                # 取消監聽中的事件 m1對m2、m2的m3
+                                                m = re.fullmatch(
+                                                    r"移除\s*(.+)的邏輯對\s*(.+)性能\s*(.+)", act)
+                                                monitor.remove_subscription(
+                                                    m.group(1), m.group(2), m.group(3))
+                                            case "排序":
+                                                pass
+                                            case "顯示何物":
+                                                pass
+                                            case "排定任務":
 
-                                            pass
-                                        case "設定 即時計算物體大小的 錨定物大小":
-                                            # ** 抓取模式，設定錨定物
-                                            m = re.match(
-                                                r"(.*)_W(\d+)_H(\d+)_Z([\d\.]+)", act[i+1])
-                                            if not m:
-                                                print("請依照圖片_W0_H0_Z0格式")
-                                                return
-                                            self.selected(act[i+1])
-                                            i += 2
-                                            continue
-                                        case "即時計算物體大小":
-                                            # *** 計算模式，需要OCR計算物體容積
-                                            TargetExtractor().load_img_whz()
-                                            pass
-                                        case "畫面生成模型":
+                                                pass
+                                            case "設定 即時計算物體大小的 錨定物大小":
+                                                # ** 抓取模式，設定錨定物
+                                                m = re.match(
+                                                    r"(.*)_W(\d+)_H(\d+)_Z([\d\.]+)", act[i+1])
+                                                if not m:
+                                                    print("請依照圖片_W0_H0_Z0格式")
+                                                    return
+                                                self.selected(act[i+1])
+                                                i += 2
+                                                continue
+                                            case "即時計算物體大小":
+                                                # *** 計算模式，需要OCR計算物體容積
+                                                tar=TargetExtractor()
+                                                tar.load_img_whz()
+                                                pass
+                                            case "畫面生成模型":
 
-                                            pass
-                                        # ***補充
-                                    i += 1  # 預設每次往下一個
-                        # else:找下一個路徑
+                                                pass
+                                            # ***補充
+                                        i += 1  # 預設每次往下一個
+                            # else:找下一個路徑
                     else:
                         if pa == path.split(":")[-1]:
                             # 找滑鼠附近的搜尋欄位圖片，輸入目標
@@ -1472,12 +1504,12 @@ class InputCommand(QObject):
                                 print("沒辦法找到{pa}")
                         else:
                             # 持續滑動檢查前一個路徑的整個畫面，直到無變化時跳出
-                            prev_img = screenshot()
+                            prev_img = get_screenshot()
                             while True:
                                 if self.selected(pa) is not None:
                                     break
                                 pyautogui.scroll(-300)
-                                curr_img = screenshot()
+                                curr_img = get_screenshot()
                                 # 改為差異統計法，不需整張畫面比較 np.array_equal
                                 diff = np.mean(cv2.absdiff(curr_img, prev_img))
                                 if diff < 1.0:  # 可調閾值：<1 代表幾乎沒變
@@ -1486,11 +1518,6 @@ class InputCommand(QObject):
                                 prev_img = curr_img.copy()
             except ValueError:
                 print("⚠️ Invalid format. Please enter: WindowTitle, Path, Action")
-
-    @Slot(str)
-    def quitApp(self):
-        print("退出應用程式")
-        self.app.quit()
 
 
 class Recorder:
@@ -1544,6 +1571,8 @@ class TargetExtractor:
             print("找不到目標且自動確認未開啟，跳過選取點。 調整ORB_create>=500")
             return
         else:
+            if image is None:
+                image = cv2.cvtColor(get_screenshot(), cv2.COLOR_RGB2BGR)
             print("#已開啟 找不到目標後自動確認目標")
         self.image = image
         self.base = image.copy()
@@ -1553,6 +1582,56 @@ class TargetExtractor:
         self.cancelled = False
         self.roi_mask = None
         self.orb = cv2.ORB_create(800)
+
+    def filter_target(self, dir=TEMPLATE_DIRS["live_capture"]):
+        """
+        從 ROI 中提取目標，做 GrabCut 去背景，生成透明圖
+        """
+        save_path = os.path.join(dir, f"s{time.time():.0f}.png")
+        if self.roi_mask is None:
+            return None
+        # 提取ROI圖像並處理亮度對比
+        roi = cv2.bitwise_and(self.image, self.image, mask=self.roi_mask)
+        roi_yuv = cv2.cvtColor(roi, cv2.COLOR_BGR2YUV)
+        roi_yuv[:, :, 0] = cv2.equalizeHist(roi_yuv[:, :, 0])  # 提升亮度對比
+        roi = cv2.cvtColor(roi_yuv, cv2.COLOR_YUV2BGR)
+
+        # 創建初始遮罩並設定GrabCut的前景/背景
+        mask = np.zeros(self.image.shape[:2], np.uint8)
+        mask[self.roi_mask == 255] = cv2.GC_FGD  # 前景
+        mask[self.roi_mask == 0] = cv2.GC_BGD    # 背景
+
+        # GrabCut 初始化
+        bgdModel = np.zeros((1, 65), np.float64)
+        fgdModel = np.zeros((1, 65), np.float64)
+        cv2.grabCut(self.image, mask, None, bgdModel,
+            fgdModel, 5, cv2.GC_INIT_WITH_MASK)
+
+        # 調整mask，使得前景與可能前景視為前景
+        mask2 = np.where((mask == cv2.GC_FGD) | (
+            mask == cv2.GC_PR_FGD), 255, 0).astype('uint8')
+
+        # 形態學清理(去噪，柔邊）
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        mask2 = cv2.morphologyEx(mask2, cv2.MORPH_OPEN, kernel)  # 去小噪點
+        mask2 = cv2.morphologyEx(mask2, cv2.MORPH_CLOSE, kernel)  # 填補空洞
+        mask2 = cv2.GaussianBlur(mask2, (5, 5), 0)  # 柔邊
+
+        # 去除小面積噪聲
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask2)
+        for i in range(1, num_labels):
+            if stats[i, cv2.CC_STAT_AREA] < 80:
+                mask2[labels == i] = 0
+
+        # 合併圖像與alpha通道(透明度）
+        b, g, r = cv2.split(self.image)
+        alpha = mask2
+        self.extracted = cv2.merge([b, g, r, alpha])
+
+            # 儲存為透明PNG
+        os.makedirs(dir, exist_ok=True)  # 沒有就自動建立
+        cv2.imwrite(save_path, self.extracted)
+        print(f"✅ 已儲存 {save_path}")
 
     def select_polygon_roi(self):
         """
@@ -1608,61 +1687,18 @@ class TargetExtractor:
                 cv2.polylines(frame, [np.array(self.pts)],
                               False, (0, 255, 0), 2)
             for p in self.pts:
-                cv2.circle(frame, p, 3, (0, 0, 255), -1)
+                self.image=cv2.circle(frame, p, 3, (0, 0, 255), -1)
             cv2.imshow("Draw ROI", frame)
             cv2.waitKey(10)
             if cv2.waitKey(20) & 0xFF == 27:
                 break
+        if len(self.pts) >= 3:
+            self.roi_mask = np.zeros(self.base.shape[:2], dtype=np.uint8)
+            cv2.fillPoly(self.roi_mask, [np.array(self.pts)], 255)
+            cv2.destroyWindow("Draw ROI") # 關閉視窗
+            self.filter_target()
 
-    def filter_target(self, dir=TEMPLATE_DIRS["live_capture"]):
-        """
-        從 ROI 中提取目標，做 GrabCut 去背景，生成透明圖
-        """
-        save_path = os.path.join(dir, f"s{time.time():.0f}.png")
-        if self.roi_mask is None:
-            return None
-        # 提取ROI圖像並處理亮度對比
-        roi = cv2.bitwise_and(self.image, self.image, mask=self.roi_mask)
-        roi_yuv = cv2.cvtColor(roi, cv2.COLOR_BGR2YUV)
-        roi_yuv[:, :, 0] = cv2.equalizeHist(roi_yuv[:, :, 0])  # 提升亮度對比
-        roi = cv2.cvtColor(roi_yuv, cv2.COLOR_YUV2BGR)
 
-        # 創建初始遮罩並設定GrabCut的前景/背景
-        mask = np.zeros(self.image.shape[:2], np.uint8)
-        mask[self.roi_mask == 255] = cv2.GC_FGD  # 前景
-        mask[self.roi_mask == 0] = cv2.GC_BGD    # 背景
-
-        # GrabCut 初始化
-        bgdModel = np.zeros((1, 65), np.float64)
-        fgdModel = np.zeros((1, 65), np.float64)
-        cv2.grabCut(self.image, mask, None, bgdModel,
-            fgdModel, 5, cv2.GC_INIT_WITH_MASK)
-
-        # 調整mask，使得前景與可能前景視為前景
-        mask2 = np.where((mask == cv2.GC_FGD) | (
-            mask == cv2.GC_PR_FGD), 255, 0).astype('uint8')
-
-        # 形態學清理(去噪，柔邊）
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-        mask2 = cv2.morphologyEx(mask2, cv2.MORPH_OPEN, kernel)  # 去小噪點
-        mask2 = cv2.morphologyEx(mask2, cv2.MORPH_CLOSE, kernel)  # 填補空洞
-        mask2 = cv2.GaussianBlur(mask2, (5, 5), 0)  # 柔邊
-
-        # 去除小面積噪聲
-        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask2)
-        for i in range(1, num_labels):
-            if stats[i, cv2.CC_STAT_AREA] < 80:
-                mask2[labels == i] = 0
-
-        # 合併圖像與alpha通道(透明度）
-        b, g, r = cv2.split(self.image)
-        alpha = mask2
-        self.extracted = cv2.merge([b, g, r, alpha])
-
-            # 儲存為透明PNG
-        os.makedirs(dir, exist_ok=True)  # 沒有就自動建立
-        cv2.imwrite(save_path, self.extracted)
-        print(f"✅ 已儲存 {save_path}")
 
     # *** 等待QML設定
     # *** Img+GPS 列出 圖像中占比大的一些相似物體 和長寬高，等待QML輸入要儲存的圖片名稱，進TEMPLATE_DIRS["live_capture"]資料夾。計算相似物品的 單一數量的 實際大小
@@ -1827,7 +1863,7 @@ class TargetExtractor:
         # *** 進入 計算物體實際大小的 計算模式 *** 讀取存檔的圖片
         pass
     def compute_logic(self):
-        frame = screenshot()
+        frame = get_screenshot()
         # 全部物件
         logic_state = {"objects": [], "relations": [], "scene": None}
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -1959,7 +1995,7 @@ class TargetExtractor:
 class EventMonitor:
     # {落實}邏輯{應用}性能{目標}結束。機器:Semantic Parse>goal Mapping>Strategy Retrieval>Execution Logic>Output Composition。
     def __init__(self,  poll_interval=0.3):
-        self.events = {}  # key -> {type, implementation, application, active}
+        self.events = {}  # key -> {type, implementation, Application, active}
         self.poll_interval = poll_interval
         self.running = False
         self.lock = threading.Lock()
@@ -1999,7 +2035,7 @@ class EventMonitor:
             self.events[key] = {
                 # [目標圖像,目標圖像的狀態 合格的]
                 "implementation": [m1, None],
-                "application": [m2, None],
+                "Application": [m2, None],
                 "goal": [m3, None],
                 "active": True,
                 # (條件邏輯問卷(修改 設定過的狀態), [錯誤時的 應對作法])。
@@ -2027,8 +2063,8 @@ class EventMonitor:
             }
 
     # 終止監聽事件
-    def remove_subscription(self, implementation, application, goal):
-        key = f"{implementation}->{application}->{goal}"
+    def remove_subscription(self, implementation, Application, goal):
+        key = f"{implementation}->{Application}->{goal}"
         with self.lock:
             if key in self.events:
                 sk = self.events.pop(key)
@@ -2076,7 +2112,7 @@ class EventMonitor:
             "成本": "省"
         }
         # [目標,目標的狀態]
-        e1, e2, e3 = evt["implementation"], evt["application"], evt["goal"]
+        e1, e2, e3 = evt["implementation"], evt["Application"], evt["goal"]
         for ev in e1, e2, e3:
             for img, stage in ev:
                 # ORB分析目標圖片的狀態和在整個螢幕的關係。self.selected找到目標。 Semantic Algebra 語意代數
@@ -2224,38 +2260,28 @@ from PySide6.QtCore import QObject, Signal, Property
 class Backend(QObject):
     """對話 shutil存進TEMPLATE_DIRS["speak"]，Backend getImages讀取TEMPLATE_DIRS["speak"]給QML就是 使用 對話"""
     pathChanged = Signal(str)
-    copyChanged = Signal(str)
     imagesReady = Signal(list)  # 發送圖片列表給 QML
+    
+    # 依然要有這行，QML 才能「看到」並「連動」
+    path_dir = Property(str, 
+        fget=lambda self: self._path_dir, 
+        fset=lambda self, v: (setattr(self, '_path_dir', v), self.pathChanged.emit(v)) if self._path_dir != v else None, 
+        notify=pathChanged)
 
     def __init__(self):
         super().__init__()
         self._path_dir = ""
-        self._copy_path = ""
-
-    def getPath(self): return self._path_dir
-    def setPath(self, v):
-        if self._path_dir != v:
-            self._path_dir = v
-            self.pathChanged.emit(v)
-
-    def getCopy(self): return self._copy_path
-    def setCopy(self, v):
-        if self._copy_path != v:
-            self._copy_path = v
-            self.copyChanged.emit(v)
-
-    path_dir = Property(str, getPath, setPath, notify=pathChanged)
-    copy_path = Property(str, getCopy, setCopy, notify=copyChanged)
 
     @Slot()
     def getImages(self):
+        """
+        回話區的詞 對應儲存的圖片
+        """
         found=path_all(TEMPLATE_DIRS["speak"],".png")
-        for _,imgs in found:
-            self.imagesReady.emit(imgs)
+        all_imgs =[(r/imgs).as_uri() for r,_,imgs in found]
+        self.imagesReady.emit(all_imgs)
             
 # === 
-
-    
     # *** 光子發射時序以分段、電場以能階變色，光子測距和計算誤差矯正量
     #
     # 該視窗可以置頂於畫面?固定寬度會自動換行的輸入框?點擊輸入框實輸入?當視窗拖動到最左或最右邊，最小化視窗並固定Y座標?
@@ -2267,21 +2293,26 @@ class Backend(QObject):
 """
 import PySide6.QtQml as Qml
 if __name__ == "__main__":
+    for a in TEMPLATE_DIRS:
+        make_folder(a)
     monitor_info = {"width": 1920, "height": 1080} 
     # 實例化
     ic = InputCommand(monitor_info)
+    backend=Backend()
     TARGET_DEVICE_ID = r"你的設備ID填在這裡" 
     monitor = EventMonitor()
     rec = Recorder()
-    noesis_input=noesis.input
-    noesis_編織關係=noesis.編織關係
-    noesis_輸入=noesis.輸入
     
     # ✅ 在背景啟動 watchdog 執行緒 # ***app關閉時， watchdog沒有跟著關閉
+
+    # 在 engine.load 之前定義一個物理心跳
+    heartbeat_timer = QTimer()
+    heartbeat_timer.timeout.connect(send_heartbeat)
+    heartbeat_timer.start(5000) # 每 5 秒報一次平安
     send_heartbeat()
 
     app = QApplication(sys.argv)
-    ic.app = app
+    
     fmt = QSurfaceFormat()
     fmt.setAlphaBufferSize(8)
     fmt.setRenderableType(QSurfaceFormat.OpenGL)
@@ -2289,30 +2320,31 @@ if __name__ == "__main__":
     fmt.setVersion(4, 1)
     QSurfaceFormat.setDefaultFormat(fmt)
     
-    # TODO:*** ，提出的問題拆解經過2=128倍得到親子關係，鄰居關係，相差得到答案
-    sm=StateMgr
-    自己=StateMgr.add("自己")
-
     engine = QQmlApplicationEngine()
-    base = Path(os.path.dirname(os.path.abspath(__file__)))
-    qml_file = base / "ui.qml"  # 確保路徑正確
-    engine.addImportPath(str(base))
+    qml_file = DATA_BASE / "ui.qml"  # 確保路徑正確
+    engine.addImportPath(str(DATA_BASE))
+    # 將 Python 對象暴露給 QML
+    engine.rootContext().setContextProperty("IC", ic)
+    engine.rootContext().setContextProperty("Backend", backend) # 建議暫時兩個都給，避免 QML 報錯
+
 
     for p in Qml.QQmlEngine().importPathList():
         print("IMPORT PATH:", p)
-
     if getattr(sys, 'frozen', False):
         engine.addImportPath(sys._MEIPASS)
+
     engine.load(str(qml_file))
     if not engine.rootObjects():
         print("❌ QML 載入失敗！")
         sys.exit(-1)
+        
+    # 修正函式名稱為 screenshot，並將結果存入不同的變數名稱 (例如 ss)
+    ss = pyautogui.screenshot(region=(0, 0, 500, 500))
+    ss.save("test.png")
 
     win = engine.rootObjects()[0]
     win.show()
-
-    # 將 Python 對象暴露給 QML
-    engine.rootContext().setContextProperty("IC", ic)
+    
 
     sys.exit(app.exec())
 
