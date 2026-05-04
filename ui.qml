@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick3D 
 import QtQuick.Window 
 import QtQuick.Controls 
+import Qt5Compat.GraphicalEffects // 必須導入此模組來使用 Glow
 
 
 Window {
@@ -58,7 +59,7 @@ Window {
         // == == == == GLB 模型 == == == ==
         Ilulu { 
             id: iluluModel
-            scale: Qt.vector3d(scaleFactor*0.1, scaleFactor*0.1, scaleFactor*0.1)
+            scale: Qt.vector3d(scaleFactor*0.03, scaleFactor*0.03, scaleFactor*0.03)
             position: Qt.vector3d(0, 0, 0)
             
             SequentialAnimation on eulerRotation.y {
@@ -90,9 +91,18 @@ Window {
         wrapMode: Text.Wrap // 自動換行
         placeholderText: "請輸入windowTittle, path, action... (:多重路徑、::分行、<>錄製)"
         focus: true // 點擊即可輸入
-        font.family: "Microsoft JhengHei" // 設置字體
+        // font.family: "Microsoft JhengHei" // 設置字體
         font.pixelSize: 18 // 設置字體大小
+        color: Qt.rgba(0.1, 0.0, 0.15, 0.9)
+        font.family: "Courier" // 用等寬字體更有駭客感
 
+
+        background: Rectangle {
+            color: Qt.rgba(0.68, 1, 0.18, 0.4) 
+            radius: 8
+            border.color: Qt.rgba(0.68, 1, 0.18, 1)  // 深一點的邊框讓邊界更清晰
+            border.width: 1
+            }
         // 監聽文本變化
         onTextChanged: {
             if(text.length > 0) {  // *** 進入 計算物體實際大小的 抓取模式
@@ -109,19 +119,125 @@ Window {
                     animButton.clicked()
                     IC.input_line(userInput) // 執行失敗時同時不執行下一行
                     text=""
-                }
+                }   
             }
         }
     }
 
+    Glow {
+        id: textGlow
+        anchors.fill: hackerText
+        source: hackerText
+        radius: 8
+        samples: 17
+        color: "#BC13FE" // 電光紫，與你的深紫文字形成層次感
+        spread: 0.2
+
+        // 閃爍動畫 (呼吸燈效果)
+        SequentialAnimation on opacity {
+            loops: Animation.Infinite
+            NumberAnimation { from: 0.4; to: 1.0; duration: 1500; easing.type: Easing.InOutQuad }
+            NumberAnimation { from: 1.0; to: 0.4; duration: 1500; easing.type: Easing.InOutQuad }
+        }
+    }
+    
     // 顯示用戶輸入的文本
-    Text {
-        id:message
-        text: "輸入內容: " + userInput //  ***回報 和 回應
+    Item {
         anchors.top: inputBox.bottom
         anchors.left: inputBox.left
-        color: "white"
-        font.pixelSize: 16
+        anchors.right: parent.right // 建議加上 right，換行 (wrap) 才會生效
+        // 底色文字 (深紫色)
+        Text {
+            id: baseText
+            text: "引頸期盼地等待訊息..." //  ***回報 和 回應
+            color: Qt.rgba(0.435, 0.306, 0.216, 1.0)
+            font.family: "Courier" // 用等寬字體更有駭客感
+            font.pixelSize: 16
+            wrapMode: Text.Wrap // 讓長對話自動換行
+            
+            Connections {
+                target: Backend // 確保這裡對應到你 Python 注入的名稱
+                function onResponseUpdated(all_text) {
+                    message.text= "回應: " + all_text
+                }
+            }
+            Connections {
+                target: neonFlow
+                function onPosChanged() {
+                    // 當掃描線走到中間 (例如 0.3 到 0.7 之間) 時，隨機跳動
+                    if (neonFlow.pos > 0.3 && neonFlow.pos < 0.7) {
+                        baseText.x = baseText.x + (Math.random() * 3 - 1); 
+                    } else {
+                        baseText.x = parent.width / 2 - baseText.width / 2; // 回歸正中
+                    }
+                }
+            }
+        }
+        // 霓虹斜線漸層
+        // 用來製作掃描光澤的文字層
+        Text {
+            id: maskText
+            text: baseText.text
+            font: baseText.font
+            anchors.fill: baseText
+            visible: false // 隱藏起來，只作為遮罩使用
+        }
+
+        // 霓虹斜線漸層
+        LinearGradient {
+            id: neonFlow
+            anchors.fill: baseText
+            source: baseText // 直接把文字當來源
+            // 斜率：調整 point(x, y) 可以改變斜線的角度
+            start: Qt.point(0, 0)
+            end: Qt.point(baseText.width * 0.5, baseText.height) 
+
+            property real pos: -1.0
+
+            gradient: Gradient {
+                // 第 1 條細線
+                GradientStop { position: neonFlow.pos; color: "transparent" }
+                GradientStop { position: neonFlow.pos + 0.05; color: Qt.rgba(1, 0, 1, 0.3) } 
+                GradientStop { position: neonFlow.pos + 0.1; color: "#FF00FF" } // 粉紅細線
+                GradientStop { position: neonFlow.pos + 0.05; color: Qt.rgba(1, 0, 1, 0.3) } 
+                GradientStop { position: neonFlow.pos + 0.2; color: "transparent" }
+                
+                // 間隔
+                GradientStop { position: neonFlow.pos + 0.3; color: "transparent" }
+                
+                // 第 2 條細線 (稍微寬一點點，增加層次)
+                GradientStop { position: neonFlow.pos + 0.38; color: Qt.rgba(0.03, 0.58, 0.97, 0.3) }
+                GradientStop { position: neonFlow.pos + 0.4; color: "#0994f8" } // 青色細線
+                GradientStop { position: neonFlow.pos + 0.38; color: Qt.rgba(0.03, 0.58, 0.97, 0.3) }
+                GradientStop { position: neonFlow.pos + 0.6; color: "transparent" }
+                
+                // 間隔
+                GradientStop { position: neonFlow.pos + 0.55; color: "transparent" }
+                
+                // 第 3 條細線
+                 GradientStop { position: neonFlow.pos + 0.82; color: Qt.rgba(0.62, 0.24, 0.93, 0.3) }
+                GradientStop { position: neonFlow.pos + 0.85; color: "#9f3eee" }
+                 GradientStop { position: neonFlow.pos + 0.82; color: Qt.rgba(0.62, 0.24, 0.93, 0.3) }
+                GradientStop { position: neonFlow.pos + 0.92; color: "transparent" }
+            }
+
+            PropertyAnimation on pos {
+                from: -2
+                to: 3.6
+                duration: 3500
+                loops: Animation.Infinite
+                easing.type: Easing.Linear // 線性移動更像機器掃描
+            }
+        }
+        // 加一點點整體外發光，讓霓虹感更重
+        Glow {
+            anchors.fill: neonFlow
+            source: neonFlow
+            radius: 4
+            samples: 9
+            color: "#00FFFF"
+            spread: 0.2
+        }
     }
     // 顯示回覆用戶的文本
         // TODO:收到的路徑轉成句子，
@@ -133,7 +249,7 @@ Window {
         spacing: 10
         Text {
             id: dialogue
-            text: Backend.path_dir
+            text: Backend ? Backend.path_dir : "" 
             color: "white"
             font.pixelSize: 16
 
@@ -186,8 +302,6 @@ Window {
             }
         }
     }
-
-
 
 
     Button {
