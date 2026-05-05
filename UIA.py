@@ -1,5 +1,6 @@
 import os
 os.environ["QT_QUICK_CONTROLS_STYLE"] = "Basic"
+os.environ["QT_PA_PLATFORM"] = "windows:dpiawareness=0" # 強制讓 Qt 放棄 DPI 控制權
 os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
 os.environ["QT_SCALE_FACTOR_ROUNDING_POLICY"] = "PassThrough" # 避免Qt二次修改DPI(?)
 import json
@@ -89,6 +90,15 @@ TEMPLATE_DIRS = {
     "communication": base_path/ "Communication",  # 用戶交流的訊息
     "speak": base_path/ "Speak",  # 交流的回覆
     "Noesis": base_path/ "Noesis",  # Noesis 吸收的知識
+}
+背景節點 = {
+    "字": TEMPLATE_DIRS["Noesis"]/ '字',
+    "數學": TEMPLATE_DIRS["Noesis"]/ "數學",  # 用戶隱私
+    "作用力": TEMPLATE_DIRS["Noesis"]/ "作用力",  # 用戶交流的訊息
+    "時間": TEMPLATE_DIRS["Noesis"]/ "時間",  # 交流的回覆
+    "對話技巧": TEMPLATE_DIRS["Noesis"]/ "對話技巧",  # Noesis 吸收的知識
+    "操作技巧": TEMPLATE_DIRS["Noesis"]/ "操作技巧",  # Noesis 吸收的知識
+    "易經": TEMPLATE_DIRS["Noesis"]/ "易經",  # Noesis 吸收的知識
 }
 
 MATCH_THRESHOLD = 0.85
@@ -314,18 +324,24 @@ def fill_accurate_images(keyword, word_dir):
 def asbc_stealth_search(keyword):
     # 1. 初始化 Session (模擬瀏覽器開啟後的狀態)
     session = requests.Session()
+    home_url = "https://asbc.iis.sinica.edu.tw/"
+    session.get(home_url, timeout=10) 
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Referer': 'https://asbc.iis.sinica.edu.tw/'
     }
     # 2. 定義目標 API / CGI 路徑 (中研院常用的查詢端點)
-    search_url = "https://sinica.edu.tw" 
+    search_url = "https://asbc.iis.sinica.edu.tw/" 
     # 3. 準備參數 (Key: 你的關鍵字)
     # 這裡的參數名稱需要根據實際 F12 觀察到的 Network Form Data 調整
     payload = {
         'query': keyword,
-        'mode': 'standard',
-        'page': 1
+        'search_mode': 'text',
+        # 把你列出的這些範圍，根據 API 的規則全部填進去 (以下為假設參數名)
+        'genre': '報導,散文,評論,詩歌,信函,會話,演講,語錄,劇本,公告啟事,說明手冊,傳記日記,會議記錄,小說故事寓言,廣告或圖文',
+        'style': '記敘,說明,論說,描寫',
+        'media': '報紙,一般雜誌,學術期刊,教科書,工具書,學術論著,一般圖書,視聽媒體',
+        'topic': '哲學,科學,社會,藝術,生活,文學'
     }
     try:
         # 4. 直接發送 POST 請求 (不開啟網頁)
@@ -2401,7 +2417,9 @@ class Backend(QObject):
         # 統一發送累積後的完整字串
         self.responseUpdated.emit(self.history)
           
-
+def 簡易扒蟲():
+    base=TEMPLATE_DIRS["Noesis"]
+    
 # === 
     # *** 光子發射時序以分段、電場以能階變色，光子測距和計算誤差矯正量
     #
@@ -2416,10 +2434,94 @@ import PySide6.QtQml as Qml
 if __name__ == "__main__":
     for a in TEMPLATE_DIRS.values():
         make_folder(a)
+    for a in 背景節點.values():
+        make_folder(a)
         
+    # categories = ["同義", "反義", "干涉它為新義", "主從義", "SIFT"]
+        # 同(右):(詞A)意義的範圍內的正負詞，的同向(詞B)   
+        # 反(左):(詞A)意義的範圍內的正負詞，的反向(詞B)   
+        # 干涉(*):毫不相干，詞AB組合，共同主從為新義義
+        # 主(上)從(下):(詞A)意義分類而涵蓋之下的(詞B)意義，(隱晦)牽扯到此義義；被涵蓋而屬於之上的(詞B)意義，(明顯)會在此義義內存在
+        # 函數:詞後面接上A，A後面接上"有"、"和"，更後面接上B，詞的A的B怎樣
+        # 對等函式:"是"
+
+    # 辭典有這些，只能給出完整的初步內容(每個都至少100筆)，少智障，不然被鉅子鋸斷!!!  
+    word_dist = {
+        "態": {"意義": "事物表現之性狀", "相似": "狀", "反義": "質"},
+        "權": {"意義": "應享有之利益", "相似": "勢", "反義": "責"},
+        "拓": {"意義": "開展、擴張", "相似": "展", "反義": "縮"},
+        "熵": {"意義": "混亂度之度量", "相似": "亂", "反義": "序"},
+        "併": {"意義": "合二為一", "相似": "合", "反義": "分"},
+        "緩": {"意義": "速度慢、延遲", "相似": "遲", "反義": "急"},
+        "耦": {"意義": "成對、配合", "相似": "連", "反義": "離"},
+        "溯": {"意義": "逆流而上、尋根", "相似": "追", "反義": "流"},
+        "封": {"意義": "密閉、限制", "相似": "閉", "反義": "啟"},
+        "跨": {"意義": "越過、超過", "相似": "越", "反義": "守"}
+    }
+    math_dist = {
+        "加":{"大小正負關係":None,"小數":None,"加減乘除":中},
+        "減":{"大小正負關係":None,"小數":None,"加減乘除":吸},
+        "乘":{"大小正負關係":None,"小數":None,"加減乘除":查表後中},
+        "除":{"大小正負關係":None,"小數":None,"加減乘除":查表(1/1~1/9)移除分母後相乘分子},
+        "":{"大小正負關係":None,"小數":None,"加減乘除":None},
+        "":{"大小正負關係":None,"小數":None,"加減乘除":None},
+        "":{"大小正負關係":None,"小數":None,"加減乘除":None},
+        "":{"大小正負關係":None,"小數":None,"加減乘除":None},
+        "":{"大小正負關係":None,"小數":None,"加減乘除":None},
+        "":{"大小正負關係":None,"小數":None,"加減乘除":None},
+        "":{"大小正負關係":None,"小數":None,"加減乘除":None},
+        "":{"大小正負關係":None,"小數":None,"加減乘除":None},
+        "":{"大小正負關係":None,"小數":None,"加減乘除":None},
+    }
+    作用力_dist = {
+        "起伏":"前後差異",
+        "加速度":"二次前後差異",
+        "雙方利益關係":"、分子分母對調得到雙方的交換率",
+        "意義上的意義":"不同意義相乘得到作用結果",
+        "":"",
+        "":"",
+        "":"",
+        "":"",
+    }
+    
+    # 人倫
+    有趣對話技巧_dist = {
+        "":"",
+        "":"",
+        "":"",
+        "":"",
+        "":"",
+        "":"",
+        "":"",
+        "":"",
+        "":"",
+        "":"",
+        "":"",
+        "":"",
+        "":"",
+    }
+    # 有?分散成，經過編碼
+    易經_dist = {
+        "人倫":{"金":催化,"水":運輸,"木":聚合成,"火":轉換能量,"土":結構化,}, # 以值 性編碼，以建 關係排序
+        "天干地支":{ # 五行盛衰
+            "天干": ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"],
+            "地支": ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
+        },
+        "方位": {"金":"西","木":"東","火":"南","水":"北","土":"中"}, #　作用方向*(詞)意義
+        "":"",
+        "":"",
+        "":"",
+    }
+    操作技巧_dist = {
+        "":"",
+        "":"",
+        "":"",
+        "":"",
+        "":"",
+    }
     # 測試：搜尋「積極」
-    data = asbc_stealth_search("積極")
-    print(f"抓取結果: {data}")
+    # data = asbc_stealth_search(url)
+    # print(f"網路抓取結果: {data}")
 
     monitor_info = {"width": 1920, "height": 1080} 
     # 實例化

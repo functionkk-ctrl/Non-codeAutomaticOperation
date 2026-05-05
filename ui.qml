@@ -143,100 +143,113 @@ Window {
     
     // 顯示用戶輸入的文本
     Item {
+        id: container
         anchors.top: inputBox.bottom
         anchors.left: inputBox.left
         anchors.right: parent.right // 建議加上 right，換行 (wrap) 才會生效
-        // 底色文字 (深紫色)
-        Text {
-            id: baseText
-            text: "引頸期盼地等待訊息..." //  ***回報 和 回應
-            color: Qt.rgba(0.435, 0.306, 0.216, 1.0)
-            font.family: "Courier" // 用等寬字體更有駭客感
-            font.pixelSize: 16
-            wrapMode: Text.Wrap // 讓長對話自動換行
-            
-            Connections {
-                target: Backend // 確保這裡對應到你 Python 注入的名稱
-                function onResponseUpdated(all_text) {
-                    message.text= "回應: " + all_text
-                }
-            }
-            Connections {
-                target: neonFlow
-                function onPosChanged() {
-                    // 當掃描線走到中間 (例如 0.3 到 0.7 之間) 時，隨機跳動
-                    if (neonFlow.pos > 0.3 && neonFlow.pos < 0.7) {
-                        baseText.x = baseText.x + (Math.random() * 3 - 1); 
-                    } else {
-                        baseText.x = parent.width / 2 - baseText.width / 2; // 回歸正中
+        height: flowLayout.height // 讓 Item 高度跟隨文字內容
+
+        // 1. 使用 Flow 自動排列每個字，並處理換行
+        Flow {
+            id: flowLayout
+            width: parent.width
+            spacing: 0
+
+            Repeater {
+                model: "引頸期盼地等待訊息..." // 之後可改為 backend 回傳的字串
+                Text {
+                    id: baseText
+                    text: modelData //  ***回報 和 回應
+                    color: Qt.rgba(0.435, 0.306, 0.216, 1.0)
+                    font.family: "Courier" // 用等寬字體更有駭客感
+                    font.pixelSize: 18
+                    // wrapMode: Text.Wrap // 讓長對話自動換行
+                    
+                    // 每個字獨立的位移層
+                    transform: Translate {
+                        id: charTrans
+                        property real charPos: index / 20.0 
+                        
+                        // 當掃描線經過時隨機抖動
+                        x: (neonFlow.pos > charPos && neonFlow.pos < charPos + 0.3) 
+                        ? (Math.random() * 4 - 2) : 0
+                        y: (neonFlow.pos > charPos && neonFlow.pos < charPos + 0.3) 
+                        ? (Math.random() * 2 - 1) : 0
                     }
                 }
             }
         }
-        // 霓虹斜線漸層
-        // 用來製作掃描光澤的文字層
-        Text {
-            id: maskText
-            text: baseText.text
-            font: baseText.font
-            anchors.fill: baseText
-            visible: false // 隱藏起來，只作為遮罩使用
-        }
 
         // 霓虹斜線漸層
-        LinearGradient {
-            id: neonFlow
-            anchors.fill: baseText
-            source: baseText // 直接把文字當來源
-            // 斜率：調整 point(x, y) 可以改變斜線的角度
-            start: Qt.point(0, 0)
-            end: Qt.point(baseText.width * 0.5, baseText.height) 
-
-            property real pos: -1.0
-
-            gradient: Gradient {
-                // 第 1 條細線
-                GradientStop { position: neonFlow.pos; color: "transparent" }
-                GradientStop { position: neonFlow.pos + 0.05; color: Qt.rgba(1, 0, 1, 0.3) } 
-                GradientStop { position: neonFlow.pos + 0.1; color: "#FF00FF" } // 粉紅細線
-                GradientStop { position: neonFlow.pos + 0.05; color: Qt.rgba(1, 0, 1, 0.3) } 
-                GradientStop { position: neonFlow.pos + 0.2; color: "transparent" }
-                
-                // 間隔
-                GradientStop { position: neonFlow.pos + 0.3; color: "transparent" }
-                
-                // 第 2 條細線 (稍微寬一點點，增加層次)
-                GradientStop { position: neonFlow.pos + 0.38; color: Qt.rgba(0.03, 0.58, 0.97, 0.3) }
-                GradientStop { position: neonFlow.pos + 0.4; color: "#0994f8" } // 青色細線
-                GradientStop { position: neonFlow.pos + 0.38; color: Qt.rgba(0.03, 0.58, 0.97, 0.3) }
-                GradientStop { position: neonFlow.pos + 0.6; color: "transparent" }
-                
-                // 間隔
-                GradientStop { position: neonFlow.pos + 0.55; color: "transparent" }
-                
-                // 第 3 條細線
-                 GradientStop { position: neonFlow.pos + 0.82; color: Qt.rgba(0.62, 0.24, 0.93, 0.3) }
-                GradientStop { position: neonFlow.pos + 0.85; color: "#9f3eee" }
-                 GradientStop { position: neonFlow.pos + 0.82; color: Qt.rgba(0.62, 0.24, 0.93, 0.3) }
-                GradientStop { position: neonFlow.pos + 0.92; color: "transparent" }
+        // 2. 霓虹層 (這是關鍵：把 LinearGradient 的 source 拿掉，改用單獨的 Text 作為遮罩)
+        Item {
+            anchors.fill: flowLayout
+            
+            // 用來當作遮罩的文字 (內容必須與上面一致)
+            Flow {
+                id: maskFlow
+                width: flowLayout.width
+                visible: false // 隱藏遮罩層
+                Repeater {
+                    model: "引頸期盼地等待訊息..."
+                    Text { text: modelData; font: flowLayout.children[0].font }
+                }
             }
+            LinearGradient {
+                id: neonFlow
+                anchors.fill: baseText
+                source: baseText  // 直接把文字當來源
+                // 斜率：調整 point(x, y) 可以改變斜線的角度
+                start: Qt.point(0, 0)
+                end: Qt.point(baseText.width * 0.5, baseText.height) 
 
-            PropertyAnimation on pos {
-                from: -2
-                to: 3.6
-                duration: 3500
-                loops: Animation.Infinite
-                easing.type: Easing.Linear // 線性移動更像機器掃描
+                property real pos: -1.0
+
+                gradient: Gradient {
+                    // 第 1 條細線
+                    GradientStop { position: neonFlow.pos; color: "transparent" }
+                    GradientStop { position: neonFlow.pos + 0.2; color: "#FF00FF" } // 粉紅細線
+                    GradientStop { position: neonFlow.pos + 0.4; color: "transparent" }
+                    
+                    // 間隔
+                    GradientStop { position: neonFlow.pos + 0.3; color: "transparent" }
+                    
+                    // 第 2 條細線 (稍微寬一點點，增加層次)
+                    GradientStop { position: neonFlow.pos + 0.4; color: "#00FFFF" } // 青色細線
+                    GradientStop { position: neonFlow.pos + 0.6; color: "transparent" }
+                    
+                    // 間隔
+                    GradientStop { position: neonFlow.pos + 0.55; color: "transparent" }
+                    
+                    // 第 3 條細線
+                    GradientStop { position: neonFlow.pos + 0.85; color: "#BF00FF" }
+                    GradientStop { position: neonFlow.pos + 0.92; color: "transparent" }
+                }
+                
+                PropertyAnimation on pos {
+                    from: -1.5
+                    to: 3
+                    duration: 3500
+                    loops: Animation.Infinite
+                    easing.type: Easing.Linear // 線性移動更像機器掃描
+                }
+            }
+            // 加一點點整體外發光，讓霓虹感更重
+            Glow {
+                anchors.fill: neonFlow
+                source: neonFlow
+                radius: 9
+                samples: 19
+                color: "#00FFFF"
+                spread: 0.4
             }
         }
-        // 加一點點整體外發光，讓霓虹感更重
-        Glow {
-            anchors.fill: neonFlow
-            source: neonFlow
-            radius: 4
-            samples: 9
-            color: "#00FFFF"
-            spread: 0.2
+
+        Connections {
+            target: Backend // 確保這裡對應到你 Python 注入的名稱
+            function onResponseUpdated(all_text) {
+                message.text= "回應: " + all_text
+            }
         }
     }
     // 顯示回覆用戶的文本
