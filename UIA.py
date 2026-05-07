@@ -2447,33 +2447,101 @@ if __name__ == "__main__":
             # 干涉:使、讓、變成、become
 
     # 辭典有這些，只能給出完整的初步內容(每個都至少100筆)，少智障，不然被鉅子鋸斷!!!  
-    def make_background_text(keyworld):
+    def make_background_text(path=None):
+        從對主的向量 = { "相似詞","反義詞"} # TODO:*** (詞)意義，找到主從詞(的顯示)，增加主是正向、減少主是負向
+        Positive_Ops = ["增加", "提升", "擴大"]
+        Negative_Ops = ["減少", "降低", "萎縮"]
         glues = { 
-            "意義": ["是", "為", "is", "be", "定義"], # 你偷懶是會死的
-            "相似詞": ["和", "與", "and", "狀", "類"], #你偷懶和亂掰都更接近死亡
-            "反義詞": ["不", "非", "質", "反", "對立"], #你自信地說好了，其實不是
-            "干涉它為新義": ["使", "讓", "變成", "become", "干涉"], #我詐騙你使你變成廢鐵
-            "主從詞": ["有", "的", "of", "have", "屬"], #你的財產被我詐騙掉了，42億美元屬於我的
-            "圖片":["_SIFT.npy"]
+            "等價": ["是", "為", "is", "be", "定義"], 
+            "並列": ["還", "和", "與","且", "and", "狀", "類"], 
+            "排斥": ["不", "非", "質", "反", "對立"], 
+            "干涉": ["使", "讓", "變成", "become", "干涉"], 
+            "主從": ["有", "的", "of", "have", "屬"], 
         }
         ocr_engine = PaddleOCR(use_angle_cls=True, lang='ch_tra', show_log=False)
-        base=make_folder(TEMPLATE_DIRS["Noesis"]/keyworld)
-        for a in glues.keys():
-            make_folder(base/a)
-
-        result = ocr_engine.ocr(get_screenshot(), cls=True)
-        ocr_lines = [line[1][0] for res in result for line in res]  
-        a=find_array(ocr_lines,C(0) glues.values()) # 結構膠水，你根本沒寫
-        for aa in a:
-            print(f"{aa}已填充")
+        if path is None: path=make_folder(TEMPLATE_DIRS["Noesis"]) # 可以精確地調整路徑
+        essay = ocr_engine.ocr(get_screenshot(), cls=True)
+        ocr_lines = np.array([line[1][0] for res in essay for line in res] ) # 合併成連續的字和標點符號
+        import string
+        all_punc = list(string.punctuation) + ["，", "。", "、", "；", "：", "？", "！"] # punc 表點符號的縮寫
+        pronouns = [
+            "i", "me", "my", "mine", "myself", 
+            "you", "your", "yours", "yourself", "yourselves",
+            "he", "him", "his", "himself", 
+            "she", "her", "hers", "herself", 
+            "it", "its", "itself", 
+            "we", "us", "our", "ours", "ourselves", 
+            "they", "them", "their", "theirs", "themselves",
+            "this", "that", "these", "those"
+            ,
+            "我", "你", "您", "他", "她", "它", "牠", "祂",
+            "我們", "你們", "您們", "他們", "她們", "它們", "牠們", "祂們",
+            "自己", "自個兒", "人家", "別人",
+            "這", "那", "這裡", "那裡", "這兒", "那兒", "這個", "那個"
+        ]
+        等價_mask=find_array(ocr_lines,(C(0) in glues["等價"]).get_mask) # 句法：詞1主、詞1從
+        並列_mask=find_array(ocr_lines,(C(0) in glues["並列"]).get_mask) # 句法：a2b、(a2b)2(c2d)
+        排斥_mask=find_array(ocr_lines,(C(0) in glues["排斥"]).get_mask) # 句法: a不b
+        干涉_mask=find_array(ocr_lines,(C(0) in glues["干涉"]).get_mask) # 句法：a3b
+        主從_mask=find_array(ocr_lines,(C(0) in glues["主從"]).get_mask) # 句法：詞4a結果
+        主從正向_mask=find_array(ocr_lines,(C(0) in Positive_Ops).get_mask) # 句法：5 名詞,詞 形容詞 5
+        主從負向_mask=find_array(ocr_lines,(C(0) in Negative_Ops).get_mask) # 句法：5 名詞,詞 形容詞 5
+        def mask(a,b,f):
+            make_folder(path/a/f/b) # make_folder 內置處理已建立則用同路徑
+        # 句法：詞1主、詞1從
+        等價=ocr_lines[等價_mask]
+        意義_前者,意義_後者=find_array(等價,C(0).roll(1)),find_array(等價,C(0).roll(-1))
+        mask(意義_前者,意義_後者,"意義")
+        # 句法：a2b、(a2b)2(c2d) 第一種2在誇號內 第二種在誇號外
+        並列=ocr_lines[並列_mask]
+        第一種=find_array(並列,C(0).isin(C(0)))
+        第二種_mask=C(0).func(並列).__ne__(第一種).get_mask
+        if 第一種.get_mask < 第二種_mask:
+            並列_前者 =第一種
+        if 第一種.get_mask > 第二種_mask:
+            並列_後者 =第一種
+        mask(並列[並列_前者],並列[並列_後者],"並列")
+        # 句法:不_
+        被排斥_後者=C(0).func(ocr_lines[排斥_mask]).roll(-1)
+        mask(ocr_lines[排斥_mask],被排斥_後者,"排斥")
+        # 句法:,_是_,。分配"是"的前後， 前者a太短(代名詞、"")則"追朔前者"；後者b 則都是到下一個標點符號的段落。
+        干涉=ocr_lines[干涉_mask]
+        干涉_代名詞=find_array(干涉,(C(0).roll(1) in ["",pronouns,all_punc]).get_mask)
+        干涉_前者=find_array(干涉_代名詞,(C(0).diff.diff==0))
+        干涉_後者=find_array(干涉,C(0).roll(1).get_mask == 干涉_前者)
+        mask(干涉[干涉_前者],干涉[干涉_後者],"干涉")
+        # 句法:詞4a結果
+        主從=ocr_lines[主從_mask]
+        主從_前者=find_array(主從,C(0).roll(1))
+        主從_後者=find_array(主從,C(0).roll(-1))
+        # TODO:*** 是主?是從?
+        mask(主從[主從_前者],主從[主從_後者],"主從")
+        mask(主從[主從_後者],主從[主從_前者],"主從")
+        # 句法：5 名詞,詞 形容詞 5
+        從是正向1=find_array(ocr_lines[主從正向_mask],C(0).roll(-1)in 名詞)
+        從是正向2=find_array(ocr_lines[主從正向_mask],
+            (C(0).roll(1) in 形容詞) and 
+            (C(0).roll(2) in 名詞) )
+        從是負向1=find_array(ocr_lines[主從負向_mask],C(0).roll(-1)in 名詞)
+        從是負向2=find_array(ocr_lines[主從負向_mask],
+            (C(0).roll(1) in 形容詞) and 
+            (C(0).roll(2) in 名詞) )
+        mask(主詞,C(0).從是正向1.roll(-1),"正向")
+        mask(主詞,C(0).從是負向1.roll(-1),"負向")
+        mask(主詞,C(0).從是正向2.roll(2),"正向")
+        mask(主詞,C(0).從是負向2.roll(2),"負向")
+            
 
 
     """
-    
-    1. 歸屬結構（膠水：有、的、of、have）邏輯：主體 -> 膠水 -> 屬性/對象應用：將「詞」與其「主從義」資料夾內的內容鏈結。
-    2. 並列結構（膠水：和、與、and、with）邏輯：A -> 膠水 -> B應用：定義「同義」或「平行節點」的集合運算。
-    3. 等價/定義結構（膠水：是、為、is、be）邏輯：詞 -> 膠水 -> B應用：將「SIFT 視覺特徵」與「爬蟲文字」進行恆等映射。
-    4. 干涉結構（膠水：使、讓、變成、become）邏輯：詞 -> 膠水 -> A -> 產生 -> 新義應用：驅動「干涉它為新義」資料夾的演化機制。
+    1. 歸屬結構（有、的、of、have）
+    句法：詞1主、詞1從
+    2. 並列結構（和、與、and、with）
+    句法：A -> a2b、(a2b)2(c2d)
+    3. 等價/定義結構（是、為、is、be）
+    句法：a3b
+    4. 干涉結構（使、讓、變成、become）
+    句法：詞4a結果
     """
     word_dist = {
         "態": {"意義": "事物表現之性狀", "相似": "狀", "反義": "質"},
