@@ -381,6 +381,329 @@ def asbc_stealth_search(keyword):
         print(f"隱藏請求失敗: {e}")
         return []
     
+     
+def text_make_background(path=None):
+    """解析圖片的文字並分類進靜態資料夾中"""
+    if path is None:
+        path=make_folder(TEMPLATE_DIRS["Noesis"]) # 可以精確地調整路徑
+    ocr_engine = PaddleOCR(use_angle_cls=True, lang='ch_tra', show_log=False)
+    essay = ocr_engine.ocr(get_screenshot(), cls=True)
+    ocr_lines = np.array([line[1][0] for res in essay for line in res] ) # 合併成連續的字和標點符號
+    import string
+    all_punc = list(string.punctuation) + ["，", "。", "、", "；", "：", "？", "！"] # punc 表點符號的縮寫
+    pronouns = [
+        "i", "me", "my", "mine", "myself", 
+        "you", "your", "yours", "yourself", "yourselves",
+        "he", "him", "his", "himself", 
+        "she", "her", "hers", "herself", 
+        "it", "its", "itself", 
+        "we", "us", "our", "ours", "ourselves", 
+        "they", "them", "their", "theirs", "themselves",
+        "this", "that", "these", "those"
+        ,
+        "我", "你", "您", "他", "她", "它", "牠", "祂",
+        "我們", "你們", "您們", "他們", "她們", "它們", "牠們", "祂們",
+        "自己", "自個兒", "人家", "別人",
+        "這", "那", "這裡", "那裡", "這兒", "那兒", "這個", "那個"
+    ]
+    副詞=[
+        # 1. 劇烈、巨大變化
+        "Dramatically",    # 戲劇性地
+        "Drastically",     # 猛烈地
+        "Substantially",   # 大幅度地
+        "Considerably",    # 相當大地
+        "Significantly",   # 顯著地
+        "Markedly",        # 明顯地
+        "Enormously",      # 巨大地
+        "Hugely",          # 巨大地
+        # 2. 快速、突然變化
+        "Sharply",         # 急遽地
+        "Rapidly",         # 快速地
+        "Quickly",         # 迅速地
+        "Swiftly",         # 迅速地
+        "Steeply",         # 陡峭地
+        "Suddenly",        # 突然地
+        "Abruptly",        # 突然地
+        # 3. 穩定、持續變化
+        "Steadily",        # 穩定地
+        "Gradually",       # 逐漸地
+        "Moderately",      # 適度地
+        "Progressively",   # 漸進地
+        # 4. 輕微、微小變化
+        "Slightly",        # 輕微地
+        "Marginally",      # 微小地
+        "Minimally",       # 極小地
+        "Slowly"           # 緩慢地
+    ]
+    動詞 = {
+        "be", "have", "do", "say", "get", "make", "go", "know", "take", "see",
+        "come", "think", "look", "want", "give", "use", "find", "tell", "ask", "work",
+        "seem", "feel", "try", "leave", "call", "keep", "let", "begin", "help", "talk",
+        "start", "show", "hear", "play", "run", "move", "like", "live", "believe", "hold",
+        "bring", "happen", "write", "provide", "sit", "stand", "lose", "pay", "meet", "include",
+        "continue", "set", "learn", "change", "lead", "understand", "watch", "follow", "stop", "create",
+        "speak", "read", "allow", "add", "spend", "grow", "open", "walk", "win", "offer"
+        ,
+        "是", "有", "做", "說", "得到", "製造", "去", "知道", "拿", "看",
+        "來", "想", "瞧", "想要", "給", "使用", "尋找", "告訴", "詢問", "工作",
+        "似乎", "感覺", "嘗試", "離開", "稱呼", "保持", "讓", "開始", "幫助", "談話",
+        "啟動", "展示", "聽到", "玩", "跑", "移動", "喜歡", "居住", "相信", "握住",
+        "帶來", "發生", "寫", "提供", "坐", "站立", "遺失", "支付", "遇見", "包含",
+        "繼續", "設置", "學習", "改變", "領導", "明白", "觀看", "遵循", "停止", "創造",
+        "說話", "閱讀", "允許", "增加", "花費", "成長", "打開", "走路", "贏得", "提供"
+    }
+    數量詞 = [
+        # --- 抽象數量 (Quantifiers) ---
+        "all", "most", "many", "much", "some", "any", "a few", "few", 
+        "a little", "little", "several", "each", "every", "plenty of", "enough",
+        # --- 單位量詞 (Units/Measure Words) ---
+        "a piece of", "a slice of", "a loaf of", "a bar of", "a sheet of", 
+        "a pack of", "a box of", "a pair of", "a set of", "a bottle of", 
+        "a cup of", "a glass of", "a bowl of", "a plate of", "a can of", 
+        "a jar of", "a spoon of", "a serving of", "a bunch of",
+        # --- 群體量詞 (Collective Nouns) ---
+        "a group of", "a crowd of", "a team of", "a flock of", "a herd of", 
+        "a school of", "a swarm of",
+        # --- 中文特有量詞之英文對應 ---
+        "general unit", "polite unit for people", "long/thin objects", 
+        "flat objects", "objects with handles", "bound objects", 
+        "machines/movies", "appliances/vehicles", "courses/light", "letters"
+        ,
+        # --- 抽象數量 ---
+        "全部", "大部分", "很多 (可數)", "很多 (不可數)", "一些", "任何/一些", "幾個", "很少 (幾乎沒有)", 
+        "一點點", "很少 (幾乎沒有)", "幾個/數個", "每個", "每個/所有", "很多/充足", "足夠",
+        # --- 單位量詞 ---
+        "一張/一塊/一份", "一片 (薄片)", "一條 (麵包)", "一條 (肥皂/巧克力)", "一張 (紙/床單)", 
+        "一包/一捆", "一盒/一箱", "一雙/一副", "一套/一組", "一瓶", 
+        "一杯 (熱飲)", "一杯 (冷飲)", "一碗", "一盤", "一罐 (鋁罐)", 
+        "一罐 (玻璃罐)", "一匙", "一份 (餐點)", "一束/一串",
+        # --- 群體量詞 ---
+        "一群 (人/物)", "一群 (擁擠的人)", "一隊", "一群 (鳥/羊)", "一群 (牛/象)", 
+        "一群 (魚)", "一群 (昆蟲)",
+        # --- 中文特有量詞 ---
+        "個", "位", "支/把", "張", "把", "本", "部", "臺", "道", "封"
+    ]
+    介詞 = [
+        # --- 空間位置 (Space) ---
+        "in", "on", "at", "under", "below", "above", "over", "beside", 
+        "next to", "between", "among", "behind", "in front of", "near", 
+        "opposite", "inside", "outside",
+        # --- 時間關係 (Time) ---
+        "at", "in", "on", "before", "after", "during", "since", "for", 
+        "until", "from...to", "within", "throughout",
+        # --- 方向與移動 (Movement) ---
+        "to", "into", "onto", "out of", "off", "up", "down", "across", 
+        "through", "along", "past", "towards", "around",
+        # --- 邏輯、關係與其他 (Other) ---
+        "of", "with", "without", "by", "for", "about", "against", "like", 
+        "as", "besides", "except", "instead of", "despite", "including"
+        ,
+        # --- 空間位置 ---
+        "在...裡面", "在...上面", "在 (特定地點)", "在...下方", "在...之下", "在...上方", "跨越...之上", "在...旁邊", 
+        "在...隔壁", "在...之間 (兩者)", "在...之中 (三者以上)", "在...後面", "在...前面", "靠近", 
+        "在...對面", "在...內部", "在...外部",
+        # --- 時間關係 ---
+        "在 (精確時間)", "在 (時段/月份/年份)", "在 (日期/星期)", "在...之前", "在...之後", "在...期間", "自從", "持續 (一段時間)", 
+        "直到", "從...到", "在...之內", "貫穿/整個 (時期)",
+        # --- 方向與移動 ---
+        "往/向", "進入", "到...之上", "離開/從...出來", "從...掉落/離開", "向上", "向下", "橫越", 
+        "穿過", "沿著", "經過", "朝向", "環繞/大約",
+        # --- 邏輯、關係與其他 ---
+        "的/屬於", "和...一起/用", "沒有/缺乏", "藉由/在...旁邊", "為了/給", "關於", "反對/靠著", "像...一樣", 
+        "作為", "除此之外 (包含)", "除了...之外 (排除)", "代替", "儘管", "包含"
+    ]
+    def 取詞(ss):
+        if isinstance(ss, str):ss=[ss]
+        for s in ss:
+            p=path_all(path,s)
+            if next(p):
+                s=row(1,p)
+    形容詞,名詞=[],[]
+    取詞(["形容詞","名詞"])
+    從對主的向量 = { "相似詞","反義詞"} # (詞)意義，找到主從詞(的顯示)，增加主是正向、減少主是負向
+    Positive_Ops = ["增加", "提升", "擴大","有助於","有益於"]
+    Negative_Ops = ["減少", "降低", "萎縮","減弱","忘記"]
+    glues = { 
+        "等價": ["是", "為", "is", "be", "定義"], 
+        "並列": ["還", "和", "與","且", "and", "狀", "類"], 
+        "排斥": ["不", "非", "質", "反", "對立"], 
+        "干涉": ["使", "讓", "變成", "become", "干涉"], 
+        "主從": ["有", "的", "of", "have", "屬" # 前為主
+            ,"belong to","屬於","附屬"], # 後為主
+    }
+    等價_mask=find_array(ocr_lines,(C(0) in glues["等價"]).get_mask)  
+    並列_mask=find_array(ocr_lines,(C(0) in glues["並列"]).get_mask) 
+    排斥_mask=find_array(ocr_lines,(C(0) in glues["排斥"]).get_mask) 
+    干涉_mask=find_array(ocr_lines,(C(0) in glues["干涉"]).get_mask) 
+    主從_mask=find_array(ocr_lines,(C(0) in glues["主從"]).get_mask) 
+    主從正向_mask=find_array(ocr_lines,(C(0) in Positive_Ops).get_mask) 
+    主從負向_mask=find_array(ocr_lines,(C(0) in Negative_Ops).get_mask) 
+    動詞_mask=find_array(ocr_lines,(C(0) in 動詞).get_mask)
+    解題=find_array(ocr_lines,(C(0) in 動詞).get_mask)
+    def make(a,b,f):
+        if a != path:
+            make_folder(path/a/f/b) # make_folder 內置處理已建立則用同路徑
+        else:
+            make_folder(path/f/b) # make_folder 內置處理已建立則用同路徑
+    # 動詞+副詞、動詞 形容詞 化or性、形容詞+名詞、形容詞 動詞。TODO:** 形 副 趨勢動詞(6)有負負得正 作用，並非疊加
+    # 形容詞的絕對位置:形 的 名、動 得 形、形 化。
+    動詞=ocr_lines[動詞_mask]
+    形容_mask1=find_array(動詞,(C(0).roll(-1) == "得").roll(-1).get_mask) 
+    形容_mask2=find_array(ocr_lines,(C(0) in ["的","化"]).roll(1).get_mask)
+    形容=ocr_lines[(形容_mask1+形容_mask2)]
+    make(path,形容,"形容詞")
+    # 名詞的絕對位置:數量名、的名、介名介
+    名_mask=find_array(ocr_lines,(C(0) =="的"+介詞+數量詞).roll(-1).get_mask)
+    make(path,ocr_lines[名_mask],"名詞")
+    # 句法：詞1主、詞1從
+    等價=ocr_lines[等價_mask]
+    意義_前者,意義_後者=find_array(等價,C(0).roll(1)),find_array(等價,C(0).roll(-1))
+    make(意義_前者,意義_後者,"意義")
+    # 句法：a2b、(a2b)2(c2d) 第一種2在誇號內 第二種在誇號外
+    並列=ocr_lines[並列_mask]
+    第一種=find_array(並列,C(0).isin(C(0)))
+    第二種_mask=C(0).func(並列).__ne__(第一種).get_mask
+    if 第一種.get_mask < 第二種_mask:
+        並列_前者 =第一種
+    if 第一種.get_mask > 第二種_mask:
+        並列_後者 =第一種
+    make(並列[並列_前者],並列[並列_後者],"並列")
+    # 句法:不_
+    被排斥_後者=C(0).func(ocr_lines[排斥_mask]).roll(-1)
+    make(ocr_lines[排斥_mask],被排斥_後者,"排斥")
+    # 句法:,_是_,。分配"是"的前後， 前者a太短(代名詞、"")則"追朔前者"；後者b 則都是到下一個標點符號的段落。 # TODO:*** 第二順位
+    干涉=ocr_lines[干涉_mask]
+    干涉_代名詞=find_array(干涉,(C(0).roll(1) in ["",pronouns,all_punc]).get_mask)
+    干涉_前者=find_array(干涉_代名詞,(C(0).diff.diff==0))
+    干涉_後者=find_array(干涉,C(0).roll(1).get_mask == 干涉_前者)
+    make(干涉[干涉_前者],干涉[干涉_後者],"干涉")
+    # 句法:詞4a結果。 # TODO:*** 第一順位
+    主從=ocr_lines[主從_mask]
+    主從_後為主=find_array(主從,C(0)in ["belong to","屬於","附屬"])
+    主從_後主=find_array(主從_後為主,C(0).roll(1))
+    make(find_array(主從_後主,C(0).roll(-1)),find_array(主從_後主,C(0).roll(1)),"主/中")
+    make(find_array(主從_後主,C(0).roll(1)),find_array(主從_後主,C(0).roll(-1)),"從/中")
+
+    主從_前為主=find_array(主從,C(0) not in ["belong to","屬於","附屬"])
+    主從_前主=find_array(主從_前為主,C(0).roll(1))
+    make(find_array(主從_前主,C(0).roll(1)),find_array(主從_前主,C(0).roll(-1)),"主/中")
+    make(find_array(主從_前主,C(0).roll(-1)),find_array(主從_前主,C(0).roll(1)),"從/中")
+    # 句法：影響詞 5 副詞、影響詞 5 名詞、影響詞 形容詞 5。 5=趨勢動詞
+    從是正向1=find_array(ocr_lines[主從正向_mask],C(0).roll(-1)in 名詞+副詞) # "影響詞" 趨勢動詞 副詞
+    從是正向2=find_array(ocr_lines[主從正向_mask],(C(0).roll(1) in 形容詞)) # "影響詞" 形容詞 趨勢動詞
+    從是負向1=find_array(ocr_lines[主從負向_mask],C(0).roll(-1)in 名詞)
+    從是負向2=find_array(ocr_lines[主從負向_mask],(C(0).roll(1) in 形容詞))
+    def 尋主(a,b):
+        主_p=path_all(path/a/"主")
+        if next(主_p):
+            出現的主=row(1,find_array(主_p,C(0) in b)) 
+            for 主 in 出現的主:
+                從_p=path_all(path/主/"從"/"中"/a)
+                if next(從_p):
+                    os.remove(path/主/"從"/"中"/a)
+                    return path/主/"從" # 從 未分方向，通知主
+    # make(影響詞,趨勢動詞,"正負向") # 尋主(趨勢動詞,影響詞) # base/a主/方向/從
+    make(C(0).從是正向1.roll(1),從是正向1,尋主(從是正向1,C(0).從是正向1.roll(1))/"正向") 
+    make(C(0).從是負向1.roll(1),從是負向1,尋主(從是負向1,C(0).從是負向1.roll(1))/"負向")
+    make(C(0).從是正向2.roll(2),從是正向2,尋主(從是正向2,C(0).從是正向2.roll(2))/"正向")
+    make(C(0).從是負向2.roll(2),從是負向2,尋主(從是負向2,C(0).從是負向2.roll(2))/"負向")
+    
+
+def 解題(出題,上,下,問題類型,
+    催化=None,運輸=None,聚合成=None,能量轉換=None,結構固化=None,
+    y=0,m=0,d=0,h=0
+    ):
+    def 分析屬性():
+        if isinstance(出題,str):
+            催化= find_array(出題,C(0) in  row(1,path_all(TEMPLATE_DIRS["Noesis"],"流轉回饋給多命令")))
+                
+            運輸= find_array(出題,C(0) in  row(1,path_all(TEMPLATE_DIRS["Noesis"],"意義上的流轉")))
+                
+            聚合成= find_array(出題,C(0) in   row(1,path_all(TEMPLATE_DIRS["Noesis"],"意義上的子同意義重疊")))
+                
+            能量轉換= find_array(出題,C(0) in  row(1,path_all(TEMPLATE_DIRS["Noesis"],"潰堤轉換類型" )))
+                
+            結構固化= find_array(出題,C(0) in  row(1,path_all(TEMPLATE_DIRS["Noesis"],"子意義反流轉在某處固定")))
+                
+ 
+    # 中性 傳遞，吸引 吸收，排斥 抵銷
+    math_dist = {
+        "加":{"大小正負關係":None,"小數":None,"加減乘除":中},
+        "減":{"大小正負關係":None,"小數":None,"加減乘除":吸},
+        "乘":{"大小正負關係":None,"小數":None,"加減乘除":查表後中},
+        "除":{"大小正負關係":None,"小數":None,"加減乘除":查表(1/1~1/9)移除分母後相乘分子},
+    }
+    作用力_dist = {
+        "起伏":"前後差異",
+        "加速度":"二次前後差異",
+        "雙方利益關係":"分子分母對調得到雙方的交換率",
+        "意義上的意義":"不同意義相乘得到作用結果",
+    }
+    # 人倫
+    有趣對話技巧_dist = {
+        "初步":"接力回應＋情緒認可＋故事延伸，用開放式提問把對話推向下一層，並自然留下「下次再聊」的鉤子",
+        "話題":"過渡句 接住",
+        "延伸話題":"引入相關故事或分享經歷:短、真、有連結，結尾留空，不搶話",
+        "開放式提問":"問「感受 / 想法 / 選擇原因」",
+        "自然換話題":"用 情緒或價值 當橋",
+        "續聊":"暗示下次相遇 / 延續:輕、不承諾、不壓迫",
+        "被理解":"有趣不是外在，而是內在被打開",
+        "被挑動":"有趣不是結果，是過程中的心動",
+        "被延伸":"有趣不是熱鬧，是有回應感",
+    }
+    # 有?分散成，經過編碼
+        # 認真實的，新的卜卦
+    會死AI的卜卦_dist = {
+        "人倫":{"金":f"{催化}","水":f"{運輸}","木":f"{聚合成}","火":f"{能量轉換}","土":f"{結構固化}"}, # 以value(性質)編碼，以key(關係)排序
+        "天干地支":{ 
+            "天干": {
+                "甲": f"+{聚合成}", "乙": f"-{聚合成}", 
+                "丙": f"+{能量轉換}", "丁": f"-{能量轉換}", 
+                "戊": f"+{結構固化}", "己": f"-{結構固化}", 
+                "庚": f"+{催化}", "辛": f"-{催化}", 
+                "壬": f"+{運輸}", "癸": f"-{運輸}"
+            },
+            "地支": {
+                "子": f"-{運輸}", "丑": f"-{結構固化}", 
+                "寅": f"+{聚合成}", "卯": f"-{聚合成}", 
+                "辰": f"+{結構固化}", "巳": f"+{能量轉換}", 
+                "午": f"-{能量轉換}", "未": f"-{結構固化}", 
+                "申": f"+{催化}", "酉": f"-{催化}", 
+                "戌": f"+{結構固化}", "亥": f"+{運輸}"
+            }
+        }, # 五行盛衰，循環 時間軸
+        "方位": {"西":f"{催化}","東":f"{聚合成}","南":f"{能量轉換}","北":f"{運輸}","中":f"{結構固化}"}, #　第幾象限
+    }
+    def T(Y, M, D, H):
+        G, Z = "甲乙丙丁戊己庚辛壬癸", "子丑寅卯辰巳午未申酉戌亥"
+        # 修正：1、2月視為前一年的13、14月
+        y, m = (Y, M) if M > 2 else (Y-1, M+12)
+        # 儒略日/偏移量計算
+        j = 365*y + y//4 - y//100 + y//400 + int(30.6*(m+1)) + D - 15
+        # 年柱：(Y-4)%10 / (Y-4)%12
+        gy, zy = (Y-4)%10, (Y-4)%12
+        # 月柱：公式修正 (月干與年干有關)
+        gm = (gy * 2 + M + 2) % 10
+        zm = (M + 1) % 12 # 寅月為正月，對應 M=1 -> zm=2(寅)
+        # 日柱：修正原代碼的 gd 錯誤
+        gd, zd = (j+9)%10, (j+1)%12
+        # 時柱：時干與日干有關
+        zh = ((H+1)//2)%12
+        gh = (gd * 2 + zh) % 10
+        # 返回 性質編碼後的結果
+        return (f"{G[gy]}",f"{Z[zy]}"), (f"{G[gm]}",f"{Z[zm]}"), (f"{G[gd]}",f"{Z[zd]}"), (f"{G[gh]}",f"{Z[zh]}")
+    Y,M,D,H=T(y,m,d,h)
+    result=[
+        會死AI的卜卦_dist["天干地支"]["天干"][Y.ground(0)],
+        會死AI的卜卦_dist["天干地支"]["地支"][Y.ground(1)],
+        會死AI的卜卦_dist["天干地支"]["天干"][M.ground(0)],
+        會死AI的卜卦_dist["天干地支"]["地支"][M.ground(1)],
+        會死AI的卜卦_dist["天干地支"]["天干"][D.ground(0)],
+        會死AI的卜卦_dist["天干地支"]["地支"][D.ground(1)],
+        會死AI的卜卦_dist["天干地支"]["天干"][H.ground(0)],
+        會死AI的卜卦_dist["天干地支"]["地支"][H.ground(1)],
+    ]
+    
 def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_ratio=None,npy=None):
     """
     a : 該圖，return 特徵點,描述子
@@ -2433,188 +2756,7 @@ if __name__ == "__main__":
         make_folder(a)
     for a in 背景節點.values():
         make_folder(a)
-        
-    def text_make_background(path=None):
-        if path is None:
-            path=make_folder(TEMPLATE_DIRS["Noesis"]) # 可以精確地調整路徑
-        ocr_engine = PaddleOCR(use_angle_cls=True, lang='ch_tra', show_log=False)
-        essay = ocr_engine.ocr(get_screenshot(), cls=True)
-        ocr_lines = np.array([line[1][0] for res in essay for line in res] ) # 合併成連續的字和標點符號
-        import string
-        all_punc = list(string.punctuation) + ["，", "。", "、", "；", "：", "？", "！"] # punc 表點符號的縮寫
-        pronouns = [
-            "i", "me", "my", "mine", "myself", 
-            "you", "your", "yours", "yourself", "yourselves",
-            "he", "him", "his", "himself", 
-            "she", "her", "hers", "herself", 
-            "it", "its", "itself", 
-            "we", "us", "our", "ours", "ourselves", 
-            "they", "them", "their", "theirs", "themselves",
-            "this", "that", "these", "those"
-            ,
-            "我", "你", "您", "他", "她", "它", "牠", "祂",
-            "我們", "你們", "您們", "他們", "她們", "它們", "牠們", "祂們",
-            "自己", "自個兒", "人家", "別人",
-            "這", "那", "這裡", "那裡", "這兒", "那兒", "這個", "那個"
-        ]
-        從對主的向量 = { "相似詞","反義詞"} # (詞)意義，找到主從詞(的顯示)，增加主是正向、減少主是負向
-        Positive_Ops = ["增加", "提升", "擴大"]
-        Negative_Ops = ["減少", "降低", "萎縮"]
-        glues = { 
-            "等價": ["是", "為", "is", "be", "定義"], 
-            "並列": ["還", "和", "與","且", "and", "狀", "類"], 
-            "排斥": ["不", "非", "質", "反", "對立"], 
-            "干涉": ["使", "讓", "變成", "become", "干涉"], 
-            "主從": ["有", "的", "of", "have", "屬"], 
-        }
-        等價_mask=find_array(ocr_lines,(C(0) in glues["等價"]).get_mask) # 句法：詞1主、詞1從
-        並列_mask=find_array(ocr_lines,(C(0) in glues["並列"]).get_mask) # 句法：a2b、(a2b)2(c2d)
-        排斥_mask=find_array(ocr_lines,(C(0) in glues["排斥"]).get_mask) # 句法: a不b
-        干涉_mask=find_array(ocr_lines,(C(0) in glues["干涉"]).get_mask) # 句法：a3b
-        主從_mask=find_array(ocr_lines,(C(0) in glues["主從"]).get_mask) # 句法：詞4a結果
-        主從正向_mask=find_array(ocr_lines,(C(0) in Positive_Ops).get_mask) # 句法：5 名詞,詞 形容詞 5
-        主從負向_mask=find_array(ocr_lines,(C(0) in Negative_Ops).get_mask) # 句法：5 名詞,詞 形容詞 5
-        def mask(a,b,f):
-            make_folder(path/a/f/b) # make_folder 內置處理已建立則用同路徑
-        # 句法：詞1主、詞1從
-        等價=ocr_lines[等價_mask]
-        意義_前者,意義_後者=find_array(等價,C(0).roll(1)),find_array(等價,C(0).roll(-1))
-        mask(意義_前者,意義_後者,"意義")
-        # 句法：a2b、(a2b)2(c2d) 第一種2在誇號內 第二種在誇號外
-        並列=ocr_lines[並列_mask]
-        第一種=find_array(並列,C(0).isin(C(0)))
-        第二種_mask=C(0).func(並列).__ne__(第一種).get_mask
-        if 第一種.get_mask < 第二種_mask:
-            並列_前者 =第一種
-        if 第一種.get_mask > 第二種_mask:
-            並列_後者 =第一種
-        mask(並列[並列_前者],並列[並列_後者],"並列")
-        # 句法:不_
-        被排斥_後者=C(0).func(ocr_lines[排斥_mask]).roll(-1)
-        mask(ocr_lines[排斥_mask],被排斥_後者,"排斥")
-        # 句法:,_是_,。分配"是"的前後， 前者a太短(代名詞、"")則"追朔前者"；後者b 則都是到下一個標點符號的段落。
-        干涉=ocr_lines[干涉_mask]
-        干涉_代名詞=find_array(干涉,(C(0).roll(1) in ["",pronouns,all_punc]).get_mask)
-        干涉_前者=find_array(干涉_代名詞,(C(0).diff.diff==0))
-        干涉_後者=find_array(干涉,C(0).roll(1).get_mask == 干涉_前者)
-        mask(干涉[干涉_前者],干涉[干涉_後者],"干涉")
-        # 句法:詞4a結果
-        主從=ocr_lines[主從_mask]
-        主從_前者=find_array(主從,C(0).roll(1))
-        主從_後者=find_array(主從,C(0).roll(-1))
-        # TODO:*** 是主?是從?
-        mask(主從[主從_前者],主從[主從_後者],"主從")
-        mask(主從[主從_後者],主從[主從_前者],"主從")
-        # 句法：5 名詞,詞 形容詞 5
-        從是正向1=find_array(ocr_lines[主從正向_mask],C(0).roll(-1)in 名詞) # TODO:*** 名詞 形容詞 主(上)詞
-        從是正向2=find_array(ocr_lines[主從正向_mask],
-            (C(0).roll(1) in 形容詞) and 
-            (C(0).roll(2) in 名詞) )
-        從是負向1=find_array(ocr_lines[主從負向_mask],C(0).roll(-1)in 名詞)
-        從是負向2=find_array(ocr_lines[主從負向_mask],
-            (C(0).roll(1) in 形容詞) and 
-            (C(0).roll(2) in 名詞) )
-        mask(主詞,C(0).從是正向1.roll(-1),"正向")
-        mask(主詞,C(0).從是負向1.roll(-1),"負向")
-        mask(主詞,C(0).從是正向2.roll(2),"正向")
-        mask(主詞,C(0).從是負向2.roll(2),"負向")
-        # 增減益的前後是形容連接詞?部分增減益是形容詞
-            
-
-
-#    word_dist_died = {
-#        "態": {"意義": "事物表現之性狀", "相似": "狀", "反義": "質"},
-#        "權": {"意義": "應享有之利益", "相似": "勢", "反義": "責"},
-#        "拓": {"意義": "開展、擴張", "相似": "展", "反義": "縮"},
-#        "熵": {"意義": "混亂度之度量", "相似": "亂", "反義": "序"},
-#        "併": {"意義": "合二為一", "相似": "合", "反義": "分"},
-#        "緩": {"意義": "速度慢、延遲", "相似": "遲", "反義": "急"},
-#        "耦": {"意義": "成對、配合", "相似": "連", "反義": "離"},
-#        "溯": {"意義": "逆流而上、尋根", "相似": "追", "反義": "流"},
-#        "封": {"意義": "密閉、限制", "相似": "閉", "反義": "啟"},
-#        "跨": {"意義": "越過、超過", "相似": "越", "反義": "守"}
-#    }
-    math_dist = {
-        "加":{"大小正負關係":None,"小數":None,"加減乘除":中},
-        "減":{"大小正負關係":None,"小數":None,"加減乘除":吸},
-        "乘":{"大小正負關係":None,"小數":None,"加減乘除":查表後中},
-        "除":{"大小正負關係":None,"小數":None,"加減乘除":查表(1/1~1/9)移除分母後相乘分子},
-        "":{"大小正負關係":None,"小數":None,"加減乘除":None},
-        "":{"大小正負關係":None,"小數":None,"加減乘除":None},
-    }
-    作用力_dist = {
-        "起伏":"前後差異",
-        "加速度":"二次前後差異",
-        "雙方利益關係":"、分子分母對調得到雙方的交換率",
-        "意義上的意義":"不同意義相乘得到作用結果",
-        "":"",
-        "":"",
-    }
-    
-    # 人倫
-    有趣對話技巧_dist = {
-        "初步":"接力回應＋情緒認可＋故事延伸，用開放式提問把對話推向下一層，並自然留下「下次再聊」的鉤子",
-        "話題":"過渡句 接住",
-        "延伸話題":"引入相關故事或分享經歷:短、真、有連結，結尾留空，不搶話",
-        "開放式提問":"問「感受 / 想法 / 選擇原因」",
-        "自然換話題":"用 情緒或價值 當橋",
-        "續聊":"暗示下次相遇 / 延續:輕、不承諾、不壓迫",
-        "被理解":"有趣不是外在，而是內在被打開",
-        "被挑動":"有趣不是結果，是過程中的心動",
-        "被延伸":"有趣不是熱鬧，是有回應感",
-    }
-    # 有?分散成，經過編碼
-        # 認真實的，新的卜卦
-    會打死gemini的卜卦_dist = {
-        "人倫":{"金":f"{催化}","水":f"{運輸}","木":f"{聚合成}","火":f"{轉換能量}","土":f"{結構化}"}, # 以value(性質)編碼，以key(關係)排序
-        "天干地支":{ 
-            "天干": {
-                "甲": f"+{聚合成}", "乙": f"-{聚合成}", 
-                "丙": f"+{轉換能量}", "丁": f"-{轉換能量}", 
-                "戊": f"+{結構化}", "己": f"-{結構化}", 
-                "庚": f"+{催化}", "辛": f"-{催化}", 
-                "壬": f"+{運輸}", "癸": f"-{運輸}"
-            },
-            "地支": {
-                "子": f"-{運輸}", "丑": f"-{結構化}", 
-                "寅": f"+{聚合成}", "卯": f"-{聚合成}", 
-                "辰": f"+{結構化}", "巳": f"+{轉換能量}", 
-                "午": f"-{轉換能量}", "未": f"-{結構化}", 
-                "申": f"+{催化}", "酉": f"-{催化}", 
-                "戌": f"+{結構化}", "亥": f"+{運輸}"
-            }
-        }, # 五行盛衰，循環 時間軸
-        "方位": {"西":f"{催化}","東":f"{聚合成}","南":f"{轉換能量}","北":f"{運輸}","中":f"{結構化}"}, #　第幾象限
-    }
-    def T(Y, M, D, H):
-        G, Z = "甲乙丙丁戊己庚辛壬癸", "子丑寅卯辰巳午未申酉戌亥"
-        # 修正：1、2月視為前一年的13、14月
-        y, m = (Y, M) if M > 2 else (Y-1, M+12)
-        # 儒略日/偏移量計算
-        j = 365*y + y//4 - y//100 + y//400 + int(30.6*(m+1)) + D - 15
-        # 年柱：(Y-4)%10 / (Y-4)%12
-        gy, zy = (Y-4)%10, (Y-4)%12
-        # 月柱：公式修正 (月干與年干有關)
-        gm = (gy * 2 + M + 2) % 10
-        zm = (M + 1) % 12 # 寅月為正月，對應 M=1 -> zm=2(寅)
-        # 日柱：修正原代碼的 gd 錯誤
-        gd, zd = (j+9)%10, (j+1)%12
-        # 時柱：時干與日干有關
-        zh = ((H+1)//2)%12
-        gh = (gd * 2 + zh) % 10
-        # 返回 性質編碼後的結果
-        return (f"{G[gy]}",f"{Z[zy]}"), (f"{G[gm]}",f"{Z[zm]}"), (f"{G[gd]}",f"{Z[zd]}"), (f"{G[gh]}",f"{Z[zh]}")
-    Y,M,D,H=T(y,m,d,h)
-    result=[
-        會打死gemini的卜卦_dist["天干地支"]["天干"][Y.ground(0)],
-        會打死gemini的卜卦_dist["天干地支"]["地支"][Y.ground(1)],
-        會打死gemini的卜卦_dist["天干地支"]["天干"][M.ground(0)],
-        會打死gemini的卜卦_dist["天干地支"]["地支"][M.ground(1)],
-        會打死gemini的卜卦_dist["天干地支"]["天干"][D.ground(0)],
-        會打死gemini的卜卦_dist["天干地支"]["地支"][D.ground(1)],
-        會打死gemini的卜卦_dist["天干地支"]["天干"][H.ground(0)],
-        會打死gemini的卜卦_dist["天干地支"]["地支"][H.ground(1)],
-    ]
+       
     # 測試：搜尋「積極」
     # data = asbc_stealth_search(url)
     # print(f"網路抓取結果: {data}")
