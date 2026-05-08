@@ -321,17 +321,17 @@ def fill_accurate_images(keyword, word_dir):
         pass
     print(f"  [警告] {keyword} 找不到精確對應圖片")
     return False
-def asbc_stealth_search(keyword):
+def asbc_stealth_search(keyword,home_url,search_url,payload):
     # 1. 初始化 Session (模擬瀏覽器開啟後的狀態)
     session = requests.Session()
-    home_url = "https://asbc.iis.sinica.edu.tw/"
+    # home_url = "https://asbc.iis.sinica.edu.tw/"
     session.get(home_url, timeout=10) 
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': 'https://asbc.iis.sinica.edu.tw/'
+        'Referer': home_url
     }
     # 2. 定義目標 API / CGI 路徑 (中研院常用的查詢端點)
-    search_url = "https://asbc.iis.sinica.edu.tw/" 
+    search_url = home_url
     # 3. 準備參數 (Key: 你的關鍵字)
     # 這裡的參數名稱需要根據實際 F12 觀察到的 Network Form Data 調整
     payload = {
@@ -613,18 +613,12 @@ def 解題(出題,上,下,問題類型,
     催化=None,運輸=None,聚合成=None,能量轉換=None,結構固化=None,
     y=0,m=0,d=0,h=0
     ):
-    def 分析屬性():
-        if isinstance(出題,str):
-            催化= find_array(出題,C(0) in  row(1,path_all(TEMPLATE_DIRS["Noesis"],"流轉回饋給多命令")))
-                
-            運輸= find_array(出題,C(0) in  row(1,path_all(TEMPLATE_DIRS["Noesis"],"意義上的流轉")))
-                
-            聚合成= find_array(出題,C(0) in   row(1,path_all(TEMPLATE_DIRS["Noesis"],"意義上的子同意義重疊")))
-                
-            能量轉換= find_array(出題,C(0) in  row(1,path_all(TEMPLATE_DIRS["Noesis"],"潰堤轉換類型" )))
-                
-            結構固化= find_array(出題,C(0) in  row(1,path_all(TEMPLATE_DIRS["Noesis"],"子意義反流轉在某處固定")))
-                
+    if isinstance(出題,str):
+        催化= find_array(出題,全能ORB(C(0),C(0).func( row(1,path_all(TEMPLATE_DIRS["Noesis"],"流轉回饋給多命令"))),similar_ratio=0.8))
+        運輸= find_array(出題,全能ORB(C(0),C(0).func( row(1,path_all(TEMPLATE_DIRS["Noesis"],"意義上的流轉"))),similar_ratio=0.8))
+        聚合成= find_array(出題,全能ORB(C(0),C(0).func( row(1,path_all(TEMPLATE_DIRS["Noesis"],"意義上的子同意義重疊"))),similar_ratio=0.8))
+        能量轉換= find_array(出題,全能ORB(C(0),C(0).func( row(1,path_all(TEMPLATE_DIRS["Noesis"],"潰堤轉換類型" ))),similar_ratio=0.8))
+        結構固化= find_array(出題,全能ORB(C(0),C(0).func( row(1,path_all(TEMPLATE_DIRS["Noesis"],"子意義在不流轉處沉積"))),similar_ratio=0.8))
  
     # 中性 傳遞，吸引 吸收，排斥 抵銷
     math_dist = {
@@ -654,7 +648,7 @@ def 解題(出題,上,下,問題類型,
     # 有?分散成，經過編碼
         # 認真實的，新的卜卦
     會死AI的卜卦_dist = {
-        "人倫":{"金":f"{催化}","水":f"{運輸}","木":f"{聚合成}","火":f"{能量轉換}","土":f"{結構固化}"}, # 以value(性質)編碼，以key(關係)排序
+        "人倫":{f"{催化}":"金",f"{運輸}":"水",f"{聚合成}":"木",f"{能量轉換}":"火",f"{結構固化}":"土"}, # 以value(性質)編碼，以key(關係)排序
         "天干地支":{ 
             "天干": {
                 "甲": f"+{聚合成}", "乙": f"-{聚合成}", 
@@ -672,7 +666,7 @@ def 解題(出題,上,下,問題類型,
                 "戌": f"+{結構固化}", "亥": f"+{運輸}"
             }
         }, # 五行盛衰，循環 時間軸
-        "方位": {"西":f"{催化}","東":f"{聚合成}","南":f"{能量轉換}","北":f"{運輸}","中":f"{結構固化}"}, #　第幾象限
+        "方位": {f"{催化}":"西",f"{聚合成}":"東",f"{能量轉換}":"南",f"{運輸}":"北",f"{結構固化}":"中"}, #　第幾象限
     }
     def T(Y, M, D, H):
         G, Z = "甲乙丙丁戊己庚辛壬癸", "子丑寅卯辰巳午未申酉戌亥"
@@ -703,6 +697,7 @@ def 解題(出題,上,下,問題類型,
         會死AI的卜卦_dist["天干地支"]["天干"][H.ground(0)],
         會死AI的卜卦_dist["天干地支"]["地支"][H.ground(1)],
     ]
+    find_array(result,C(0).roll(-1)+1 and C(0).roll(-2)-1)
     
 def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_ratio=None,npy=None):
     """
