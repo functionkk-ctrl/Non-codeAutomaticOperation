@@ -323,6 +323,7 @@ def fill_accurate_images(keyword, word_dir):
     return False
 def asbc_stealth_search(keyword,home_url,search_url,payload):
     # 1. 初始化 Session (模擬瀏覽器開啟後的狀態)
+    # TODO:*** 最簡便的使用方式
     session = requests.Session()
     # home_url = "https://asbc.iis.sinica.edu.tw/"
     session.get(home_url, timeout=10) 
@@ -539,7 +540,17 @@ def text_make_background(path=None):
     主從正向_mask=find_array(ocr_lines,(C(0) in Positive_Ops).get_mask) 
     主從負向_mask=find_array(ocr_lines,(C(0) in Negative_Ops).get_mask) 
     動詞_mask=find_array(ocr_lines,(C(0) in 動詞).get_mask)
-    解題=find_array(ocr_lines,(C(0) in 動詞).get_mask)
+    # TODO:***** 解題
+    出題第幾行開始=find_array(ocr_lines,(C(0) in "出題幾行").get_mask)  
+    出題幾行=find_array(ocr_lines,((C(0).roll(1)== "出題") and (C(0).roll(-1)== "行")).get_mask)
+    出題囉=find_array(ocr_lines,C(0).get_mask- 出題第幾行開始<出題幾行) 
+    if next(row(1,path_all(path,C(0).func(出題囉)/"主"))): # 詞/主
+        找到主=row([0,1],path_all(path,C(0).func(出題囉)/"主")) # path/.../(從)詞/主,找到主(詞)
+        上=找到主[1] 
+        下=find_array(找到主,C(0).roll(-1)=="主")
+    問題類型 # 提問中的名詞
+    解題(出題=出題囉,上=上,下=下,問題類型)
+
     def make(a,b,f):
         if a != path:
             make_folder(path/a/f/b) # make_folder 內置處理已建立則用同路徑
@@ -622,10 +633,10 @@ def 解題(出題,上,下,問題類型,
  
     # 中性 傳遞，吸引 吸收，排斥 抵銷
     math_dist = {
-        "加":{"大小正負關係":None,"小數":None,"加減乘除":中},
-        "減":{"大小正負關係":None,"小數":None,"加減乘除":吸},
-        "乘":{"大小正負關係":None,"小數":None,"加減乘除":查表後中},
-        "除":{"大小正負關係":None,"小數":None,"加減乘除":查表(1/1~1/9)移除分母後相乘分子},
+        "加"={"大小正負關係":None,"小數":None,"加減乘除":中},
+        "減"={"大小正負關係":None,"小數":None,"加減乘除":吸},
+        "乘"={"大小正負關係":None,"小數":None,"加減乘除":查表後中},
+        "除"={"大小正負關係":None,"小數":None,"加減乘除":(查表(1/1~1/9)移除分母後相乘分子)}
     }
     作用力_dist = {
         "起伏":"前後差異",
