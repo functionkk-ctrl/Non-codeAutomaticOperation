@@ -103,6 +103,7 @@ TEMPLATE_DIRS = {
 
 MATCH_THRESHOLD = 0.85
 LANGS = 'chi_tra+eng' 
+custom_config = '--psm 6'  # 假設影像是單一文字塊，可提升速度與準確度
 DEBUG = True    
 bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
 # --- 共用工具 ---
@@ -387,9 +388,10 @@ def text_make_background(path=None):
     """解析圖片的文字並分類進靜態資料夾中"""
     if path is None:
         path=make_folder(TEMPLATE_DIRS["Noesis"]) # 可以精確地調整路徑
-    ocr_engine = PaddleOCR(use_angle_cls=True, lang='ch_tra', show_log=False)
-    essay = ocr_engine.ocr(get_screenshot(), cls=True)
-    ocr_lines = np.array([line[1][0] for res in essay for line in res] ) # 合併成連續的字和標點符號
+    img = get_screenshot()
+    text = pytesseract.image_to_string(img, lang=LANGS, config=custom_config)
+    ocr_lines = np.array([line.strip() for line in text.split('\n') if line.strip()]) # 合併成連續的字和標點符號
+    # ocr_lines = np.array([line[1][0] for res in essay for line in res] ) 
     import string
     all_punc = list(string.punctuation) + ["，", "。", "、", "；", "：", "？", "！"] # punc 表點符號的縮寫
     pronouns = [
@@ -405,7 +407,8 @@ def text_make_background(path=None):
         "我", "你", "您", "他", "她", "它", "牠", "祂",
         "我們", "你們", "您們", "他們", "她們", "它們", "牠們", "祂們",
         "自己", "自個兒", "人家", "別人",
-        "這", "那", "這裡", "那裡", "這兒", "那兒", "這個", "那個"
+        "這", "那", "這裡", "那裡", "這兒", "那兒", "這個", "那個",
+        "先生","帥哥","小姐","美女",
     ]
     副詞=[
         # 1. 劇烈、巨大變化
@@ -528,6 +531,19 @@ def text_make_background(path=None):
         "是什麼結果":"詢問輸出",
         "什麼":"未指定類別的泛用資訊提問。",
     }
+    list_姓氏_中文 = [
+        "陳", "林", "黃", "張", "李", "王", "吳", "劉", "蔡", "楊", 
+        "許", "鄭", "謝", "洪", "郭", "邱", "曾", "廖", "賴", "徐", 
+        "周", "葉", "蘇", "莊", "呂", "江", "何", "蕭", "羅", "高", 
+        "潘", "簡", "朱", "鍾", "游", "彭", "詹", "胡", "施", "沈"
+    ]
+    # 英文常見姓氏（Common Surnames）
+    list_姓氏_英文 = [
+        "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez",
+        "Hernandez", "Lopez", "Gonzales", "Wilson", "Anderson", "Thomas", "Taylor", "Moore", "Jackson", "Martin",
+        "Lee", "Perez", "Thompson", "White", "Harris", "Sanchez", "Clark", "Ramirez", "Lewis", "Robinson",
+        "Walker", "Young", "Allen", "King", "Wright", "Scott", "Torres", "Nguyen", "Hill", "Flores"
+    ]
     def 取詞(ss):
         if isinstance(ss, str):ss=[ss]
         for s in ss:
@@ -568,7 +584,7 @@ def text_make_background(path=None):
     問題類型_細=find_array(ocr_lines,(C(0) not in 粗略提問) ) 
     # 提問中的名詞
         # 新詞用火水土得其義，其餘者金木得其行，義義空間上的時間上相近用火木得其關聯，動機用水差得其機率
-    解題(出題=出題囉,上=上,下=下,問題類型=問題類型_細) # 異步分析型提問，是最快矯正回答者的方式。 任何主題導向準確求解形式的問題類型，舉例如何知道提問是甚麼問題類型
+    解題(出題=出題囉,上=上,下=下,問題類型=問題類型_細,介詞,名詞) # 異步分析型提問，是最快矯正回答者的方式。 任何主題導向準確求解形式的問題類型，舉例如何知道提問是甚麼問題類型
 
     def make(a,b,f):
         if a != path:
@@ -638,10 +654,42 @@ def text_make_background(path=None):
     make(C(0).從是正向2.roll(2),從是正向2,尋主(從是正向2,C(0).從是正向2.roll(2))/"正向")
     make(C(0).從是負向2.roll(2),從是負向2,尋主(從是負向2,C(0).從是負向2.roll(2))/"負向")
     
-def 解題(出題,上,下,問題類型,
+def 解題(出題,介詞,名詞,
     金=None,水=None,木=None,火=None,土=None,
     y=0,m=0,d=0,h=0
     ): 
+    連接詞 = {
+        ["和", "跟", "與", "既", "及", "而", "又", "一面⋯⋯一面⋯⋯"], # 並列關係
+        ["或", "或者", "還是"], # 選擇關係
+        ["但是", "不過", "雖然", "然而"], # 轉折關係
+        ["因為", "因此", "所以", "由於", "以致"], # 因果關係
+        ["不但", "不僅", "而且", "何況", "並", "且"], # 遞進關係
+        ["不管", "只要", "除非"], # 條件關係
+        ["先⋯⋯再⋯⋯最後⋯⋯"] # 順成時間關係
+        ,
+        { # 對等連接詞_FANBOYS
+            "因為/為了", # For
+            "和/而且", # And
+            "也不", # Nor
+            "但是", # But
+            "或者", # Or
+            "然而/但是", # Yet
+            "所以" # So
+        },
+        { # 相關連接詞
+            "A 和 B 兩者皆是", # Both A and B
+            "不僅 A 還有 B", # Not only A but also B
+            "不是 A 就是 B", # Either A or B
+            "既不是 A 也不是 B", # Neither A nor B
+            "不論是 A 還是 B" # Whether A or B
+        },
+        { # 從屬連接詞
+            ["when", "while", "before", "after", "as soon as", "since"], # 時間
+            ["because", "as", "since", "so that", "in order that"], # 原因目的
+            ["if", "unless", "as long as"], # 條件
+            ["although", "though", "even if"] # 讓步
+        }
+    }
     def 相似詞(a):
         尋主=row([0,1],path_all(TEMPLATE_DIRS["Noesis"]/a,"主"))
         同向=row(1,path_all(尋主[0]/尋主[1]/"從",a))
@@ -651,25 +699,33 @@ def 解題(出題,上,下,問題類型,
         return 從正負
 
     if isinstance(出題,str):
-        #  in [""] 會用到的詞
-        # ，.roll(1) in [""] 料理對象
-        # ，path_all(在場的詞,從) 找不在場的
-        # TODO:***roll()抓取內容
-        金_mask= find_array(出題,(C(0) in 相似詞("目的")).roll(-1).get_mask) # 回饋性多命令， 為甚麼做(目的)
-        水_mask= find_array(出題,(C(0) in 相似詞("過程")).roll(-1).get_mask) # 意義上的流轉， 過程
-        木_mask= find_array(出題,(C(0) in 相似詞("有規律")).roll(1).get_mask) # 意義上的子同意義重疊， 有規律
-        火_mask= find_array(出題,(C(0) in 相似詞("方式轉換")).roll(-1).get_mask) # 潰堤轉換類型， 方式轉換
-        土_mask= find_array(出題,(C(0) in 相似詞("獲益")).roll(-1).get_mask) # 流轉停滯處沉積子意義， 獲益(目的)
-        金=出題[金_mask:-1]
-        水=出題[水_mask:-1]
-        木=出題[木_mask:1]
-        火=出題[火_mask:-1]
-        土=出題[土_mask:-1]
+        #  in [""] 會用到的詞        # ，.roll(1) in [""] 料理對象        # ，path_all(在場的詞,從) 找不在場的
+        # TODO:*** 獲取出現的全部共同主(義義空間)，子義義在主之下的差異(例如屁連著眼=gemini屁眼)
+            # 異步分析型構句
+        """
+        # 先抓人名 或物品 ，在找共同的主，計算差異，看子異異(人名或物品)的從(隱含異異)受到的影響。先對獲益，後對流轉。
+            # 沈秋 和貓，共同主為江湖，沈秋(轉換)總帶著一隻獨眼黑貓(獲益)。 (流轉)到七年前  沈秋樸通少年 官兵剿民(流轉) (轉換方式)兩死一傷貓 (獲益)求教於老劍客 (動機)老劍客說復仇
+        """
+        劫_mask= find_array(出題,(C(0) in 相似詞("姓氏與名字")).get_mask) # 包含各語言的姓氏，名字，代名詞我以外的均要往更前面找，找不到則是後面會提
+        土_mask= find_array(出題,(C(0) in 名詞).get_mask) # 獲益 名詞
+        金_mask= find_array(出題,(C(0) in 相似詞("動名詞")).get_mask) # 動機 動名詞
+        水_mask= find_array(出題,(C(0) in 連接詞).roll(-1).get_mask) # 過程 連接詞
+        木_mask= find_array(出題,(C(0).isin(C(0).func(出題)) ).roll(-1).get_mask) # 有規律 出現時長高
+        火_mask= find_array(出題,(C(0) in 介詞).roll(-1).get_mask) # 轉換 介詞
+        # 找到的代名詞為上一位
+        土=(出題[土_mask:-1] , find_array(劫_mask,(C(0)<土_mask)) and (C(0).roll(-1)>土_mask))
+        金=(出題[金_mask:-1] , find_array(劫_mask,(C(0)<金_mask)) and (C(0).roll(-1)>金_mask))
+        水=(出題[水_mask:-1] , find_array(劫_mask,(C(0)<水_mask)) and (C(0).roll(-1)>水_mask))
+        木=(出題[木_mask:-1] , find_array(劫_mask,(C(0)<木_mask)) and (C(0).roll(-1)>木_mask))
+        火=(出題[火_mask:-1] , find_array(劫_mask,(C(0)<火_mask)) and (C(0).roll(-1)>火_mask))
+        # TODO:**詞無相關詞
+    else: 
+        print("出題不符合格式")
     # 中性 傳遞，吸引 吸收，排斥 抵銷
     math_dist = {
-        "加"={"大小正負關係":None,"小數":None,"加減乘除":中},
-        "減"={"大小正負關係":None,"小數":None,"加減乘除":吸},
-        "乘"={"大小正負關係":None,"小數":None,"加減乘除":查表後中},
+        "加"={"大小正負關係":None,"小數":None,"加減乘除":中}
+        "減"={"大小正負關係":None,"小數":None,"加減乘除":吸}
+        "乘"={"大小正負關係":None,"小數":None,"加減乘除":查表後中}
         "除"={"大小正負關係":None,"小數":None,"加減乘除":(查表(1/1~1/9)移除分母後相乘分子)}
     }
     作用力_dist = {
