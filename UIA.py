@@ -383,7 +383,84 @@ def asbc_stealth_search(keyword,home_url,search_url,payload):
         print(f"隱藏請求失敗: {e}")
         return []
     
-     
+def 看字():
+    # Tesseract 最佳化設定：
+    # --psm 6 (假設單一文字塊) 
+    # --oem 1 (使用 LSTM 引擎)
+    # -c tessedit_do_invert=0 (禁止反轉影像顏色，節省運算時間)
+    TESS_CONFIG = '--psm 6 --oem 1 -c tessedit_do_invert=0'
+    LANG_CONFIG = 'chi_tra+eng'
+
+    def preprocess_image(img_np):
+        """ 普通 OCR 必備的預處理：灰階 + 二值化，能減少 50% 辨識時間 """
+        gray = cv2.cvtColor(img_np, cv2.COLOR_BGR2GRAY)
+        # 將影像二值化（純黑白），過濾背景雜訊
+        _, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+        return thresh
+
+    def analyze_text(text_lines):
+        """ 文字分析邏輯（請在此實作您的邏輯） """
+        if len(text_lines) == 0:
+            return
+            
+        full_text = " ".join(text_lines)
+        print(f"[{time.strftime('%H:%M:%S')}] 分析結果: {full_text[:30]}...") 
+        
+        # 範例：關鍵字觸發
+        if "error" in full_text.lower() or "錯誤" in full_text:
+            print("⚠️ 偵測到錯誤關鍵字！")
+
+    def ocr_worker():
+        """ 獨立的 OCR 執行緒，確保每秒穩定執行 """
+        def clean_folder_name(text):
+            """ 清理 OCR 文字，使其符合資料夾命名規則，並限制長度 """
+            # 1. 移除換行與前後空白
+            text = text.replace('\n', '').replace('\r', '').strip()
+            
+            # 2. 移除作業系統不允許的資料夾字元 \ / : * ? " < > |
+            clean_text = re.sub(r'[\/\\\:\*\?\"\<\>\|]', '', text)
+            
+            # 3. 限制資料夾名稱長度（上限 30 字，避免過長報錯）
+            return clean_text[:30].strip()
+        while not alive_event.is_set():
+            start_time = time.time()
+            
+            try:
+                # 1. 取得截圖（確保 get_screenshot() 回傳的是 OpenCV 格式的 numpy array）
+                raw_img = get_screenshot() 
+                
+                # 2. 影像優化（普通 OCR 速度的關鍵）
+                processed_img = preprocess_image(raw_img)
+                
+                # 3. 執行 OCR
+                text = pytesseract.image_to_string(processed_img, lang=LANG_CONFIG, config=TESS_CONFIG)
+                
+                # 4. 轉換為您的 np.array 格式
+                ocr_lines = np.array([line.strip() for line in text.split('\n') if line.strip()])
+                
+                # 5. 分析文字
+                analyze_text(ocr_lines)
+                # 3. 清理字串
+                folder_name = clean_folder_name(text)
+                
+                # 4. 如果有讀到有效的字，就建立資料夾
+                if folder_name:
+                    make_folder(folder_name)
+                    # 這裡您可以選擇把截圖也存進該資料夾，例如：
+                    # cv2.imwrite(f"{folder_name}/screenshot.png", img)
+                else:
+                    print(f"[{time.strftime('%H:%M:%S')}] 💤 未讀取到有效文字，跳過。")
+                    
+                time.sleep(1)
+            except Exception as e:
+                print(f"OCR 發生錯誤: {e}")
+                
+            # 6. 動態計算計算時間，確保剛好每秒執行一次
+            elapsed_time = time.time() - start_time
+            sleep_time = max(0, 1.0 - elapsed_time)
+            time.sleep(sleep_time)
+            print("🛑 OCR 執行緒已安全中斷。")
+            
 def text_make_background(path=None):
     """解析圖片的文字並分類進靜態資料夾中"""
     if path is None:
@@ -584,7 +661,7 @@ def text_make_background(path=None):
     問題類型_細=find_array(ocr_lines,(C(0) not in 粗略提問) ) 
     # 提問中的名詞
         # 新詞用火水土得其義，其餘者金木得其行，義義空間上的時間上相近用火木得其關聯，動機用水差得其機率
-    解題(出題=出題囉,上=上,下=下,問題類型=問題類型_細,介詞,名詞) # 異步分析型提問，是最快矯正回答者的方式。 任何主題導向準確求解形式的問題類型，舉例如何知道提問是甚麼問題類型
+    解題(出題=出題囉,上=上,下=下,問題類型=問題類型_細,介詞=介詞,名詞=名詞) # 異步分析型提問，是最快矯正回答者的方式。 任何主題導向準確求解形式的問題類型，舉例如何知道提問是甚麼問題類型
 
     def make(a,b,f):
         if a != path:
@@ -723,10 +800,10 @@ def 解題(出題,介詞,名詞,
         print("出題不符合格式")
     # 中性 傳遞，吸引 吸收，排斥 抵銷
     math_dist = {
-        "加"={"大小正負關係":None,"小數":None,"加減乘除":中}
-        "減"={"大小正負關係":None,"小數":None,"加減乘除":吸}
-        "乘"={"大小正負關係":None,"小數":None,"加減乘除":查表後中}
-        "除"={"大小正負關係":None,"小數":None,"加減乘除":(查表(1/1~1/9)移除分母後相乘分子)}
+        "加":{"大小正負關係":None,"小數":None,"加減乘除":"中"},
+        "減":{"大小正負關係":None,"小數":None,"加減乘除":"吸"},
+        "乘":{"大小正負關係":None,"小數":None,"加減乘除":"查表後中"},
+        "除":{"大小正負關係":None,"小數":None,"加減乘除":"(查表(1/1~1/9)移除分母後相乘分子)"}
     }
     作用力_dist = {
         "起伏":"前後差異",
@@ -1262,7 +1339,7 @@ def locate_template_orb(name, sort=1, num=1, dir=TEMPLATE_DIRS["live_capture"]):
     path = os.path.join(dir, f"{name}.png")
     if not os.path.exists(path):
         tar=TargetExtractor()
-        tar.select_polygon_roi()
+        tar.select_polygon_roi(name=name)
         return None
     tpl = cv2.imread(path, 0)
     screen_gray = get_screenshot()
@@ -1281,7 +1358,7 @@ def locate_template_orb(name, sort=1, num=1, dir=TEMPLATE_DIRS["live_capture"]):
     pts.sort(key=lambda p: (p[0], p[1]))  # 左上排序
     if not pts:
         tar=TargetExtractor()
-        tar.select_polygon_roi()
+        tar.select_polygon_roi(name=name)
         return name
 
     # 選取點
@@ -1341,7 +1418,7 @@ def locate_text(keyword, sort=1, num=1, classA=None):
     if not pts:
         print("not pts")
         tar=TargetExtractor()
-        tar.select_polygon_roi()
+        tar.select_polygon_roi(name=keyword)
         if DEBUG:
             print(f"⚠️ 找不到匹配點：{keyword}。若目標在場則建議")
         return keyword
@@ -1905,6 +1982,7 @@ class InputCommand(QObject):
                             print(f"act:{act}")
                             match act:
                                 case "第0123步": noesis.input()
+                                case "第0步": text_make_background() # TODO:**** 抓字
                                 case "Noesis編織關係": noesis.編織關係()
                                 case "Noesis輸入": noesis.輸入(action[i+1:])
                                 # Unity
@@ -2119,11 +2197,10 @@ class TargetExtractor:
         self.roi_mask = None
         self.orb = cv2.ORB_create(800)
 
-    def filter_target(self, dir=TEMPLATE_DIRS["live_capture"]):
+    def filter_target(self, name, path=TEMPLATE_DIRS["live_capture"]):
         """
         從 ROI 中提取目標，做 GrabCut 去背景，生成透明圖
         """
-        save_path = os.path.join(dir, f"s{time.time():.0f}.png")
         if self.roi_mask is None:
             return None
         # 提取ROI圖像並處理亮度對比
@@ -2165,11 +2242,11 @@ class TargetExtractor:
         self.extracted = cv2.merge([b, g, r, alpha])
 
             # 儲存為透明PNG
-        os.makedirs(dir, exist_ok=True)  # 沒有就自動建立
-        cv2.imwrite(save_path, self.extracted)
-        print(f"✅ 已儲存 {save_path}")
+        png=make_folder(path)/name+f"_s{time.time():.0f}.png"
+        cv2.imwrite(png, self.extracted)
+        print(f"✅ 已儲存 {png}")
 
-    def select_polygon_roi(self):
+    def select_polygon_roi(self,name=None):
         """
         可視化互動圈選多邊形 ROI
         - 左鍵：新增點
@@ -2237,7 +2314,7 @@ class TargetExtractor:
             self.roi_mask = np.zeros(self.base.shape[:2], dtype=np.uint8)
             cv2.fillPoly(self.roi_mask, [np.array(self.pts)], 255)
             cv2.destroyWindow("Draw ROI") # 關閉視窗
-            self.filter_target()
+            self.filter_target(name=name)
 
 
 
@@ -2864,6 +2941,13 @@ if __name__ == "__main__":
     TARGET_DEVICE_ID = r"你的設備ID填在這裡" 
     monitor = EventMonitor()
     rec = Recorder()
+
+    ocr_thread = threading.Thread(target=看字, daemon=True)
+    ocr_thread.start()
+    # 2. 假設讓它跑 10 秒
+    time.sleep(10)
+    # 3. 觸發中斷：隨時在主程式任何地方呼叫此行，OCR 就會停止
+    alive_event.set() 
     
     # ✅ 在背景啟動 watchdog 執行緒 # ***app關閉時， watchdog沒有跟著關閉
 

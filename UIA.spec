@@ -65,6 +65,7 @@ exe = EXE(
 )
 # python -m venv .venv
 # .\.venv\Scripts\Activate.ps1
+
 # python -m pip install --upgrade pip
 # uv add mediapipe geographiclib firebase-admin PySide6 numpy opencv-python Pillow PyOpenGL PyOpenGL-accelerate geopy pynput pyautogui pytesseract psutil pywinauto beautifulsoup4 lxml
 # uv run pyinstaller --clean UIA.spec
