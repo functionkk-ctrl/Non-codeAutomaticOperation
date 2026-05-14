@@ -2,7 +2,9 @@ import QtQuick
 import QtQuick3D 
 import QtQuick.Window 
 import QtQuick.Controls 
+import QtQuick.Effects
 import Qt5Compat.GraphicalEffects // 必須導入此模組來使用 Glow // Qt 6 請使用此模組；Qt 5 請改為 import QtGraphicalEffects 1.15
+
 
 
 Window {
@@ -11,8 +13,8 @@ Window {
     property int window_h: 360
     property int margin: 10
     property int text_h: 50
-    property int button_w: 90
-    property int button_h: 65
+    property int button_w: 80
+    property int button_h: 55
 
     width: window_w
     height: window_h
@@ -77,6 +79,72 @@ Window {
                     duration: 1230
                     easing.type: Easing.InOutQuad
                 }
+            }
+        }
+    }
+
+    // 1. 在這裡定義你的自訂按鈕組件 (Component)
+    component CamButton : Button {
+        id: control
+        checkable: true
+        implicitWidth: button_w
+        implicitHeight: button_h
+        // 宣告一個屬性別名，指向內部 mainText 的 text 屬性
+        property alias buttonText: mainText.text 
+        property real maxFontSize : 28
+        
+        // 純平背景，不需要任何外框陰影
+        background: Rectangle {
+            color: "#9ccbf4"
+            radius: 10
+            // TODO:***鑽石外觀
+        }
+        // 主要文字內容
+        Item {
+            id: textContainer
+            implicitWidth: mainText.implicitWidth 
+            implicitHeight: mainText.implicitHeight
+            anchors.centerIn: parent // 讓文字與陰影居中在按鈕中央
+
+            Text {
+                id: mainText
+                text: ""
+                color: "white" // 文字主顏色
+                anchors.centerIn: parent
+                
+                // 關鍵設定 1：設定字型錨定與最大大小
+                font.pixelSize: control.maxFontSize
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                // 關鍵設定 2：啟動自動縮小機制
+                fontSizeMode: Text.Fit  // 當文字超出寬度時，自動縮小字型大小
+                minimumPixelSize: 10     // 允許縮小到的最小極限（避免縮到 0 變看不見）               
+                // 關鍵設定 3：必須限制文字元件的寬度，否則它不知道何時該縮小
+                width: control.availableWidth
+                // 4. 精髓：如果字多到連 9 號字都塞不下，自動在末端加上 "..."
+                elide: Text.ElideRight
+                wrapMode: Text.NoWrap   // 不換行，強迫在單行內縮小
+                // 當我們在外部用 MultiEffect 渲染時，這裡保持純文字即可
+                //horizontalAlignment: Text.AlignHCenter
+                //verticalAlignment: Text.AlignVCenter
+            }
+
+            MultiEffect {
+                anchors.fill: mainText
+                source: mainText
+                
+                // 這樣一來，QML 就會隱藏原本的純白文字，只畫出經由 MultiEffect 加工後、帶有立體陰影的文字，徹底解決雙重文字重影 Bug！
+                // 【核心邏輯 1：陰影要大、羽化陰影邊緣】
+                shadowEnabled: true
+                blurMax: 3             // 模糊最大半徑
+                shadowBlur: 0.3        // 設為最大值 1.0 達到最強羽化效果
+                shadowColor: "#60000052" // 半透明黑色
+                
+                // 【核心邏輯 2：未選取時外凸 (Raised)，已選取時內凹 (Sunken)】
+                shadowHorizontalOffset: control.checked ? -2 : 2 
+                shadowVerticalOffset:   control.checked ? -2 : 2
+                
+                autoPaddingEnabled: true  // 自動計算陰影與模糊所需的邊框留白
             }
         }
     }
@@ -306,57 +374,64 @@ Window {
             }
         }
     }
+    Column {
+        id: buttonContainer
+        anchors.top: parent.top
+        width: childrenRect.width
+        height: childrenRect.height
+        spacing: 10 // 按鈕之間的間距
+        y: 10 + 2 * margin // 可在此統一設定整個群組的 y 座標
+        z: 99
 
+        CamButton {
+            id: animButton
+            buttonText: "輸出動畫"
+            opacity: listErrandButton.x < 50 ? 0 : 1
+            Behavior on opacity { NumberAnimation { duration: 300 } }
 
-    Button {
-        id: animButton
-        text: "輸出動畫"
-        opacity: listErrandButton.x < 50 ? 0 : 1
-        Behavior on opacity { NumberAnimation { duration: 300 } }
-
-        onClicked: (mouse) => {
-            // 拆字判斷動畫
-            var target = keyword_map[userInput];
-            if (!target) {
-                console.log("動畫❌ 找不到 userInput", userInput);
-                return;
-            }
-            var clipName  =Object.keys(target)[0];
-            // 搜尋 glTF 中的動畫列表
-            for (var i = 0; i < iluluModel.animations.length; i++) {
-                var a = iluluModel.animations[i];
-                if (a.name === clipName) {
-                    console.log("▶ 播放動畫:", clipName);
-                    iluluModel.animations[i].position = a.start;
-                    iluluModel.animations[i].duration = a.duration;
-                    iluluModel.animations[i].running = true;
+            onClicked: (mouse) => {
+                // 拆字判斷動畫
+                var target = keyword_map[userInput];
+                if (!target) {
+                    console.log("動畫❌ 找不到 userInput", userInput);
                     return;
-                }else if (a.name === "Idle"){
-                    console.log("▶ 播放待機動畫:", clipName);
-                    iluluModel.animations[i].position = a.start;
-                    iluluModel.animations[i].duration = a.duration;
-                    iluluModel.animations[i].running = true;
+                }
+                var clipName  =Object.keys(target)[0];
+                // 搜尋 glTF 中的動畫列表
+                for (var i = 0; i < iluluModel.animations.length; i++) {
+                    var a = iluluModel.animations[i];
+                    if (a.name === clipName) {
+                        console.log("▶ 播放動畫:", clipName);
+                        iluluModel.animations[i].position = a.start;
+                        iluluModel.animations[i].duration = a.duration;
+                        iluluModel.animations[i].running = true;
+                        return;
+                    }else if (a.name === "Idle"){
+                        console.log("▶ 播放待機動畫:", clipName);
+                        iluluModel.animations[i].position = a.start;
+                        iluluModel.animations[i].duration = a.duration;
+                        iluluModel.animations[i].running = true;
+                    }
                 }
             }
         }
-    }
 
-    Button {
-        id: quit
-        text: "關閉"
-        y: 10 + 2 * margin
-        z: 99
-        opacity: listErrandButton.x < 50 ? 0 : 1
-        Behavior on opacity { NumberAnimation { duration: 300 } }
+        CamButton {
+            id: quit
+            buttonText: "關閉"
+            opacity: listErrandButton.x < 50 ? 0 : 1
+            Behavior on opacity { NumberAnimation { duration: 300 } }
 
-        onClicked: (mouse) => {
-            Qt.quit()
+            onClicked: (mouse) => {
+                Qt.quit()
+            }
         }
     }
     
     // 新增與移除任務
     Column  {
         id: listErrand 
+        anchors.top: parent.bottom
         spacing: 6
     }
 
@@ -573,9 +648,9 @@ Window {
 
     // == = 滾輪縮放 == =
 
-//    WheelHandler {
-//        onWheel: root.scaleFactor += wheel.angleDelta.y * 0.001
-//    }
+    //WheelHandler {
+    //    onWheel: root.scaleFactor += wheel.angleDelta.y * 0.001
+    //}
 
     // == == == == UI：重新掛載子物件 == == == ==
 
@@ -594,16 +669,19 @@ Window {
                 text: selectedNode ? "選取: " + selectedNode.objectName : "未選取節點"
                 color: "white"
             }
-            Button {
-                text: "掛到 iluluModel (root)"
+            CamButton {
+                buttonText: "掛到 iluluModel (root)"
                 onClicked: (mouse) => {
                     if (selectedNode)
                         selectedNode.parent = iluluModel;
                 }
             }
 
-            Button {
-                text: "掛到 cam"
+            CamButton {
+                buttonText: "掛到 cam"
+                // 關閉時文字黑剪影 像外凸，開啟時文字白影 像內凸
+
+
                 onClicked: (mouse) => {
                     if (selectedNode)
                         selectedNode.parent = cam;

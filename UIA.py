@@ -422,11 +422,12 @@ def 看字():
             
             # 3. 限制資料夾名稱長度（上限 30 字，避免過長報錯）
             return clean_text[:30].strip()
+
         while not alive_event.is_set():
             start_time = time.time()
             
             try:
-                # 1. 取得截圖（確保 get_screenshot() 回傳的是 OpenCV 格式的 numpy array）
+                # 1. 取得截圖（ 回傳的是 OpenCV 格式的 numpy array）
                 raw_img = get_screenshot() 
                 
                 # 2. 影像優化（普通 OCR 速度的關鍵）
@@ -444,8 +445,8 @@ def 看字():
                 folder_name = clean_folder_name(text)
                 
                 # 4. 如果有讀到有效的字，就建立資料夾
-                if folder_name:
-                    make_folder(folder_name)
+                for a in folder_name:
+                    make_folder(a)
                     # 這裡您可以選擇把截圖也存進該資料夾，例如：
                     # cv2.imwrite(f"{folder_name}/screenshot.png", img)
                 else:
@@ -1870,6 +1871,14 @@ class InputCommand(QObject):
         self.extractor = True
         self.app = None
 
+    def 抓字(self,time=10):
+        ocr_thread = threading.Thread(target=看字, daemon=True)
+        ocr_thread.start()
+        # 2. 假設讓它跑 10 秒
+        time.sleep(time)
+        # 3. 觸發中斷：隨時在主程式任何地方呼叫此行，OCR 就會停止
+        alive_event.set() 
+
     def focus_window(self, title):
         title_pattern = fr'^{title}.*'
         try:
@@ -1982,7 +1991,8 @@ class InputCommand(QObject):
                             print(f"act:{act}")
                             match act:
                                 case "第0123步": noesis.input()
-                                case "第0步": text_make_background() # TODO:**** 抓字
+                                case "第0步0": self.抓字 # TODO:**** 抓錄影中的文字
+                                case "第0步": text_make_background() # TODO:**** 抓錄影中的文字
                                 case "Noesis編織關係": noesis.編織關係()
                                 case "Noesis輸入": noesis.輸入(action[i+1:])
                                 # Unity
@@ -2942,12 +2952,6 @@ if __name__ == "__main__":
     monitor = EventMonitor()
     rec = Recorder()
 
-    ocr_thread = threading.Thread(target=看字, daemon=True)
-    ocr_thread.start()
-    # 2. 假設讓它跑 10 秒
-    time.sleep(10)
-    # 3. 觸發中斷：隨時在主程式任何地方呼叫此行，OCR 就會停止
-    alive_event.set() 
     
     # ✅ 在背景啟動 watchdog 執行緒 # ***app關閉時， watchdog沒有跟著關閉
 

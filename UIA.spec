@@ -60,11 +60,15 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True, # 使用 UPX 壓縮可以減少體積，但會稍微增加解壓時間
-    console=True, # 你的「火星」日誌輸出需要 console
-    icon='icon.ico'
+    console=True, # 你的日誌輸出需要 console
+    icon='icon.ico',
+    disable_windowed_traceback=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
 )
-# python -m venv .venv
-# .\.venv\Scripts\Activate.ps1
+# python -m venv .venv --clear
+# Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process; .\.venv\Scripts\Activate.ps1
 
 # python -m pip install --upgrade pip
 # uv add mediapipe geographiclib firebase-admin PySide6 numpy opencv-python Pillow PyOpenGL PyOpenGL-accelerate geopy pynput pyautogui pytesseract psutil pywinauto beautifulsoup4 lxml
