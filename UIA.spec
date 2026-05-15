@@ -20,11 +20,12 @@ a = Analysis(
     binaries=[], # pywin32 通常在隱藏匯入中會自動處理，若噴 DLL 錯誤再加
     datas= [
         ('serviceAccountKey.json', '.'),
-        ('templates', 'templates'),
+        ('C:/Users/User/Documents/GitHub/Non-codeAutomaticOperation/.venv/Lib/site-packages/PySide6/qml', 'PySide6/qml'), 
+        ("C:/Users/User/Documents/GitHub/Non-codeAutomaticOperation/.venv/Lib/site-packages/mediapipe", "mediapipe"),
         ('ui.qml', '.'),
         ('ilulu.glb', '.'),
-        ('uploads_files_3351752_Rocking_Chair2.obj', '.'),
-    ]+ collect_data_files('PySide6', subdir='qml'),
+        ('serviceAccountKey.json ', '.')
+    ],# + collect_data_files('PySide6', subdir='qml'),
     hiddenimports=[
         'mediapipe',
         'geographiclib', 
@@ -40,9 +41,13 @@ a = Analysis(
         'PySide6.QtQuick',
         'shiboken6'
     ],
-    excludes=[ 'pandas', 'IPython', 'notebook', 'scipy','tkinter', 'unittest', 'email', 'http'], # 排除掉你沒用到的巨型庫
+    excludes=[ 'pandas', 'IPython', 'notebook', 'scipy','tkinter'], # 排除掉你沒用到的巨型庫
     cipher=block_cipher,
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
     noarchive=False,
+    optimize=0,
 )
 
 # 為了加快「啟動」與「重複打包」速度，建議使用 PYZ 壓縮
@@ -66,6 +71,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    compress=False, 
 )
 # python -m venv .venv --clear
 # Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process; .\.venv\Scripts\Activate.ps1
