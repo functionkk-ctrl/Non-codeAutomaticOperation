@@ -6,7 +6,6 @@ import QtQuick.Effects
 import Qt5Compat.GraphicalEffects // 必須導入此模組來使用 Glow // Qt 6 請使用此模組；Qt 5 請改為 import QtGraphicalEffects 1.15
 
 
-
 Window {
     id: root
     property int window_w: 480

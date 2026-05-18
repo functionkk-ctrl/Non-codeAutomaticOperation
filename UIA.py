@@ -46,7 +46,7 @@ from Noesis import Noesis
 
 
 def on_location(**kwargs):
-    print(
+    回覆(
         kwargs['lat'],
         kwargs['lon'],
         kwargs.get('altitude'),
@@ -215,7 +215,7 @@ def make_folder(folder_name, class_name=None, content_classes=None):
     inspect.getsource(Class )，複製原始碼
     """
     folder_path = base_path / str(folder_name)
-    print(f"確保有資料夾{folder_path}")
+    回覆(f"確保有資料夾{folder_path}")
     folder_path.mkdir(parents=True, exist_ok=True)  # 確保父資料夾也創建
     if class_name:
         # 建立檔名，例如 folder_name.py 或對象名.py
@@ -287,11 +287,21 @@ def read_json_content(file_path, file_name,  key):
                 elif isinstance(data, list):
                     return data[key] # [不同key:value]
         except (FileNotFoundError, json.JSONDecodeError): # 錯誤時中斷
-            print(f"讀取失敗: {file_path}") 
+            回覆(f"⚠️ 讀取失敗: {file_path}，可能是檔案不存在或格式錯誤。")
             return []
     else:
-        print(f"讀取失敗: {file_path}") 
+        回覆(f"⚠️ 讀取失敗: {file_path}，可能是檔案不存在或格式錯誤。")
         return []
+
+def 回覆(*args):
+    # 將所有傳進來的參數（不論是數字還是字串）都轉成字串，並用空格串接
+    ss = " ".join(str(arg) for arg in args)
+    if ss.strip():  # 確保內容不為空
+        Backend().conversation(msg=ss)
+        print(ss)
+    else:
+        Backend().conversation(msg="請輸入有效的回覆內容")
+        print("請輸入有效的回覆內容")
   
 import requests
 from bs4 import BeautifulSoup
@@ -316,11 +326,11 @@ def fill_accurate_images(keyword, word_dir):
                 img_data = requests.get(img_url).content
                 img_filename=全能ORB(img_data,path=word_dir/ "圖片_SIFT" ,npy="a")
                 os.rename(img_filename,f"{keyword}_orig.jpg")
-                print(f"  [精確圖片] {keyword} 填滿成功")
+                回覆(f"✅ 已從維基百科抓取並儲存精確圖片: {keyword}_orig.jpg")
                 return True
     except:
         pass
-    print(f"  [警告] {keyword} 找不到精確對應圖片")
+    回覆(f"⚠️ 維基百科未找到精確圖片，已使用爬蟲抓取的圖片: {keyword}_orig.jpg")
     return False
 def asbc_stealth_search(keyword,home_url,search_url,payload):
     # 1. 初始化 Session (模擬瀏覽器開啟後的狀態)
@@ -357,7 +367,7 @@ def asbc_stealth_search(keyword,home_url,search_url,payload):
             word_dir = make_folder(TEMPLATE_DIRS["Noesis"]/keyword) 
             save_path = word_dir / "text.npy"
             np.save(str(save_path), np.array(data_list, dtype=object))
-            print(f"已將爬蟲結果轉存為: {save_path}")
+            回覆(f"✅ 已將爬蟲結果轉存為: {save_path}")
             categories = ["同義", "反義", "干涉它為新義", "主從義", "SIFT"]
             for a in categories: make_folder(word_dir/a)
 
@@ -374,94 +384,97 @@ def asbc_stealth_search(keyword,home_url,search_url,payload):
                     img_data = requests.get(img_url, timeout=5).content
                     img_filename=全能ORB(img_data,path=img_folder,npy="a")
                     os.rename(img_filename,f"image_{i}")
-                    print(f"圖片已儲存: {img_filename}")
+                    回覆(f"圖片已儲存: {img_filename}")
                 except:
                     print(f"圖片 {img_url} 下載失敗")
                     fill_accurate_images(keyword,word_dir=word_dir)
             return data_list
     except Exception as e:
-        print(f"隱藏請求失敗: {e}")
+        回覆(f"⚠️ 隱藏請求失敗: {e}")
         return []
     
 def 看字():
-    # Tesseract 最佳化設定：
-    # --psm 6 (假設單一文字塊) 
-    # --oem 1 (使用 LSTM 引擎)
-    # -c tessedit_do_invert=0 (禁止反轉影像顏色，節省運算時間)
-    TESS_CONFIG = '--psm 6 --oem 1 -c tessedit_do_invert=0'
-    LANG_CONFIG = 'chi_tra+eng'
-
-    def preprocess_image(img_np):
-        """ 普通 OCR 必備的預處理：灰階 + 二值化，能減少 50% 辨識時間 """
-        gray = cv2.cvtColor(img_np, cv2.COLOR_BGR2GRAY)
-        # 將影像二值化（純黑白），過濾背景雜訊
-        _, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-        return thresh
-
+    """ 獨立的 OCR 執行緒，確保每秒穩定執行 """
     def analyze_text(text_lines):
         """ 文字分析邏輯（請在此實作您的邏輯） """
         if len(text_lines) == 0:
             return
-            
         full_text = " ".join(text_lines)
-        print(f"[{time.strftime('%H:%M:%S')}] 分析結果: {full_text[:30]}...") 
-        
+        回覆(f"[{time.strftime('%H:%M:%S')}]，分析結果: {full_text[:30]}...")
         # 範例：關鍵字觸發
         if "error" in full_text.lower() or "錯誤" in full_text:
-            print("⚠️ 偵測到錯誤關鍵字！")
+            回覆("⚠️ 偵測到錯誤關鍵字！")
 
-    def ocr_worker():
-        """ 獨立的 OCR 執行緒，確保每秒穩定執行 """
-        def clean_folder_name(text):
-            """ 清理 OCR 文字，使其符合資料夾命名規則，並限制長度 """
-            # 1. 移除換行與前後空白
-            text = text.replace('\n', '').replace('\r', '').strip()
-            
-            # 2. 移除作業系統不允許的資料夾字元 \ / : * ? " < > |
-            clean_text = re.sub(r'[\/\\\:\*\?\"\<\>\|]', '', text)
-            
-            # 3. 限制資料夾名稱長度（上限 30 字，避免過長報錯）
-            return clean_text[:30].strip()
+    def clean_folder_name(text):
+        """ 清理 OCR 文字，使其符合資料夾命名規則，並限制長度 """
+        # 1. 移除換行與前後空白
+        text = text.replace('\n', '').replace('\r', '').strip()
+        # 2. 移除作業系統不允許的資料夾字元 \ / : * ? " < > |
+        clean_text = re.sub(r'[\/\\\:\*\?\"\<\>\|]', '', text)
+        # 3. 限制資料夾名稱長度（上限 30 字，避免過長報錯）
+        return clean_text[:30].strip()
 
-        while not alive_event.is_set():
-            start_time = time.time()
+    while not alive_event.is_set():
+        start_time = time.time()
+        try:
+            img = get_screenshot()
+            # 每次重新 OCR
+            data = pytesseract.image_to_data(
+                img,
+                lang="chi_tra+eng",
+                output_type=pytesseract.Output.DICT
+            ) # OCR
+            matrix = []
+            n = len(data["text"])
+            for i in range(n):
+                text = data["text"][i].strip()
+                if text == "":
+                    continue
+                x = data["left"][i]
+                y = data["top"][i]
+                w = data["width"][i]
+                h = data["height"][i]
+                conf = data["conf"][i]
+                # 過濾低可信度
+                if conf < 40:
+                    continue
+                matrix.append({
+                    "text": text,
+                    "x": x,
+                    "y": y,
+                    "w": w,
+                    "h": h,
+                    "conf": conf
+                })
+            # 閱讀順序排序
+            matrix.sort(key=lambda v: (v["y"], v["x"]))
+            # 純文字陣列
+            text_lines = np.array([
+                m["text"]
+                for m in matrix
+            ])
+            # 5. 分析文字   
+            if len(text_lines) > 0:
+                analyze_text(text_lines)
+            # 3. 清理字串
+            folder_name = clean_folder_name(text)
             
-            try:
-                # 1. 取得截圖（ 回傳的是 OpenCV 格式的 numpy array）
-                raw_img = get_screenshot() 
-                
-                # 2. 影像優化（普通 OCR 速度的關鍵）
-                processed_img = preprocess_image(raw_img)
-                
-                # 3. 執行 OCR
-                text = pytesseract.image_to_string(processed_img, lang=LANG_CONFIG, config=TESS_CONFIG)
-                
-                # 4. 轉換為您的 np.array 格式
-                ocr_lines = np.array([line.strip() for line in text.split('\n') if line.strip()])
-                
-                # 5. 分析文字
-                analyze_text(ocr_lines)
-                # 3. 清理字串
-                folder_name = clean_folder_name(text)
-                
-                # 4. 如果有讀到有效的字，就建立資料夾
-                for a in folder_name:
-                    make_folder(a)
-                    # 這裡您可以選擇把截圖也存進該資料夾，例如：
-                    # cv2.imwrite(f"{folder_name}/screenshot.png", img)
-                else:
-                    print(f"[{time.strftime('%H:%M:%S')}] 💤 未讀取到有效文字，跳過。")
-                    
-                time.sleep(1)
-            except Exception as e:
-                print(f"OCR 發生錯誤: {e}")
-                
-            # 6. 動態計算計算時間，確保剛好每秒執行一次
-            elapsed_time = time.time() - start_time
-            sleep_time = max(0, 1.0 - elapsed_time)
-            time.sleep(sleep_time)
-            print("🛑 OCR 執行緒已安全中斷。")
-            
+            # 4. 如果有讀到有效的字，就建立資料夾
+            if folder_name:
+                make_folder(TEMPLATE_DIRS["live_capture"]/folder_name)
+                # 這裡您可以選擇把截圖也存進該資料夾，例如：
+                # cv2.imwrite(f"{folder_name}/screenshot.png", img)
+            else:
+                回覆(f"[{time.strftime('%H:%M:%S')}] 💤 未讀取到有效文字，跳過。")
+            回覆(f"matrix: {str(matrix)}")
+        except Exception as e:
+            回覆(f"⚠️ OCR 發生錯誤: {e}")
+        # 6. 動態計算計算時間，確保剛好每秒執行一次
+        elapsed_time = time.time() - start_time
+        sleep_time = max(0, 1.0 - elapsed_time)
+        time.sleep(sleep_time)
+        回覆("🛑 OCR 執行緒已安全中斷。")
+
 def text_make_background(path=None):
     """解析圖片的文字並分類進靜態資料夾中"""
     if path is None:
@@ -798,7 +811,7 @@ def 解題(出題,介詞,名詞,
         火=(出題[火_mask:-1] , find_array(劫_mask,(C(0)<火_mask)) and (C(0).roll(-1)>火_mask))
         # TODO:**詞無相關詞
     else: 
-        print("出題不符合格式")
+        回覆("出題不符合格式")
     # 中性 傳遞，吸引 吸收，排斥 抵銷
     math_dist = {
         "加":{"大小正負關係":None,"小數":None,"加減乘除":"中"},
@@ -1059,6 +1072,8 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
             im2_orb(f,"_目標")
     else:
         im2_orb(b)
+        # P.S. cv2.imread 0 灰 1彩 -1全
+
 
 class Expr:
     def __init__(self, func):
@@ -1318,7 +1333,7 @@ def watchdog():
         if not alive_event.wait(timeout=10):
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             cv2.imwrite(f"debug_{ts}.png", get_screenshot())
-            print(f"[Watchdog] 主線程可能卡死，已保存 debug_{ts}.png")
+            回覆(f"[Watchdog] 主線程可能卡死，已保存 debug_{ts}.png")
         alive_event.clear() # 重置，等待下一波心跳
 
 # 在 engine.load 之前定義一個物理心跳
@@ -1327,228 +1342,170 @@ def send_heartbeat():
     # 這裡可以順便觸發 Noesis 的低壓掃描
     # 編織關係() # 編織關係 
 
-def get_screenshot():
-    """截取全屏並轉成OpenCV圖像  RGB → BGR """
-    imgs = np.array(ImageGrab.grab())
-    return cv2.cvtColor(imgs, cv2.COLOR_RGB2BGR)
-    # return pytesseract.image_to_data(cv2.cvtColor(img, cv2.COLOR_RGB2BGR), lang=LANGS, output_type=pytesseract.Output.DICT)
-
-
-def locate_template_orb(name, sort=1, num=1, dir=TEMPLATE_DIRS["live_capture"]):
-    """ORB 特徵匹配找圖像 get_screenshot() → 灰階 """
-    name = name.split("<img>")[1]
-    path = os.path.join(dir, f"{name}.png")
-    if not os.path.exists(path):
-        tar=TargetExtractor()
-        tar.select_polygon_roi(name=name)
-        return None
-    tpl = cv2.imread(path, 0)
-    screen_gray = get_screenshot()
-    # 可調整特徵數，越少越快，100小圖標或按鈕、300一般GUI元素、500複雜畫面(例如 Hierarchy)
-    orb = cv2.ORB_create(400)
-    kp1, des1 = orb.detectAndCompute(tpl, None)
-    kp2, des2 = orb.detectAndCompute(screen_gray, None)
-    if des1 is None or des2 is None:
-        return None
-    matches = sorted(bf.match(des1, des2), key=lambda m: m.distance)
-    if len(matches) < 5:
-        return None  # 太少特徵配對視為不可靠
-    # 取前 10 個最佳匹配點的座標
-    pts = np.array([kp2[m.trainIdx].pt for m in matches[:10]], dtype=np.int32).tolist()
-        
-    pts.sort(key=lambda p: (p[0], p[1]))  # 左上排序
-    if not pts:
-        tar=TargetExtractor()
-        tar.select_polygon_roi(name=name)
-        return name
-
-    # 選取點
-    if sort == "奇數":
-        pts = pts[::2]
-    elif sort == "偶數":
-        pts = pts[1::2]
-    elif isinstance(sort, int):
-        idx = sort - 1 if sort > 0 else sort
-        return [pts[idx]] if -len(pts) <= idx < len(pts) else []
-    # 處理 num(正數取前 num，負數取倒數 abs(num)）
-    if num != 1:
-        pts = pts[:num] if num > 0 else pts[num:]
-    return pts
-
-# *** 多張圖像中偵測目標圖像
-
-
-def locate_template_orb_cached(obj, name, sort=1, num=1):
-    if name in obj.cache:
-        pos = obj.cache[name]
-        if validate_cache(name, pos):
-            return pos
-    pos = locate_template_orb(name, sort, num)
-    if pos:
-        obj.cache[name] = pos
-    return pos
-
-def validate_cache(name, pos, tolerance=10, dir=TEMPLATE_DIRS["live_capture"]):
-    screen_gray = cv2.cvtColor(get_screenshot(), cv2.COLOR_BGR2GRAY) 
-    h, w = screen_gray.shape[:2]
-    x, y = pos
-    # 安全邊界
-    x1, y1 = max(x - tolerance, 0), max(y - tolerance, 0)
-    x2, y2 = min(x + tolerance, w), min(y + tolerance, h)
-    region = screen_gray[y1:y2, x1:x2]
-    tpl = cv2.imread(os.path.join(dir, f"{name}.png"), 0)
-    if tpl is None or region.size == 0:
-        return False
-    res = cv2.matchTemplate(region, tpl, cv2.TM_CCOEFF_NORMED)
-    _, max_val, _, _ = cv2.minMaxLoc(res)
-    return max_val > 0.8
-
-
-def locate_text(keyword, sort=1, num=1, classA=None):
+def get_screenshot(color= cv2.COLOR_RGB2BGR,size=1,Langs=None):
+    """
+    截取全屏並轉成OpenCV圖像  RGB → BGR 
+    size 縮放大小，Langs語言字典
+    """
+    imgs = cv2.cvtColor(np.array(ImageGrab.grab()), color) 
+    img_large = cv2.resize(imgs, (0, 0), fx=size, fy=size, interpolation=cv2.INTER_CUBIC)
+    if Langs == LANGS:
+        data = pytesseract.image_to_data(img_large, lang=Langs, output_type=pytesseract.Output.DICT)
+        return data
+    return img_large
+     
+def selected(self, keyword,sort=1,num=1,classA=None):
     """找字"""
+    dir = TEMPLATE_DIRS["live_capture"]
+    kw = str(keyword).lower().strip()
     data=None
-    data = pytesseract.image_to_data(get_screenshot(), lang=LANGS, output_type=pytesseract.Output.DICT)
-    # 收集匹配點
-    pts = [
-        (data['left'][i] + data['width'][i] // 2,
-         data['top'][i] + data['height'][i] // 2)
+    screen_img = get_screenshot() 
+    # 2. 現場跑一次放大 2 倍的 OCR，建立獨立的文字數據源
+    img_large = cv2.resize(screen_img, (0, 0), fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+    data = pytesseract.image_to_data(img_large, lang=LANGS, output_type=pytesseract.Output.DICT)
+    final_pts = [] 
+    回覆("找圖中...")
+    a=path_all(dir,kw)
+    for pngA in row(2,a): # *** 多張圖像中偵測目標圖像
+        if pngA.endswith(".png"): # 快取圖片
+            pngA_合照=全能ORB(pngA,screen_img,ratio=0.9) # 去掉 不明顯相似的
+            img_pts = row(0,find_array(pngA_合照,C(1))>0) # 轉換成座標 特徵點位置
+            final_pts.extend(img_pts)
+            
+    回覆("找字中...")
+    # 最高強度的相似度比對，當場撈出最新 X, Y 坐標
+    text_pts += [
+        ((data['left'][i] + data['width'][i]//2) // 2,(data['top'][i] + data['height'][i]//2) // 2)
         for i, t in enumerate(data['text'])
-        # SequenceMatcher 相符比例
-        if t.strip() and SequenceMatcher(None, t.lower(), keyword.lower()).ratio() >= 0.75
+        if t.strip() and (kw in t.lower() or t.lower() in kw)
     ]
-    if not pts:
-        print("not pts")
-        tar=TargetExtractor()
-        tar.select_polygon_roi(name=keyword)
-        if DEBUG:
-            print(f"⚠️ 找不到匹配點：{keyword}。若目標在場則建議")
-        return keyword
-    # 排序(左上優先）
-    pts.sort(key=lambda p: (p[0], p[1]))
-    # sort 整數 → 指定位置；奇偶 → 篩選；否則回傳前 num 個 # 序列[start:end:step]
-    if sort == "奇數":
-        pts = pts[::2]
-    elif sort == "偶數":
-        pts = pts[1::2]
-    elif isinstance(sort, int):
-        idx = sort - 1 if sort > 0 else sort
-        print(pts[idx])
-        return pts[idx] if -len(pts) <= idx < len(pts) else None
-    # 處理 num(正數取前 num，負數取倒數 abs(num)）
-    if num != 1:
-        pts = pts[:num] if num > 0 else pts[num:]
-    if classA is None:
-        print(pts)
-        return pts
+    if text_pts:
+        final_pts.extend(text_pts)
+    final_pts.sort(key=lambda p: (p[0], p[1]))
+    if not final_pts:
+        回覆(f"⚠️ 找不到匹配點：{kw}。若目標在場則建議圈選目標")
+        TargetExtractor().select_polygon_roi(name=kw)
+        return None
     else:
-        # * 找classA 的內容，預設是 # 找 classA 的這一行 classA後面
-        readText = [
-            t
-            for t in data['text']
-            if t.strip() and SequenceMatcher(None, t.lower(), keyword.lower()).ratio() >= 0.7
-        ]
+        if sort == "奇數":
+            final_pts = final_pts[::2]
+        elif sort == "偶數":
+            final_pts = final_pts[1::2]
+        elif isinstance(sort, int):
+            idx = sort - 1 if sort > 0 else sort
+            回覆(final_pts[idx])
+            return final_pts[idx] if -len(final_pts) <= idx < len(final_pts) else None
+        # 處理 num(正數取前 num，負數取倒數 abs(num)）
+        if num != 1:
+            final_pts = final_pts[:num] if num > 0 else final_pts[num:]
+    回覆(final_pts)
+    return final_pts
+                
+              
 
-        # *** classA 似乎在這一行開始不通用了，使用到 Geocoding
-        # *** firebase 用戶儲存的起點地址 addrStart
-        def UID():
-            cred = credentials.Certificate("path/to/serviceAccountKey.json")
-            firebase_admin.initialize_app(cred)
-            # 2. 驗證從前端傳來的 ID Token
-            id_token= input("請輸入ID: ").strip()
-            try:
-                decoded_token = auth.verify_id_token(id_token)
-                uid = decoded_token['uid']
-                print(f"驗證成功！用戶 UID: {uid}")
-            except Exception as e:
-                print("驗證失敗：", e)
+#def 地點分配():
+#    # *** classA 似乎在這一行開始不通用了，使用到 Geocoding
+#    # *** firebase 用戶儲存的起點地址 addrStart
+#    def UID():
+#        cred = credentials.Certificate("path/to/serviceAccountKey.json")
+#        firebase_admin.initialize_app(cred)
+#        # 2. 驗證從前端傳來的 ID Token
+#        id_token= input("請輸入ID: ").strip()
+#        try:
+#            decoded_token = auth.verify_id_token(id_token)
+#            uid = decoded_token['uid']
+#            回覆(f"驗證成功！用戶 UID: {uid}")
+#        except Exception as e:
+#            回覆("驗證失敗：", e)
 
-        if UID(): # TODO:**驗證是否為用戶?
-            geolocator = Nominatim(user_agent="geo_example")
-            startP = firestore.client().reference("addrStart").get()
-            nearP = firestore.client().document("near").get().to_dict()
-            farP = firestore.client().document("far").get().to_dict()
-            locationStart = geolocator.geocode(startP)
-            locationNear = geolocator.geocode(startP)
-            locationFar = geolocator.geocode(startP)
+#    if UID(): # TODO:**驗證是否為用戶?
+#        geolocator = Nominatim(user_agent="geo_example")
+#        startP = firestore.client().reference("addrStart").get()
+#        nearP = firestore.client().document("near").get().to_dict()
+#        farP = firestore.client().document("far").get().to_dict()
+#        locationStart = geolocator.geocode(startP)
+#        locationNear = geolocator.geocode(startP)
+#        locationFar = geolocator.geocode(startP)
 
-        def dist(a, b):
-            aLocation = geolocator.geocode(a)
-            # 避免被geocode 封鎖
-            time.sleep(0.1)
-            if b == startP:
-                bLocation = locationStart
-            elif b == nearP:
-                bLocation = locationNear
-            elif b == farP:
-                bLocation = locationFar
-            else:
-                bLocation = geolocator.geocode(b)
-            if aLocation or bLocation is None:
-                print("無效地址")
-            distance = (aLocation.latitude - bLocation.latitude)**2 + \
-                (aLocation.longitude - bLocation.longitude)**2
-            time.sleep(0.05)
-            print(distance)
-            return distance
-        # 間距太近(firestore.client().reference(太近的地址)，起點和太近地址的距離為 間距)的一些地址為一分支 manifest[分支]，離起點太遠(firestore 太遠地址)額外安排 manifest2
-        NEAR_DISTANCE = dist(nearP, startP)
-        FAR_DISTANCE = dist(farP, startP)
+#    def dist(a, b):
+#        aLocation = geolocator.geocode(a)
+#        # 避免被geocode 封鎖
+#        time.sleep(0.1)
+#        if b == startP:
+#            bLocation = locationStart
+#        elif b == nearP:
+#            bLocation = locationNear
+#        elif b == farP:
+#            bLocation = locationFar
+#        else:
+#            bLocation = geolocator.geocode(b)
+#        if aLocation or bLocation is None:
+#            回覆("無效地址")
+#        distance = (aLocation.latitude - bLocation.latitude)**2 + \
+#            (aLocation.longitude - bLocation.longitude)**2
+#        time.sleep(0.05)
+#        回覆(distance)
+#        return distance
+#    # 間距太近(firestore.client().reference(太近的地址)，起點和太近地址的距離為 間距)的一些地址為一分支 manifest[分支]，離起點太遠(firestore 太遠地址)額外安排 manifest2
+#    NEAR_DISTANCE = dist(nearP, startP)
+#    FAR_DISTANCE = dist(farP, startP)
 
 
-        for ress in readText:
-            line_key = (
-                data['block_num'][ress],
-                data['par_num'][ress],
-                data['line_num'][ress]
-            )
-            addresses = []
-            for j, t in enumerate(data['text']):
-                if not t.strip():
-                    continue
-                if j < ress:
-                    continue
-                if (data['block_num'][j], data['par_num'][j], data['line_num'][j]) != line_key:
-                    continue
+#    for ress in readText:
+#        line_key = (
+#            data['block_num'][ress],
+#            data['par_num'][ress],
+#            data['line_num'][ress]
+#        )
+#        addresses = []
+#        for j, t in enumerate(data['text']):
+#            if not t.strip():
+#                continue
+#            if j < ress:
+#                continue
+#            if (data['block_num'][j], data['par_num'][j], data['line_num'][j]) != line_key:
+#                continue
 
-                addresses.append({
-                    "address": t,
-                    "distance": dist(t, startP),
-                    # ***使用 找地址時，順便 找貨品
-                    # *** 搜尋相符文字的貨品乘上數量，並計算疊加的空間大小，以疊加大小來排序
-                    "goods": ""
-                })
-            addresses.sort(key=lambda x: x["distance"])
-            # 建立 manifest 分支(近 / 遠） # 用戶說分支，也有可能是說其他東西
-            manifest_near = [
-                {"address": addresses[i]["address"],
-                    "goods": addresses[i]["goods"]}
-                for i in range(len(addresses)-1)  # 用 index 才能拿下一筆
-                if addresses[i]["distance"] <= NEAR_DISTANCE
-                and abs(addresses[i]["distance"] - addresses[i+1]["distance"]) <= NEAR_DISTANCE
-            ]
-            manifest_far = [
-                {"address": info["address"], "goods": info["goods"]}
-                for info in addresses
-                if info["distance"] >= FAR_DISTANCE
-            ]
-            manifest = [manifest_near, manifest_far]
-            # *** goods 排列在有限空間，計算manifest難度 排序
-            # 4️⃣ 上傳 Firebase
-            # manifest 上傳給firebase，manifest中最難的給最早請求的用戶 # *** firebase 分發給用戶，用戶如何獲取 manifest
+#            addresses.append({
+#                "address": t,
+#                "distance": dist(t, startP),
+#                # ***使用 找地址時，順便 找貨品
+#                # *** 搜尋相符文字的貨品乘上數量，並計算疊加的空間大小，以疊加大小來排序
+#                "goods": ""
+#            })
+#        addresses.sort(key=lambda x: x["distance"])
+#        # 建立 manifest 分支(近 / 遠） # 用戶說分支，也有可能是說其他東西
+#        manifest_near = [
+#            {"address": addresses[i]["address"],
+#                "goods": addresses[i]["goods"]}
+#            for i in range(len(addresses)-1)  # 用 index 才能拿下一筆
+#            if addresses[i]["distance"] <= NEAR_DISTANCE
+#            and abs(addresses[i]["distance"] - addresses[i+1]["distance"]) <= NEAR_DISTANCE
+#        ]
+#        manifest_far = [
+#            {"address": info["address"], "goods": info["goods"]}
+#            for info in addresses
+#            if info["distance"] >= FAR_DISTANCE
+#        ]
+#        manifest = [manifest_near, manifest_far]
+        # *** goods 排列在有限空間，計算manifest難度 排序
+        # 4️⃣ 上傳 Firebase
+        # manifest 上傳給firebase，manifest中最難的給最早請求的用戶 # *** firebase 分發給用戶，用戶如何獲取 manifest
 
-            # firestore.client().document("manifest").add(manifest)
+        # firestore.client().document("manifest").add(manifest)
 
-            # *** 繪製路線圖並記錄指南針方向，旋轉地圖時路線圖與地圖的指南針向量 矯正
-            # *** 指南針計算(一維)
-            # Routing API給最佳真實路線
+        # *** 繪製路線圖並記錄指南針方向，旋轉地圖時路線圖與地圖的指南針向量 矯正
+        # *** 指南針計算(一維)
+        # Routing API給最佳真實路線
+
 
 
 def click(pos): 
     if pos is None:
-        print("❌ 錯誤：找不到目標座標，無法點擊")
+        回覆("❌ 錯誤：找不到目標座標，無法點擊")
         return
     #  * 解包，將 [x, y] 轉為 x, y
-    print("點擊")
+    回覆("點擊")
     pyautogui.moveTo(*pos, duration=0.2)
     pyautogui.click()
     time.sleep(0.1)
@@ -1576,9 +1533,9 @@ def OverridingTechniques(cover_png=None,png_root=None,using=False):
             try:
                 decoded_token = auth.verify_id_token(id_token)
                 uid = decoded_token['uid']
-                print(f"驗證成功！用戶 UID: {uid}")
+                回覆(f"驗證成功！用戶 UID: {uid}")
             except Exception as e:
-                print("驗證失敗：", e)
+                回覆("驗證失敗：", e)
 
         if UID(): # TODO:**驗證是否為用戶?
             found1=path_all(TEMPLATE_DIRS["User"],"被覆蓋的技巧")
@@ -1890,8 +1847,7 @@ class InputCommand(QObject):
             # 嘗試強制置頂並聚焦
             target_win.window(title_re=title_pattern).set_focus()
             self.current_window = title
-            print(f"🧠 聚焦 [{title}]")
-            backend.conversation(f"聚焦 [{title}]")
+            回覆(f"✅ 成功聚焦 [{title}]")
             return
         except Exception:
             pass # 失敗了，進入暴力模式
@@ -1910,19 +1866,11 @@ class InputCommand(QObject):
                 win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
                 win32gui.SetForegroundWindow(hwnd)
                 self.current_window = title
-                print(f"🔨 暴力聚焦成功 [{title}]") # <--- 現在它該出現了
+                回覆(f"🔨 暴力聚焦成功 [{title}]") # <--- 現在它該出現了
             except Exception as e:
-                print(f"❌ 暴力聚焦也失敗 [{title}]: {e}")
+                回覆(f"❌ 暴力聚焦也失敗 [{title}]: {e}")
         else:
-            print(f"❓ 找不到任何視窗包含 [{title}]")
-            backend.conversation(f"找不到任何視窗包含 [{title}]")
-
-    def selected(self, str, sort=1, num=1, classA=None):
-        if "<img>" in str:
-            return locate_template_orb_cached(self,str, sort, num)
-        else:
-            print("找字中...")
-            return locate_text(str, sort, num, classA)
+            回覆(f"❓ 找不到任何視窗包含 [{title}]")
 
     @Slot(str)
     def input_line(self, user_input):
@@ -1944,13 +1892,13 @@ class InputCommand(QObject):
                     rec.rename(old_name, new_name)
                 case "取消自動確認目標":
                     ic.extractor = False
-                    print("✅ 已關閉自動確認目標模式")
+                    回覆("✅ 已關閉自動確認目標模式")
                 case "移除":
                     var = input("移除哪個錄製變數: ").strip() or None
                     rec.remove(ic, var)
                 case "整理路線":  # ***整理路線
                     var = input("已開啟 整理路線 ").strip() or None
-                    self.selected("地址", 1, 1, "地址")
+                    selected("地址", 1, 1, "地址")
 
                 case "距離多少":  # ***和下一個地址 距離多少
                     var = input("已繪製地圖 ").strip() or None
@@ -1963,9 +1911,9 @@ class InputCommand(QObject):
                     var = input("已繪製地圖 ").strip() or None
 
                 case _:
-                    print(f"⚠️ 未知指令: {cmd_type}")
+                    回覆(f"⚠️ 未知指令: {cmd_type}")
         else:
-            Backend().conversation(msg="普通命令直接執行")
+            回覆("普通命令直接執行")
             cmds = user_input.split("::")
             ic.execute_line(cmds)
 
@@ -1978,20 +1926,20 @@ class InputCommand(QObject):
                 if self.current_window != window:
                     self.focus_window(window)
                     time.sleep(0.5)
-                sps = [self.selected(sp) for sp in path.split(":")]
+                sps = [selected(sp) for sp in path.split(":")]
                 if sps is None: 
-                    print(f"sps:{row(None,sps)}") # [(x,y),(x,y),(x,y),...]，sp[0]=x,y，sp[0][1]=y，打死GPT
+                    回覆(f"sps:{row(None,sps)}") # [(x,y),(x,y),(x,y),...]，sp[0]=x,y，sp[0][1]=y，打死GPT
                     return
                 for sp in sps:
                     for act in action.split(":"):
-                        print(f"sp:{sp}")
+                        回覆(f"sp:{sp}")
                         i = 0
                         while i < len(action):
                             # act = action[i]
-                            print(f"act:{act}")
+                            回覆(f"act:{act}")
                             match act:
                                 case "第0123步": noesis.input()
-                                case "第0步0": self.抓字 # TODO:**** 抓錄影中的文字
+                                case "抓字": self.抓字 # TODO:**** 抓錄影中的文字
                                 case "第0步": text_make_background() # TODO:**** 抓錄影中的文字
                                 case "Noesis編織關係": noesis.編織關係()
                                 case "Noesis輸入": noesis.輸入(action[i+1:])
@@ -2023,16 +1971,16 @@ class InputCommand(QObject):
                                 case act if re.fullmatch(r"第(-?\d+)位(\d+)個", act):
                                     m = re.fullmatch(
                                         r"第(-?\d+)位(\d+)個", act)
-                                    self.selected(
+                                    selected(
                                         sp, int(m.group(1)), int(m.group(2)))
                                 # 計算出最左邊最上面的依序的偶數個
                                 case act if re.fullmatch(r"偶數(\d+)個", act):
                                     m = re.fullmatch(r"偶數(\d+)個", act)
-                                    self.selected(
+                                    selected(
                                         sp, "偶數", int(m.group(1)))
                                 case act if re.fullmatch(r"奇數(\d+)個", act):
                                     m = re.fullmatch(r"奇數(\d+)個", act)
-                                    self.selected(
+                                    selected(
                                         sp, "奇數", int(m.group(1)))
                                 case act if re.fullmatch(r"排序儲存的(\s+)", act):
                                     m = re.fullmatch(
@@ -2066,9 +2014,9 @@ class InputCommand(QObject):
                                         i += 1  # 正常往下
                                         continue
                                 case "顯示該目標座標":
-                                    print(f"📍 {sp}: {sp[0]}")
+                                    回覆(f"📍 {sp}: {sp[0]}")
                                 case "顯示時間":
-                                    print(
+                                    回覆(
                                         f"🕒 現在時間：{time.strftime('%H:%M:%S')}")
                                 case act if re.fullmatch(r"\s*(.+)的邏輯對\s*(.+)性能\s*(.+)結束", act):
                                     # 訂閱事件，監聽m1對m2、m2的m3 達成時結束並取消訂閱
@@ -2081,7 +2029,7 @@ class InputCommand(QObject):
                                     # EventMonitor 持續執行 後續指令，這行指令可以跳過了
                                     monitor.ic_em = re.search(
                                         fr"{m.group(2)}性能{m.group(3)}結束\s*(.+)", action).group(1)
-                                    print(
+                                    回覆(
                                         f"已註冊事件監聽 {m.group(1)}->{m.group(2)}->{m.group(3)}，後續指令交由 EventMonitor 執行 {self.ic_em}")
                                     break
                                 case act if re.fullmatch(r"移除\s*(.+)的邏輯對\s*(.+)性能\s*(.+)", act):
@@ -2102,10 +2050,9 @@ class InputCommand(QObject):
                                     m = re.match(
                                         r"(.*)_W(\d+)_H(\d+)_Z([\d\.]+)", act[i+1])
                                     if not m:
-                                        print("請依照圖片_W0_H0_Z0格式")
-                                        backend.conversation(msg="請依照圖片_W0_H0_Z0格式")
+                                        回覆("請依照圖片_W0_H0_Z0格式")
                                         return
-                                    self.selected(act[i+1])
+                                    selected(act[i+1])
                                     i += 2
                                     continue
                                 case "即時計算物體大小":
@@ -2122,25 +2069,24 @@ class InputCommand(QObject):
                     
                         if not isinstance(sp,int):
                             # 找滑鼠附近的搜尋欄位圖片，輸入目標
-                            if self.selected("<img>search") is not None:
+                            if selected("search.png") is not None:
                                 keyboard.write(sp, delay=0.05)
                             else:
                                 # 持續滑動檢查前一個路徑的整個畫面，直到無變化時跳出
                                 prev_img = get_screenshot()
                                 while True:
-                                    if self.selected(sp) is not None:
+                                    if selected(sp) is not None:
                                         break
                                     pyautogui.scroll(-300)
                                     curr_img = get_screenshot()
                                     # 改為差異統計法，不需整張畫面比較 np.array_equal
                                     diff = np.mean(cv2.absdiff(curr_img, prev_img))
                                     if diff < 1.0:  # 可調閾值：<1 代表幾乎沒變
-                                        print(f"沒辦法找到 {sp}(畫面未變化）")
+                                        回覆(f"沒辦法找到 {sp}(畫面未變化）")
                                     # 避免重疊記憶體引用s
                                     prev_img = curr_img.copy()
             except ValueError:
-                print("⚠️ Invalid format. Please enter: WindowTitle, Path, Action")
-                backend.conversation(msg="Invalid format. Please enter: WindowTitle, Path, Action")
+                回覆("⚠️ Invalid format. Please enter: WindowTitle, Path, Action")
 
 
 
@@ -2162,20 +2108,20 @@ class Recorder:
         if old_name in self.recorded:
             self.recorded[new_name] = self.recorded.pop(old_name)
         else:
-            print(f"⚠️ {old_name} 不存在")
+            回覆(f"⚠️ {old_name} 不存在")
 
     def view(self):
         """檢視全部錄製命令"""
         if not self.recorded:
-            print("📭 沒有錄製命令")
+            回覆("📭 沒有錄製命令")
             return
         for name, cmd in self.recorded.items():
-            print(f"{name}: {cmd}")
+            回覆(f"{name}: {cmd}")
 
     def play(self, ic, var_name):
         """執行錄製命令"""
         if var_name not in self.recorded:
-            print(f"⚠️ {var_name} 不存在")
+            回覆(f"⚠️ {var_name} 不存在")
             return
         cmds = self.recorded[var_name].split("::")
         ic.execute_line(cmds)
@@ -2184,20 +2130,20 @@ class Recorder:
         """移除指定的錄製命令"""
         if var_name in self.recorded:
             del self.recorded[var_name]
-            print(f"✅ {var_name} 已成功移除")
+            回覆(f"✅ {var_name} 已成功移除")
         else:
-            print(f"⚠️ {var_name} 不存在，無法移除")
+            回覆(f"⚠️ {var_name} 不存在，無法移除")
 
 
 class TargetExtractor:
     def __init__(self,start=True,image=None):
         if start is False:
-            print("找不到目標且自動確認未開啟，跳過選取點。 調整ORB_create>=500")
+            回覆("找不到目標且自動確認未開啟，跳過選取點。 調整ORB_create>=500")
             return
         else:
             if image is None:
                 image = cv2.cvtColor(get_screenshot(), cv2.COLOR_RGB2BGR)
-            print("#已開啟 找不到目標後自動確認目標")
+            回覆("#已開啟 找不到目標後自動確認目標")
         self.image = image
         self.base = image.copy()
         self.pts = []
@@ -2251,10 +2197,10 @@ class TargetExtractor:
         alpha = mask2
         self.extracted = cv2.merge([b, g, r, alpha])
 
-            # 儲存為透明PNG
-        png=make_folder(path)/name+f"_s{time.time():.0f}.png"
+        # 儲存為透明PNG
+        png=make_folder(path)/f"{name}_s{time.time():.0f}.png"
         cv2.imwrite(png, self.extracted)
-        print(f"✅ 已儲存 {png}")
+        回覆(f"✅ 已儲存 {png}")
 
     def select_polygon_roi(self,name=None):
         """
@@ -2264,7 +2210,7 @@ class TargetExtractor:
         - ESC：取消圈選
         - R：重置重新圈
         """
-        print("🖱️ 請用滑鼠左鍵圈選多邊形；右鍵結束；ESC 取消；R 重來")
+        回覆("請用滑鼠左鍵圈選多邊形；右鍵結束；ESC 取消；R 重來")
         display = self.image.copy()
         done = False
         # ***可能未監聽
@@ -2274,16 +2220,13 @@ class TargetExtractor:
                 return
             if button == mouse.Button.left:
                 self.pts.append((x, y))
-                Backend().conversation(msg="點({x},{y})")
-                print(f"➕ 點({x},{y})")
+                回覆(f"➕ 點({x},{y})")
             elif button == mouse.Button.right:
                 if len(self.pts) >= 3:
                     self.done = True
-                    Backend().conversation(msg="結束圈選")
-                    print("✅ 結束圈選")
+                    回覆("✅ 結束圈選")
                 else:
-                    Backend().conversation(msg="至少要三個點")
-                    print("⚠️ 至少要三個點")
+                    回覆("⚠️ 至少要三個點")
                 return False
 
         def on_press(key):
@@ -2291,12 +2234,10 @@ class TargetExtractor:
             try:
                 if key == keyboard.Key.esc:
                     done = True
-                    Backend().conversation(msg="已取消圈選")
-                    print("❌ 已取消圈選")
+                    回覆("❌ 已取消圈選")
                     return False
                 elif key.char.lower() == 'r':
-                    Backend().conversation(msg="重新圈選")
-                    print("🔁 重新圈選")
+                    回覆("🔁 重新圈選")
                     self.pts.clear()
                     display = self.base.copy()
             except AttributeError:
@@ -2473,7 +2414,7 @@ class TargetExtractor:
         # whz = []
         # for file in os.listdir(TEMPLATE_DIRS["world"]):
         # match = re.match(r"(.*)_W(\d+)_H(\d+)_Z([\d\.]+)\.png", file)
-        # if not match or not self.selected(file):
+        # if not match or not selected(file):
         # continue
         # ****讀取貨品欄的 已記錄的 物品，無紀錄的列出
 
@@ -2634,24 +2575,24 @@ class EventMonitor:
         self.ic_em = None
 
     def add_frame(self):
-        print("建議開啟extractor自動確認")
+        回覆("建議開啟extractor自動確認")
         if self.multiple_img_implementation_target is not None:
             if len(self.multiple_img_implementation) < 5:
                 self.multiple_img_implementation.append(
-                    self.selected(self.multiple_img_implementation_target))
+                    selected(self.multiple_img_implementation_target))
             else:
                 self.multiple_img_implementation.pop(
                     self.multiple_img_implementation[1])  # 迭代更新
                 self.multiple_img_implementation.append(
-                    self.selected(self.multiple_img_implementation_target))
+                    selected(self.multiple_img_implementation_target))
         if self.multiple_img_goal_target is not None:
             if len(self.multiple_img_goal) < 5:
                 self.multiple_img_goal.append(
-                    self.selected(self.multiple_img_goal_target))
+                    selected(self.multiple_img_goal_target))
             else:
                 self.multiple_img_goal.pop(self.multiple_img_goal[1])  # 迭代更新
                 self.multiple_img_goal.append(
-                    self.selected(self.multiple_img_goal_target))
+                    selected(self.multiple_img_goal_target))
 
     # 訂閱事件
 
@@ -2697,9 +2638,9 @@ class EventMonitor:
             if key in self.events:
                 sk = self.events.pop(key)
                 # sk["active"] = False  # 終止監聽
-                print(f"[x] 已終止監聽事件: {key}")
+                回覆(f"✅ 已終止監聽事件: {key}")
             else:
-                print(f"[!] 找不到事件: {key}")
+                回覆(f"⚠️ 找不到事件: {key}")
 
     # 啟動/停止監聽
     def start_monitor(self):
@@ -2743,7 +2684,7 @@ class EventMonitor:
         e1, e2, e3 = evt["implementation"], evt["Application"], evt["goal"]
         for ev in e1, e2, e3:
             for img, stage in ev:
-                # ORB分析目標圖片的狀態和在整個螢幕的關係。self.selected找到目標。 Semantic Algebra 語意代數
+                # ORB分析目標圖片的狀態和在整個螢幕的關係。selected找到目標。 Semantic Algebra 語意代數
                 # 取得螢幕 ORB 狀態
                 logic_state = targetExt.compute_logic()
                 # 將 goal_objects 對象名稱對應到邏輯狀態
@@ -2769,7 +2710,7 @@ class EventMonitor:
                     if not evt.get("Condition Error"):
                         evt["Condition Error"] = input(
                             f"{img} 條件錯誤: {logic_predicted} vs {stage}, 請輸入應對作法：").strip() or None
-                    print(evt["Condition Error"])
+                    回覆(evt["Condition Error"])
                 # 分析順序錯誤 (示意：這裡可以用更精細的序列判斷)
                 if img == e3[0] and e2[0] not in stage:
                     logic_ok = False
@@ -2787,14 +2728,14 @@ class EventMonitor:
                     if not evt.get("Logic Conflict"):
                         evt["Logic Conflict"] = input(
                             f"{img} 邏輯衝突: {conflict}, 請輸入應對作法：").strip() or None
-                    print(evt["Logic Conflict"])
+                    回覆(evt["Logic Conflict"])
                 # 邊界錯誤 (索引或對象不存在)
                 if predicted is None:
                     logic_ok = False
                     if not evt.get("Boundary Error"):
                         evt["Boundary Error"] = input(
                             f"{img}不存在於螢幕中 時的應對作法：").strip() or None
-                    print(evt["Boundary Error"])
+                    回覆(evt["Boundary Error"])
                     continue
                 # 狀態漏判 (CNN 沒返回任何預測)
                 if not predicted.get("pos") and not predicted.get("area"):
@@ -2802,7 +2743,7 @@ class EventMonitor:
                     if not evt.get("Unhandled State"):
                         evt["Unhandled State"] = input(
                             f"{img}找到，但沒有有效狀態 時的應對作法：").strip() or None
-                    print(evt["Unhandled State"])
+                    回覆(evt["Unhandled State"])
                     continue
 
                 # 現在性能的狀態!=條件性能的狀態 時回報應對作法。
@@ -2830,10 +2771,10 @@ class EventMonitor:
                         if not evt.get(tag):
                             evt[tag] = input(
                                 f"{img}{stage}{key}未達標 ({score:.3f})，應對作法：").strip() or None
-                        print(f"⚠️ {key}不達標 → {evt[tag]}")
+                        回覆(f"⚠️ {key}不達標 → {evt[tag]}")
             if logic_ok and perf_ok:
                 self.remove_subscription(e1, e2, e3)
-                print("邏輯性能完成，取消訂閱。")
+                回覆(f"✅ {e1}對{e2}性能{e3}達成 邏輯性能，已取消訂閱。")
                 break
 
             if ev == e3:
@@ -2846,7 +2787,7 @@ class EventMonitor:
                     "(條件邏輯問卷(修改 設定過的狀態), [錯誤時的 應對作法])，是否要修改設定過的狀態與應對作法？(Enter=跳過全部 / y=填寫一次)："
                 ).strip().lower()
                 if choice == "":
-                    print("👉 已設定：跳過全部問卷。")
+                    回覆("👉 已設定：跳過全部問卷。")
                     skip_all_logic = True
                 elif choice != "y":
                     return  # 任何非 y 也視為略過當前
@@ -2863,7 +2804,7 @@ class EventMonitor:
                     evt["Unhandled State"] = input(
                         f"{img}{stage}狀態漏判 時的應對作法：").strip() or evt.get("Unhandled State")
                 if choice2 == "":
-                    print("👉 已設定：跳過全部問卷。")
+                    回覆(f"⚠️ 已設定：跳過全部問卷。")
                     skip_all_perf = True
                 elif choice2 != "y":
                     return  # 任何非 y f"也視為略過(/m.*)".ground(1)當前
@@ -2890,6 +2831,15 @@ class Backend(QObject):
     pathChanged = Signal(str)
     imagesReady = Signal(list)  # 發送圖片列表給 QML
     responseUpdated = Signal(str) # 統一回覆訊息
+     
+    # 單例模式專用變數，用來儲存唯一的一個實例
+    _instance = None
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            # 確保 __init__ 只會被完整初始化一次（避免重複調用 __init__ 導致屬性被清空）
+            cls._instance._initialized = False
+        return cls._instance
     
     # 依然要有這行，QML 才能「看到」並「連動」
     path_dir = Property(str, 
@@ -2898,9 +2848,13 @@ class Backend(QObject):
         notify=pathChanged)
 
     def __init__(self):
+        # 配合 __new__ 確保初始化邏輯只執行一次
+        if getattr(self, '_initialized', False):
+            return
         super().__init__()
         self._path_dir = ""
         self.history = "" # 用來存歷史對話
+        self._initialized = True
 
     @Slot()
     def getImages(self):
@@ -2942,7 +2896,7 @@ if __name__ == "__main__":
        
     # 測試：搜尋「積極」
     # data = asbc_stealth_search(url)
-    # print(f"網路抓取結果: {data}")
+    # 回覆(f"網路抓取結果: {data}")
 
     monitor_info = {"width": 1920, "height": 1080} 
     # 實例化
