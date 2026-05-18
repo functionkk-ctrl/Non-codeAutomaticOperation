@@ -1301,6 +1301,9 @@ def row(i, data, func2=None):
     如果data是 NumPy，這行會跑向量化提取 (快)
     """
     data_arr = np.asarray(data)
+    # 🔑 這裡補上 0 維陣列的極端情況攔截（以防萬一），字串
+    if data_arr.ndim == 0:
+        data_arr = data_arr.reshape(1, 1)
     # 🔑 一維升維
     if data_arr.ndim == 1:
         data_arr = data_arr.reshape(-1, 1)
@@ -1354,7 +1357,7 @@ def get_screenshot(color= cv2.COLOR_RGB2BGR,size=1,Langs=None):
         return data
     return img_large
      
-def selected(self, keyword,sort=1,num=1,classA=None):
+def selected(keyword,sort=1,num=1,classA=None):
     """找字"""
     dir = TEMPLATE_DIRS["live_capture"]
     kw = str(keyword).lower().strip()
@@ -1366,15 +1369,20 @@ def selected(self, keyword,sort=1,num=1,classA=None):
     final_pts = [] 
     回覆("找圖中...")
     a=path_all(dir,kw)
-    for pngA in row(2,a): # *** 多張圖像中偵測目標圖像
+    回覆("失效1")
+    for pngA in row(2,a).tolist: # *** 多張圖像中偵測目標圖像
+        回覆("失效2")
         if pngA.endswith(".png"): # 快取圖片
             pngA_合照=全能ORB(pngA,screen_img,ratio=0.9) # 去掉 不明顯相似的
-            img_pts = row(0,find_array(pngA_合照,C(1))>0) # 轉換成座標 特徵點位置
-            final_pts.extend(img_pts)
+            if next(pngA_合照):
+                img_pts = row(0,find_array(pngA_合照,C(1))>0) # 轉換成座標 特徵點位置
+                final_pts.extend(img_pts)
+            else:
+                回覆("圖片找不到相似的")
             
     回覆("找字中...")
     # 最高強度的相似度比對，當場撈出最新 X, Y 坐標
-    text_pts += [
+    text_pts = [
         ((data['left'][i] + data['width'][i]//2) // 2,(data['top'][i] + data['height'][i]//2) // 2)
         for i, t in enumerate(data['text'])
         if t.strip() and (kw in t.lower() or t.lower() in kw)
