@@ -73,13 +73,13 @@ exe = EXE(
     entitlements_file=None,
     compress=False, 
 )
-# python -m venv .venv --clear
-# Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process; .\.venv\Scripts\Activate.ps1
+# $env:Path = [System.Environment]::GetEnvironmentVariable("Path","User"), [System.Environment]::GetEnvironmentVariable("Path","Machine") -join ";"
+# & "$env:USERPROFILE\.local\bin\uv.exe" --version
+# [Environment]::SetEnvironmentVariable("Path", $env:Path + ";$env:USERPROFILE\.local\bin", "User")
+# powershell -ExecutionPolicy ByPass -c "irm https://astral.sh | iex"
 
-# python -m pip install --upgrade pip
-# uv add mediapipe geographiclib firebase-admin PySide6 numpy opencv-python Pillow PyOpenGL PyOpenGL-accelerate geopy pynput pyautogui pytesseract psutil pywinauto beautifulsoup4 lxml
+# uv --version # 最快進入虛擬環境 # uv run python UIA.py # 最自動下載起動需求
+
+
 # uv run pyinstaller --clean UIA.spec
 # uvx run UIA.py # uvx（等同於 uv tool run）
-
-# pyinstaller --clean UIA.spec
-# python UIA.py

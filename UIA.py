@@ -75,7 +75,7 @@ if platform == 'android':
 # --- 基礎設定 --- python *.py
 # D:\Python\Non-codeAutomaticOperation\Non-codeAutomaticOperation # C:\Users\USER\AppData\Local\Programs\Tesseract-OCR\tesseract.exe
 # C:\Program Files\Tesseract-OCR
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+pytesseract.pytesseract.tesseract_cmd = r"C:\Users\USER\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
 # 這是最穩定的寫法：獲取「目前這個 Python 檔案」所在的資料夾
 if getattr(sys, 'frozen', False):
     # 如果是打包後的 .exe
@@ -297,11 +297,11 @@ def 回覆(*args):
     # 將所有傳進來的參數（不論是數字還是字串）都轉成字串，並用空格串接
     ss = " ".join(str(arg) for arg in args)
     if ss.strip():  # 確保內容不為空
-        Backend().conversation(msg=ss)
         print(ss)
+        Backend().conversation(msg=ss)
     else:
-        Backend().conversation(msg="請輸入有效的回覆內容")
         print("請輸入有效的回覆內容")
+        Backend().conversation(msg="請輸入有效的回覆內容")
   
 import requests
 from bs4 import BeautifulSoup
@@ -1240,6 +1240,8 @@ def find_array(array,cond):
     符合的列且不提取全部的欄:效果詞,效果值 = row([0,1],find_array(效果,C(0).isin(用戶回饋)))
     """
     if not hasattr(cond, 'func'):
+        回覆("cond 的實際型態是:", type(cond))
+        回覆("cond 的實際內容是:", cond)
         raise ValueError("cond 必須是 Cond 物件或 Expr 比較運算後的結果")
     return array[cond.func(array)]
 
@@ -1347,7 +1349,7 @@ def selected(keyword,sort=1,num=1,classA=None):
     回覆("找字中...")
     # 最高強度的相似度比對，當場撈出最新 X, Y 坐標
     # 11:text, 6:left, 7:top, 8:width, 9:height, 10:conf
-    text_pts_data=C(row([11,6,7,8,9,10]),data) 
+    text_pts_data=C(row([11,6,7,8,9,10],data) )
     text  = find_array(text_pts_data,(C(5)>60) and (C(0).isin(kw)) )
     if len(text)>0:
         text_pts=C(
@@ -1917,20 +1919,20 @@ class InputCommand(QObject):
         noesis = Noesis() 
         backend=Backend()
         try:
-            line=find_array(lines, C(0) !=',')
-            回覆(f"line:{line}")
-            window=row(0,find_array(line,str(C(0))))
-            回覆(f"window:{window}")
-            paths=row(1,find_array(line,C(1) != ':'))
-            actions=row(2,find_array(line,C(2) != ':'))
+            line=str(lines).split(',',2)
+            window,paths,actions=str(line[0]),line[1],line[2]
         except ValueError:
-                回覆("⚠️ Invalid format. Please enter: WindowTitle, Path, Action")
-        if self.current_window != window:
+            回覆("⚠️ Invalid format. Please enter: WindowTitle, Path, Action")
+        if self.current_window == window :
             self.focus_window(window)
-            time.sleep(0.5)
+            time.sleep(0.2)
+        elif str(window) in str(self.current_window):
+            self.focus_window(window)
+            time.sleep(0.2)
+            
         for action in actions:
             i=0
-            sp=selected(row(i,paths))
+            sp=selected(row(None,paths))
             if sp is None:
                 return
             回覆(f"目標位置:{sp}")
