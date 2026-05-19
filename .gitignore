@@ -1,0 +1,12 @@
+# 忽略特定的機密檔案
+config.json
+secrets.txt
+.env
+serviceAccountKey.json
+test.png
+
+# 忽略整個 build 資料夾下的特定機密檔案
+build/UIA/UIA.pkg
+
+# 忽略所有副檔名為 .log 的紀錄檔
+*.log
