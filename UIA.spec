@@ -79,7 +79,7 @@ exe = EXE(
 # python -m pip install --upgrade pip
 # uv add mediapipe geographiclib firebase-admin PySide6 numpy opencv-python Pillow PyOpenGL PyOpenGL-accelerate geopy pynput pyautogui pytesseract psutil pywinauto beautifulsoup4 lxml
 # uv run pyinstaller --clean UIA.spec
-# uv run UIA.py
+# uvx run UIA.py # uvx（等同於 uv tool run）
 
 # pyinstaller --clean UIA.spec
 # python UIA.py

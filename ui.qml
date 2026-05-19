@@ -185,6 +185,7 @@ Window {
                 if(!(event.modifiers & (Qt.ShiftModifier | Qt.ControlModifier | Qt.AltModifier))){
                     animButton.clicked()
                     IC.input_line(userInput) // 執行失敗時同時不執行下一行
+                    
                     text=""
                 }   
             }
