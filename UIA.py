@@ -73,9 +73,9 @@ if platform == 'android':
 # Clock.schedule_interval(read_imu, 1/50)
 
 # --- 基礎設定 --- python *.py
-# D:\Python\Non-codeAutomaticOperation\Non-codeAutomaticOperation # C:\Users\USER\AppData\Local\Programs\Tesseract-OCR\tesseract.exe
-# C:\Program Files\Tesseract-OCR
-pytesseract.pytesseract.tesseract_cmd = r"C:\Users\USER\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
+# D:\Python\Non-codeAutomaticOperation\Non-codeAutomaticOperation
+# C:\Program Files\Tesseract-OCR\tesseract.exe # C:\Users\USER\AppData\Local\Programs\Tesseract-OCR\tesseract.exe
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 # 這是最穩定的寫法：獲取「目前這個 Python 檔案」所在的資料夾
 if getattr(sys, 'frozen', False):
     # 如果是打包後的 .exe
@@ -297,6 +297,9 @@ def 回覆(*args):
     # 將所有傳進來的參數（不論是數字還是字串）都轉成字串，並用空格串接
     ss = " ".join(str(arg) for arg in args)
     if ss.strip():  # 確保內容不為空
+        MAX_LEN = 1500 
+        if len(ss) > MAX_LEN:
+            ss = ss[:MAX_LEN] + "..."
         print(ss)
         Backend().conversation(msg=ss)
     else:
@@ -408,8 +411,8 @@ def 看字():
             data = get_screenshot(Langs=LANGS)
             回覆("分析文章中...")
             # 最高強度的相似度比對，當場撈出最新 X, Y 坐標
-            # 11:text, 6:left, 7:top, 8:width, 9:height, 10:conf
-            text_pts_data=C(row([11,6,7,8,9,10]),data) 
+            # 10:text, 5:left, 6:top, 7:width, 8:height, 9:conf
+            text_pts_data=C(row([10,5,6,7,8,9],data) )
             matrix  = find_array(text_pts_data,C(5)>60 )
             if len(matrix)>0:
                 回覆("找到字")
@@ -1218,10 +1221,20 @@ def C(*args):
     """
     # 1. 修正您的 C 函數 (讓多參數分支能正確延遲求值)
     def C(*args):
-        if len(args) > 1:
-            # 🔑 關鍵修正：在 lambda 裡面才去調用各個 Expr 的 func(x)
-            return Expr(lambda x: np.column_stack([arg.func(x) for arg in args])) 
-        return Col(args[0])
+        if not args:
+            回覆("cond== []")
+            return Expr(lambda x: np.array([]))
+            
+        # 如果只有一個參數，直接包成 Expr，避免型態不一致
+        if len(args) == 1:
+            # 假設 Col 本身就是一種 Expr，或者可以直接轉為定義 func 的 Expr
+            return Expr(lambda x: np.array(args[0].func(x) if hasattr(args[0], 'func') else args[0]))
+
+        # 多個參數時：🔑 確保所有 arg 都有 func 屬性
+        return Expr(lambda x: np.column_stack([
+            arg.func(x) if hasattr(arg, 'func') else arg 
+            for arg in args
+        ]))
 
 def find_array(array,cond):
     """
@@ -1260,7 +1273,14 @@ def row(i, data, func2=None):
     如果data是 List，這行會跑 List Comprehension (慢但相容性高)
     如果data是 NumPy，這行會跑向量化提取 (快)
     """
-    data_arr = np.asarray(data)
+    if isinstance(data,dict):
+        # 2. 提取 values，轉成陣列後，必須加上 .T（轉置），讓形狀維持 (資料筆數, 12 欄)
+        # 使用 dtype=object 是為了相容數字（座標）與字串（辨識到的文字）
+        data_arr = np.array(list(data.values()), dtype=object).T
+        回覆("dict_to_list")
+    else:
+        # 3. 如果原本就是 NumPy 陣列或一般列表，直接轉換即可
+        data_arr = np.asarray(data)
     # 🔑 這裡補上 0 維陣列的極端情況攔截（以防萬一），字串
     if data_arr.ndim == 0:
         data_arr = data_arr.reshape(1, 1)
@@ -1332,7 +1352,7 @@ def selected(keyword,sort=1,num=1,classA=None):
     img_large = cv2.resize(screen_img, (0, 0), fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
     data = pytesseract.image_to_data(img_large, lang=LANGS, output_type=pytesseract.Output.DICT)
     final_pts = [] 
-    #{ 28
+    #{ 39
     #'level':   [1, 2, 3, 4, 5, 5],       # 階層 (網頁/段落/行/字)
     #'page_num': [1, 1, 1, 1, 1, 1],      # 頁碼
     #'block_num':[1, 1, 1, 1, 1, 1],      # 區塊編號
@@ -1348,9 +1368,10 @@ def selected(keyword,sort=1,num=1,classA=None):
     #}
     回覆("找字中...")
     # 最高強度的相似度比對，當場撈出最新 X, Y 坐標
-    # 11:text, 6:left, 7:top, 8:width, 9:height, 10:conf
-    text_pts_data=C(row([11,6,7,8,9,10],data) )
-    text  = find_array(text_pts_data,(C(5)>60) and (C(0).isin(kw)) )
+    # 10:text, 5:left, 6:top, 7:width, 8:height, 9:conf
+    text_pts_data=C(row([10,5,6,7,8,9],data) )
+    #回覆(f"{find_array(text_pts_data,C(5) == None )}")，c(5)型態 <class 'bool'>，內容 True
+    text  = find_array(text_pts_data,(C(5) > 60) & (C(0).isin(kw)) ) # 符合cond或Expr，但 TypeError: '>' not supported between instances of 'NoneType' and 'int'
     if len(text)>0:
         text_pts=C(
             find_array(text,(C(1)+(C(3)//2))//2),

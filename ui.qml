@@ -4,6 +4,7 @@ import QtQuick.Window
 import QtQuick.Controls 
 import QtQuick.Effects
 import Qt5Compat.GraphicalEffects // 必須導入此模組來使用 Glow // Qt 6 請使用此模組；Qt 5 請改為 import QtGraphicalEffects 1.15
+import QtQuick.Layouts
 
 
 Window {
@@ -14,6 +15,7 @@ Window {
     property int text_h: 50
     property int button_w: 80
     property int button_h: 55
+
 
     width: window_w
     height: window_h
@@ -119,13 +121,14 @@ Window {
                 fontSizeMode: Text.Fit  // 當文字超出寬度時，自動縮小字型大小
                 minimumPixelSize: 10     // 允許縮小到的最小極限（避免縮到 0 變看不見）               
                 // 關鍵設定 3：必須限制文字元件的寬度，否則它不知道何時該縮小
-                width: control.availableWidth
+                width: control.availableWidth-2 // 避免貼邊
                 // 4. 精髓：如果字多到連 9 號字都塞不下，自動在末端加上 "..."
                 elide: Text.ElideRight
                 wrapMode: Text.NoWrap   // 不換行，強迫在單行內縮小
                 // 當我們在外部用 MultiEffect 渲染時，這裡保持純文字即可
                 //horizontalAlignment: Text.AlignHCenter
                 //verticalAlignment: Text.AlignVCenter
+                visible: false // 因為我們只要 MultiEffect 渲染後的結果，這樣才不會有雙重重影 Bug
             }
 
             MultiEffect {
@@ -147,233 +150,525 @@ Window {
             }
         }
     }
-
-    TextArea {
-        id: inputBox
+    
+    ColumnLayout {
+        anchors.fill: parent
         width: window_w*0.8
-        height: Math.max(50, Math.min(contentHeight, window_h * 0.4))
-        x: (parent.width - width) / 2  // 水平居中
-        y: (parent.height - height)-margin-text_h // 垂直居下
-        text:""
-        wrapMode: Text.Wrap // 自動換行
-        placeholderText: "請輸入windowTittle, path, action... (:多重路徑、::分行、<>錄製)"
-        focus: true // 點擊即可輸入
-        // font.family: "Microsoft JhengHei" // 設置字體
-        font.pixelSize: 18 // 設置字體大小
-        color: Qt.rgba(0.1, 0.0, 0.15, 0.9)
-        font.family: "Courier" // 用等寬字體更有駭客感
+        spacing: 8 // 按鈕之間的間距
+        x: (root.width - width) / 2  // 水平居中
+        y: (root.height - height)-margin-text_h // 垂直居下 // 可在此統一設定整個群組的 y 座標
+            
+        //    // =========================================================================
+        //    // 任務欄:新增與移除任務
+        //    // 你完全沒搞懂，我再說一次，點擊任務框內的 最新按鈕的下一處即新增按鈕，然後輸入文字即按鈕文字，按下即重新命名，左右拉即移除，上下拉即重新調整任務順位
+        //    // 
+        //    // =========================================================================
+        //    Column  {
+        //        id: listErrand 
+        //        anchors.left: parent.left
+        //        anchors.right: parent.right
+        //        // height: 50
+        //    }
+
+        //    Rectangle  {
+        //        id:listErrandButton
+        //        anchors.fill: parent
+        //        anchors.horizontalCenter: parent.horizontalCenter
+        //        z: 99
+        //        property bool dragging: false
+
+        //        Text {
+        //            id:title
+        //            text:"任務欄"
+        //            anchors.centerIn: parent
+        //            // color:"white"
+        //        }
 
 
-        background: Rectangle {
-            color: Qt.rgba(0.68, 1, 0.18, 0.4) 
-            radius: 8
-            border.color: Qt.rgba(0.68, 1, 0.18, 1)  // 深一點的邊框讓邊界更清晰
-            border.width: 1
-            }
-        // 監聽文本變化
-        onTextChanged: {
-            if(text.length > 0) {  // *** 進入 計算物體實際大小的 抓取模式
-                if (!/^(.*)_W(\d+)_H(\d+)_Z([\d.]+)\.png$/.test(text)) {}
-            // 當用戶輸入時更新 `userInput`
-            userInput = text
-            }
-        }
-        Keys.onPressed: (event) => {
-            // 當按下回車鍵時，執行提交操作
-            if([Qt.Key_Return,Qt.Key_Enter].includes(event.key)){
-                event.accepted = true
-                if(!(event.modifiers & (Qt.ShiftModifier | Qt.ControlModifier | Qt.AltModifier))){
-                    animButton.clicked()
-                    IC.input_line(userInput) // 執行失敗時同時不執行下一行
-                    
-                    text=""
-                }   
-            }
-        }
-    }
-    
-    
-    // 顯示用戶輸入的文本
-    Item {
-        id: container
-        property var textModel: "引頸期盼地等待訊息..."
-        
-        // 設定實質邊界，Flow 才知道在哪裡折行
-        anchors.top: inputBox.bottom
-        anchors.left: inputBox.left
-        anchors.right: parent.right 
-        height: flowLayout.height 
-        
-        readonly property string customFont: "Courier"
-        readonly property int customSize: 18
+        //        TextField {
+        //            id: listNameField
+        //            anchors.top: parent.top
+        //            width: 240
+        //            placeholderText: "輸入名稱"
+        //        }
 
-        // 接收 Python 後端更新
-        Connections {
-            target: Backend 
-            function onResponseUpdated(all_text) {
-                container.textModel = all_text
-            }
-        }
+        //        TextField {
+        //            id: nameField
+        //            anchors.top: parent.top 
+        //            anchors.topMargin: 25  // 偏移量要分開寫
+        //            width: 240
+        //            placeholderText: "輸入名稱"
+        //        }
+
+        //        MouseArea{
+        //            anchors.fill: parent
+        //            drag.target: listErrandButton
+        //            property real dx :0
+        //            property real dy :0
+        //            acceptedButtons: Qt.LeftButton
+        //            onPressed: {
+        //                if (mouse.button === Qt.LeftButton) {
+        //                    lastMousePos = Qt.point(mouse.x, mouse.y)
+        //                    // **重新命名
+        //                    title.text = listNameField.text
+        //                }
+        //            }
+
+        //            onPositionChanged: {
+        //                // 按鈕位移後，縮小或放大 整個任務欄
+        //                dx = mouse.x - lastMousePos.x
+        //                dy = mouse.y - lastMousePos.y
+        //                if ( Math.abs(dx)>20 ||  Math.abs(dy)>20 ) {
+        //                    if(listErrandButton.height<button_h){
+        //                        // ***任務欄 全部顯示
+        //                        listErrandButton.height=button_h
+        //                    }else{
+        //                        // ***只顯示 按鈕
+        //                        listErrandButton.height=50
+        //                    }
+        //                }
+        //                else{
+        //                    listErrandButton.dragging=false
+        //                }
+        //            }
+        //            onReleased: {
+        //                // **放大時，按鈕不位移後，增加任務
+        //                if(!listErrandButton.dragging && listErrandButton.height>=button_h){
+        //                    
+        //                    Qt.createQmlObject('
+        //                        Item {
+        //                            id: errandItem
+        //                            width: parent.width
+        //                            height: parent.height-2.5
+
+        //                            Rectangle {
+        //                                anchors.fill: parent
+        //                                color: "#333"
+        //                                radius: 6
+        //                                
+        //                                TextArea { 
+        //                                    property bool posD: false
+        //                                    id: errand
+        //                                    width: 300
+        //                                    height: 80
+        //                                    text: nameField.text
+        //                                    anchors.fill: parent
+        //                                    anchors.margins: 6
+        //                                    wrapMode: TextArea.Wrap
+        //                                }
+        //                                MouseArea {
+        //                                    anchors.fill: parent
+        //                                    drag.target: errand
+        //                                    acceptedButtons: Qt.LeftButton
+        //                                    onPressed: {
+        //                                        if (mouse.button === Qt.LeftButton) {
+        //                                            lastMousePos = Qt.point(mouse.x, mouse.y)
+        //                                        }
+        //                                    }
+        //                                    
+        //                                    onReleased: {
+        //                                        var indexObj=listErrand.children[listErrand.children.indexOf(errandItem)]
+        //                                        bool objOk=false
+        //                                        if ( Math.abs(mouse.x - lastMousePos.x)>20 && indexObj!==-1 ) {
+        //                                            // **任務左右位移時移除 ，GPT 寫錯 GPT已死
+        //                                            indexObj.destroy(); 
+        //                                        }else if ( Math.abs( mouse.y - lastMousePos.y)>20 ) {
+        //                                            // ***任務上下位移時變更順序，放開在哪一個子物件上面，該順序以後的全部子物件都後移一位
+        //                                            for (real child of listErrand.children) {
+        //                                                if(listErrand.children.indexOf(child)==1)
+        //                                                    objOk=false
+        //                                                if (mouse.y >= child.y && mouse.y < child.y + child.height){
+        //                                                    child.parent = null;
+        //                                                    child.parent = listErrand;
+        //                                                    listErrand.stackBefore(child);
+        //                                                    objOk=true
+        //                                                }
+        //                                                if(objOk){
+        //                                                    child.parent = null;
+        //                                                    child.parent = listErrand;
+        //                                                }
+        //                                            }
+        //                                        }else{
+        //                                            // **無位移時重新命名
+        //                                            errandItem.errand.text= nameField.text 
+        //                                            nameField.text=""
+        //                                        }
+        //                                    }
+        //                                }
+        //                            }
+        //                        }', listErrand
+        //                    )
+        //                    nameField.text = ""
+        //                }
+        //            }
+        //        }
+        //    }
+        //    // end 新增與移除任務
+
 
         // =========================================================================
-        // 1. 底層文字（負責顯示咖啡色底色與抖動，Flow 會自動依文字寬度排列換行）
+        // 1. 中央 任務欄（完全遵循您說的：點擊 ➡️ 判斷 ➡️ 觸發 Function）
         // =========================================================================
-        Flow {
-            id: flowLayout
-            anchors.left: parent.left
-            anchors.right: parent.right
-            spacing: 0
+        Item {
+            id: taskBarWrapper
+            Layout.fillWidth: true
+            Layout.preferredHeight: Math.max(50, listErrand.height) // 高度完全由按鈕數量決定
+            z: 99
 
-            Repeater {
-                model: container.textModel
-                Text {
-                    text: modelData // 這裡可以直接拿 modelData，完全不會報錯
-                    color: Qt.rgba(0.435, 0.306, 0.216, 1.0)
-                    font.family: container.customFont
-                    font.pixelSize: container.customSize
+            // 💡 核心中央控制：點擊整塊區域時，統一進行邏輯判斷
+            MouseArea {
+                anchors.fill: parent
+                propagateComposedEvents: true // 讓已存在的按鈕點擊事件可以穿透
+
+                onClicked: (mouse) => {
+                    // 💡 邏輯 1：判斷點擊的位置「有沒有撞到現有的按鈕」
+                    var clickedChild = listErrand.childAt(mouse.x, mouse.y);
                     
-                    // 特效層位移
-                    transform: Translate {
-                        property real charPos: index / 20.0
-                        x: (neonFlow.pos > charPos && neonFlow.pos < charPos + 0.3) ? (Math.random() * 8 - 4) : 0
-                        y: (neonFlow.pos > charPos && neonFlow.pos < charPos + 0.3) ? (Math.random() * 4 - 2) : 0
+                    if (clickedChild === null) {
+                        // 💡 邏輯 2：點擊之處無按鈕 ➡️ 觸發新增 CamButton 的 Function
+                        createNewTaskButton();
+                    } else {
+                        // 💡 邏輯 3：點擊之處有按鈕 ➡️ 觸發按下/重新命名的 Function
+                        handleButtonInteraction(clickedChild);
                     }
                 }
             }
-        }
 
+            // 垂直排列按鈕的純粹容器，不帶多餘程式碼
+            Column {
+                id: listErrand
+                anchors.left: parent.left
+                anchors.right: parent.right
+                spacing: 5
+            }
+
+            // =========================================================================
+            // ⚙️ 中央控制 Functions (集中管理，乾淨俐落)
+            // =========================================================================
+            
+            // 💡 Function A: 新增按鈕
+            function createNewTaskButton() {
+                var txt = nameField.text.trim();
+                if (txt === "") txt = "新自動化任務";
+                
+                Qt.createQmlObject('
+                    CamButton {
+                        width: parent.width
+                        buttonText: "' + txt + '"
+                    }', listErrand
+                );
+                nameField.text = ""; // 清空輸入框
+            }
+
+            // 💡 Function B: 點擊已有按鈕（按下 / 重新命名）
+            function handleButtonInteraction(targetButton) {
+                var txt = nameField.text.trim();
+                if (txt !== "") {
+                    // 如果文字欄位有字 ➡️ 重新命名
+                    targetButton.buttonText = txt;
+                    nameField.text = "";
+                } else {
+                    // 如果文字欄位沒字 ➡️ 執行按鈕原本的動作（例如切換選取狀態）
+                    targetButton.checked = !targetButton.checked;
+                }
+            }
+
+            // 💡 Function C: 左右拉移除 / 上下拉排序 (此處可對應您後續的手勢監聽)
+            function handleGesture(targetButton, direction) {
+                if (direction === "remove") {
+                    targetButton.destroy();
+                } else if (direction === "moveUp") {
+                    // 執行向上排序邏輯...
+                }
+            }
+        }
+//不合理，照理說只要有一個text欄位，點擊時無按鈕即新增CamButton，判斷是否按下，觸發function
+        // #--------
+        
+        
         // =========================================================================
-        // 2. 特效層（完美的 OpacityMask 霓虹燈效果）
+        // 顯示用戶輸入的文本
         // =========================================================================
         Item {
-            anchors.fill: flowLayout
+            id: container
+            property var textModel: "引頸期盼地等待訊息..."
+            // 💡 1. 修改高度：外層 container 必須是「固定高度」或錨定到底部，滾輪才會生效
+            clip: true 
+            
+            // 設定實質邊界，Flow 才知道在哪裡折行
+            Layout.fillWidth: true
+            Layout.fillHeight: true //最大顯示長度
+            // anchors.top: inputBox.top
+            
+            readonly property string customFont: "Courier"
+            readonly property int customSize: 18
 
-            // 遮罩文字（結構必須與下方 flowLayout 完全對稱，包證換行位置 100% 貼合）
-            Flow {
-                id: maskFlow
+            // 💡 修正 1：主動監聽滑鼠滾輪事件，強制 Flickable 滾動
+            MouseArea {
                 anchors.fill: parent
+                propagateComposedEvents: true // 允許事件傳下去
+                onWheel: (wheel) => {
+                    // 將滾輪力道除以 8 (120 / 8 = 15 像素)，這樣滑動幅度會非常溫和、平滑
+                    var scrollStep = wheel.angleDelta.y / 8;
+                    // 計算新的 Y 軸位置 (向上滾動時 scrollStep 是正的，contentY 要減少，所以用減法)
+                    var targetY = flowLayout.y + scrollStep;
+                    // 💡 限制滾動的上下邊界，避免文字飄出畫面外
+                    // 頂部邊界是 0，底部邊界是「可視高度 - 文字總高度」
+                    var minY = Math.min(0, container.height - flowLayout.height);
+                    flowLayout.y = Math.max(minY, Math.min(0, targetY));
+                }
+            }
+
+            // 接收 Python 後端更新
+            Connections {
+                target: Backend 
+                function onResponseUpdated(all_text) {
+                    container.textModel = all_text
+
+                    // 💡 核心修改：等待 QML 將新文字排版完畢後，自動滾動到最底部
+                    Qt.callLater(function() {
+                        // 計算最底部的 y 座標（必須是負值或 0）
+                        var bottomY = container.height - flowLayout.height;
+                        // 如果文字總高度超過了容器可視高度，才需要滾動
+                        if (bottomY < 0) {
+                            flowLayout.y = bottomY;
+                        } else {
+                            flowLayout.y = 0; // 字數還很少時，維持在最頂端
+                        }
+                    });
+                }
+            }
+            // =========================================================================
+            // 1. 底層文字（負責顯示咖啡色底色與抖動，Flow 會自動依文字寬度排列換行）
+            // =========================================================================
+            Flow {
+                id: flowLayout
+                anchors.left: parent.left
+                anchors.right: parent.right
                 spacing: 0
-                visible: false // 必須隱藏，僅供遮罩裁切使用
-                
+                // 💡 4. 注意：在 Flickable 內部，左右邊界要錨定在 Flickable 的父層或固定寬度
+                x:0
+                y:0
+                width: flickableContainer.width
+
                 Repeater {
                     model: container.textModel
                     Text {
-                        text: modelData
+                        text: modelData // 這裡可以直接拿 modelData，完全不會報錯
+                        color: Qt.rgba(0.435, 0.306, 0.216, 1.0)
                         font.family: container.customFont
                         font.pixelSize: container.customSize
+                        
+                        // 特效層位移
+                        transform: Translate {
+                        // 💡 修正關鍵：使用 % 1.0 取餘數，讓字元位置在 0.0 ~ 1.0 之間無限循環
+                            property real charPos: (index / 20.0) % 1.0
+                            
+                            // 💡 修正 1：利用 index 計算出該字元專屬、固定不變的隨機值 (0.0 ~ 1.0)
+                            // 這樣就不會在每一幀都重新隨機抽樣，能確保「固定某些字會動、某些字不會動」
+                            property real charRandomSeed: (Math.sin(index * 12.9898) * 43758.5453) % 1.0
+                            
+                            // 💡 修正 2：控制是否允許抖動的機率門檻（0.3 代表只有 30% 的字會動，其餘靜止）
+                            property bool isSelectedToMove: Math.abs(charRandomSeed) < 0.4
+
+                            x: {
+                                var diff = neonFlow.pos - charPos;
+                                if (diff < 0) diff += 1.0; 
+                                
+                                // 光線經過時會降低震動，diff 同時增加震動機率和周長，手動調整光線要經過的時間，達成剛好經過觸發不少震動
+                                // 同時必須滿足我們篩選出來的隨機字元（isSelectedToMove），才會產生位移
+                                return (diff < 0.3 && isSelectedToMove) ? (Math.random() * 8 - 4) : 0
+                            }
+                            y: {
+                                var diff = neonFlow.pos - charPos;
+                                if (diff < 0) diff += 1.0;
+                                return (diff < 0.3 && isSelectedToMove) ? (Math.random() * 4 - 2) : 0
+                            }
+                            }
                     }
                 }
             }
 
-            // 霓虹斜線漸層
-            LinearGradient {
-                id: neonFlow
-                anchors.fill: parent
-                visible: false
-                start: Qt.point(0, 0)
-                end: Qt.point(parent.width * 0.5, parent.height)
-                property real pos: -1.0
-                
-                gradient: Gradient {
-                    GradientStop { position: neonFlow.pos; color: "transparent" }
-                    GradientStop { position: neonFlow.pos + 0.2; color: "#FF00FF" }
-                    GradientStop { position: neonFlow.pos + 0.4; color: "transparent" }
-                    GradientStop { position: neonFlow.pos + 0.3; color: "transparent" }
-                    GradientStop { position: neonFlow.pos + 0.4; color: "#00FFFF" }
-                    GradientStop { position: neonFlow.pos + 0.6; color: "transparent" }
-                    GradientStop { position: neonFlow.pos + 0.5; color: "transparent" }
-                    GradientStop { position: neonFlow.pos + 0.8; color: "#BF00FF" }
-                    GradientStop { position: neonFlow.pos + 0.9; color: "transparent" }
+            // =========================================================================
+            // 2. 特效層（完美的 OpacityMask 霓虹燈效果）
+            // =========================================================================
+            Item {
+                anchors.fill: flowLayout
+
+                // 遮罩文字（結構必須與下方 flowLayout 完全對稱，包證換行位置 100% 貼合）
+                Flow {
+                    id: maskFlow
+                    anchors.fill: parent
+                    spacing: 0
+                    visible: false // 必須隱藏，僅供遮罩裁切使用
+                    
+                    Repeater {
+                        model: container.textModel
+                        Text {
+                            text: modelData
+                            font.family: container.customFont
+                            font.pixelSize: container.customSize
+                        }
+                    }
                 }
 
-                PropertyAnimation on pos {
-                    from: -8.2; to: 3.0; duration: 8000 // 13/8 =1.4 適當
-                    loops: Animation.Infinite; easing.type: Easing.Linear
+                // 霓虹斜線漸層
+                LinearGradient {
+                    id: neonFlow
+                    anchors.fill: parent
+                    visible: false
+                    start: Qt.point(0, 0)
+                    end: Qt.point(parent.width * 0.5, parent.height)
+                    property real pos: -1.0
+                    
+                    gradient: Gradient {
+                        GradientStop { position: neonFlow.pos; color: "transparent" }
+                        GradientStop { position: neonFlow.pos + 0.2; color: "#FF00FF" }
+                        GradientStop { position: neonFlow.pos + 0.4; color: "transparent" }
+                        GradientStop { position: neonFlow.pos + 0.3; color: "transparent" }
+                        GradientStop { position: neonFlow.pos + 0.4; color: "#00FFFF" }
+                        GradientStop { position: neonFlow.pos + 0.6; color: "transparent" }
+                        GradientStop { position: neonFlow.pos + 0.5; color: "transparent" }
+                        GradientStop { position: neonFlow.pos + 0.8; color: "#BF00FF" }
+                        GradientStop { position: neonFlow.pos + 0.9; color: "transparent" }
+                    }
+
+                    PropertyAnimation on pos {
+                        from: -0.2; to: 11.0; duration: 8000 // 13/8 =1.4 適當
+                        loops: Animation.Infinite; easing.type: Easing.Linear
+                    }
+                }
+
+                // 外發光
+                Glow {
+                    id: neonGlow
+                    anchors.fill: parent
+                    source: neonFlow
+                    radius: 9; samples: 19; color: "#00FFFF"; spread: 0.4
+                    visible: false
+                }
+
+                // 最終裁剪混合
+                OpacityMask {
+                    anchors.fill: parent
+                    source: neonGlow
+                    maskSource: maskFlow
+                }
+            }
+        }
+
+
+        // 顯示回覆用戶的文本
+            // TODO:收到的路徑轉成句子，
+            // TODO:*** 打開路徑下的所有圖片
+            // TODO:*** 點擊某個詞，顯示該詞對應路徑下的圖片集
+            // TODO:*** 動態圖片：每次撥放幾張圖，循環撥放
+            // pyside6-balsam *.glb 另存成 iluluModel.qml and meshes/*.mesh and maps/模型使用的貼圖 
+        Column {
+            spacing: 10
+            Text {
+                id: dialogue
+                text: Backend ? Backend.path_dir : "" 
+                color: "white"
+                font.pixelSize: 16
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: (mouse) => { // 點擊文字請求圖片列表
+                    imgTimer.stop()       // 切換前先停止播放
+                    Backend.getImages(dialogue.text) // 傳文字給後端
+                    }  
                 }
             }
 
-            // 外發光
-            Glow {
-                id: neonGlow
-                anchors.fill: parent
-                source: neonFlow
-                radius: 9; samples: 19; color: "#00FFFF"; spread: 0.4
-                visible: false
+            Image {
+                id: imgDisplay
+                width: 300
+                height: 300
+                fillMode: Image.PreserveAspectFit
             }
 
-            // 最終裁剪混合
-            OpacityMask {
+            Timer {
+                id: imgTimer
+                interval: 1000 // 每秒切換
+                repeat: true
+                running: false
+                onTriggered: {
+                    if (imageList.length > 0) {
+                        imgDisplay.source = imageList[currentIndex]
+                        currentIndex = (currentIndex + 1) % imageList.length
+                    } else {
+                    imgDisplay.source = "" // 空列表清除圖片
+                }
+                }
+            }
+
+            property var imageList: []
+            property int currentIndex: 0
+
+            Connections {
+                target: Backend
+                function onImagesReady(images) {
+                    imageList = images
+                    currentIndex = 0
+                    if (imageList.length > 0) {
+                        imgDisplay.source = imageList[0] // 立即顯示第一張
+                        imgTimer.start()
+                    } else {
+                        imgDisplay.source = ""
+                        imgTimer.stop()
+                    }
+                }
+            }
+        }
+
+        // =========================================================================
+        // 輸入框
+        // =========================================================================
+        TextArea {
+            id: inputBox
+            Layout.fillWidth: true
+            // Layout.preferredHeight: Math.max(50, Math.min(contentHeight, window_h * 0.4))
+            height:Math.max(50, Math.min(contentHeight, window_h * 0.4))
+            text:""
+            wrapMode: Text.Wrap // 自動換行
+            placeholderText: "請輸入windowTittle, path, action... (:多重路徑、::分行、<>錄製)"
+            focus: true // 點擊即可輸入
+            // font.family: "Microsoft JhengHei" // 設置字體
+            font.pixelSize: 18 // 設置字體大小
+            color: Qt.rgba(0.1, 0.0, 0.15, 0.9)
+            font.family: "Courier" // 用等寬字體更有駭客感
+
+            background: Rectangle {
                 anchors.fill: parent
-                source: neonGlow
-                maskSource: maskFlow
+                color: Qt.rgba(0.68, 1, 0.18, 0.4) 
+                radius: 8
+                border.color: Qt.rgba(0.68, 1, 0.18, 1)  // 深一點的邊框讓邊界更清晰
+                border.width: 1
+                }
+            // 監聽文本變化
+            onTextChanged: {
+                if(text.length > 0) {  // *** 進入 計算物體實際大小的 抓取模式
+                    if (!/^(.*)_W(\d+)_H(\d+)_Z([\d.]+)\.png$/.test(text)) {}
+                // 當用戶輸入時更新 `userInput`
+                userInput = text
+                }
+            }
+            Keys.onPressed: (event) => {
+                // 當按下回車鍵時，執行提交操作
+                if([Qt.Key_Return,Qt.Key_Enter].includes(event.key)){
+                    event.accepted = true
+                    if(!(event.modifiers & (Qt.ShiftModifier | Qt.ControlModifier | Qt.AltModifier))){
+                        animButton.clicked()
+                        IC.input_line(userInput) // 執行失敗時同時不執行下一行
+                        
+                        text=""
+                    }   
+                }
             }
         }
     }
 
-
-    // 顯示回覆用戶的文本
-        // TODO:收到的路徑轉成句子，
-        // TODO:*** 打開路徑下的所有圖片
-        // TODO:*** 點擊某個詞，顯示該詞對應路徑下的圖片集
-        // TODO:*** 動態圖片：每次撥放幾張圖，循環撥放
-        // pyside6-balsam *.glb 另存成 iluluModel.qml and meshes/*.mesh and maps/模型使用的貼圖 
-    Column {
-        spacing: 10
-        Text {
-            id: dialogue
-            text: Backend ? Backend.path_dir : "" 
-            color: "white"
-            font.pixelSize: 16
-
-            MouseArea {
-                anchors.fill: parent
-                onClicked: (mouse) => { // 點擊文字請求圖片列表
-                imgTimer.stop()       // 切換前先停止播放
-                Backend.getImages(dialogue.text) // 傳文字給後端
-                }  
-            }
-        }
-
-        Image {
-            id: imgDisplay
-            width: 300
-            height: 300
-            fillMode: Image.PreserveAspectFit
-        }
-
-        Timer {
-            id: imgTimer
-            interval: 1000 // 每秒切換
-            repeat: true
-            running: false
-            onTriggered: {
-                if (imageList.length > 0) {
-                    imgDisplay.source = imageList[currentIndex]
-                    currentIndex = (currentIndex + 1) % imageList.length
-                } else {
-                imgDisplay.source = "" // 空列表清除圖片
-            }
-            }
-        }
-
-        property var imageList: []
-        property int currentIndex: 0
-
-        Connections {
-            target: Backend
-            function onImagesReady(images) {
-                imageList = images
-                currentIndex = 0
-                if (imageList.length > 0) {
-                    imgDisplay.source = imageList[0] // 立即顯示第一張
-                    imgTimer.start()
-                } else {
-                    imgDisplay.source = ""
-                    imgTimer.stop()
-                }
-            }
-        }
-    }
     Column {
         id: buttonContainer
         anchors.top: parent.top
@@ -428,148 +723,6 @@ Window {
         }
     }
     
-    // 新增與移除任務
-    Column  {
-        id: listErrand 
-        anchors.top: parent.bottom
-        spacing: 6
-    }
-
-    Rectangle  {
-        id:listErrandButton
-        anchors.bottom: parent.bottom
-        anchors.horizontalCenter: parent.horizontalCenter
-        z: 99
-        property bool dragging: false
-
-        Text {
-            id:title
-            text:"任務欄"
-            anchors.centerIn: parent
-            color:"white"
-        }
-
-
-        TextField {
-            id: listNameField
-            anchors.top: parent.top
-            width: 240
-            placeholderText: "輸入名稱"
-        }
-
-        TextField {
-            id: nameField
-            anchors.top: parent.top 
-            anchors.topMargin: 25  // 偏移量要分開寫
-            width: 240
-            placeholderText: "輸入名稱"
-        }
-
-        MouseArea{
-            anchors.fill: parent
-            drag.target: listErrandButton
-            property real dx :0
-            property real dy :0
-            acceptedButtons: Qt.LeftButton
-            onPressed: {
-                if (mouse.button === Qt.LeftButton) {
-                    lastMousePos = Qt.point(mouse.x, mouse.y)
-                    // **重新命名
-                    title.text = listNameField.text
-                }
-            }
-
-            onPositionChanged: {
-                // 按鈕位移後，縮小或放大 整個任務欄
-                dx = mouse.x - lastMousePos.x
-                dy = mouse.y - lastMousePos.y
-                if ( Math.abs(dx)>20 ||  Math.abs(dy)>20 ) {
-                    if(listErrandButton.height<button_h){
-                        // ***任務欄 全部顯示
-                        listErrandButton.height=button_h
-                    }else{
-                        // ***只顯示 按鈕
-                        listErrandButton.height=50
-                    }
-                }
-                else{
-                    listErrandButton.dragging=false
-                }
-            }
-            onReleased: {
-                // **放大時，按鈕不位移後，增加任務
-                if(!listErrandButton.dragging && listErrandButton.height>=button_h){
-                    
-                    Qt.createQmlObject('
-                        Item {
-                            id: errandItem
-                            width: parent.width
-                            height: parent.height-2.5
-
-                            Rectangle {
-                                anchors.fill: parent
-                                color: "#333"
-                                radius: 6
-                                
-                                TextArea { 
-                                    property bool posD: false
-                                    id: errand
-                                    width: 300
-                                    height: 80
-                                    text: nameField.text
-                                    anchors.fill: parent
-                                    anchors.margins: 6
-                                    wrapMode: TextArea.Wrap
-                                }
-                                MouseArea {
-                                    anchors.fill: parent
-                                    drag.target: errand
-                                    acceptedButtons: Qt.LeftButton
-                                    onPressed: {
-                                        if (mouse.button === Qt.LeftButton) {
-                                            lastMousePos = Qt.point(mouse.x, mouse.y)
-                                        }
-                                    }
-                                    
-                                    onReleased: {
-                                        var indexObj=listErrand.children[listErrand.children.indexOf(errandItem)]
-                                        bool objOk=false
-                                        if ( Math.abs(mouse.x - lastMousePos.x)>20 && indexObj!==-1 ) {
-                                            // **任務左右位移時移除 ，GPT 寫錯 GPT已死
-                                            indexObj.destroy(); 
-                                        }else if ( Math.abs( mouse.y - lastMousePos.y)>20 ) {
-                                            // ***任務上下位移時變更順序，放開在哪一個子物件上面，該順序以後的全部子物件都後移一位
-                                            for (real child of listErrand.children) {
-                                                if(listErrand.children.indexOf(child)==1)
-                                                    objOk=false
-                                                if (mouse.y >= child.y && mouse.y < child.y + child.height){
-                                                    child.parent = null;
-                                                    child.parent = listErrand;
-                                                    listErrand.stackBefore(child);
-                                                    objOk=true
-                                                }
-                                                if(objOk){
-                                                    child.parent = null;
-                                                    child.parent = listErrand;
-                                                }
-                                            }
-                                        }else{
-                                            // **無位移時重新命名
-                                            errandItem.errand.text= nameField.text 
-                                            nameField.text=""
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        ', listErrand
-                    )
-                    nameField.text = ""
-                }
-            }
-        }
-    }
-    // end 新增與移除任務
 
 
     // == = 視窗拖曳 == =
@@ -649,7 +802,7 @@ Window {
     // == = 滾輪縮放 == =
 
     //WheelHandler {
-    //    onWheel: root.scaleFactor += wheel.angleDelta.y * 0.001
+        //    onWheel: root.scaleFactor += wheel.angleDelta.y * 0.001
     //}
 
     // == == == == UI：重新掛載子物件 == == == ==
