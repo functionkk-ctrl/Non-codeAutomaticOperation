@@ -62,7 +62,7 @@ Window {
         // == == == == GLB 模型 == == == ==
         Ilulu { 
             id: iluluModel
-            scale: Qt.vector3d(scaleFactor*0.03, scaleFactor*0.03, scaleFactor*0.03)
+            scale: Qt.vector3d(scaleFactor*0.1, scaleFactor*0.1, scaleFactor*0.1)
             position: Qt.vector3d(0, 0, 0)
             
             SequentialAnimation on eulerRotation.y {
@@ -153,166 +153,20 @@ Window {
     
     ColumnLayout {
         anchors.fill: parent
-        width: window_w*0.8
+        Layout.fillWidth: true
+        Layout.fillHeight:true
+
         spacing: 8 // 按鈕之間的間距
-        x: (root.width - width) / 2  // 水平居中
-        y: (root.height - height)-margin-text_h // 垂直居下 // 可在此統一設定整個群組的 y 座標
+        //x: (root.width - width) / 2  // 水平居中
+        //y: (root.height - height)-margin-text_h // 垂直居下 // 可在此統一設定整個群組的 y 座標
             
-        //    // =========================================================================
-        //    // 任務欄:新增與移除任務
-        //    // 你完全沒搞懂，我再說一次，點擊任務框內的 最新按鈕的下一處即新增按鈕，然後輸入文字即按鈕文字，按下即重新命名，左右拉即移除，上下拉即重新調整任務順位
-        //    // 
-        //    // =========================================================================
-        //    Column  {
-        //        id: listErrand 
-        //        anchors.left: parent.left
-        //        anchors.right: parent.right
-        //        // height: 50
-        //    }
-
-        //    Rectangle  {
-        //        id:listErrandButton
-        //        anchors.fill: parent
-        //        anchors.horizontalCenter: parent.horizontalCenter
-        //        z: 99
-        //        property bool dragging: false
-
-        //        Text {
-        //            id:title
-        //            text:"任務欄"
-        //            anchors.centerIn: parent
-        //            // color:"white"
-        //        }
-
-
-        //        TextField {
-        //            id: listNameField
-        //            anchors.top: parent.top
-        //            width: 240
-        //            placeholderText: "輸入名稱"
-        //        }
-
-        //        TextField {
-        //            id: nameField
-        //            anchors.top: parent.top 
-        //            anchors.topMargin: 25  // 偏移量要分開寫
-        //            width: 240
-        //            placeholderText: "輸入名稱"
-        //        }
-
-        //        MouseArea{
-        //            anchors.fill: parent
-        //            drag.target: listErrandButton
-        //            property real dx :0
-        //            property real dy :0
-        //            acceptedButtons: Qt.LeftButton
-        //            onPressed: {
-        //                if (mouse.button === Qt.LeftButton) {
-        //                    lastMousePos = Qt.point(mouse.x, mouse.y)
-        //                    // **重新命名
-        //                    title.text = listNameField.text
-        //                }
-        //            }
-
-        //            onPositionChanged: {
-        //                // 按鈕位移後，縮小或放大 整個任務欄
-        //                dx = mouse.x - lastMousePos.x
-        //                dy = mouse.y - lastMousePos.y
-        //                if ( Math.abs(dx)>20 ||  Math.abs(dy)>20 ) {
-        //                    if(listErrandButton.height<button_h){
-        //                        // ***任務欄 全部顯示
-        //                        listErrandButton.height=button_h
-        //                    }else{
-        //                        // ***只顯示 按鈕
-        //                        listErrandButton.height=50
-        //                    }
-        //                }
-        //                else{
-        //                    listErrandButton.dragging=false
-        //                }
-        //            }
-        //            onReleased: {
-        //                // **放大時，按鈕不位移後，增加任務
-        //                if(!listErrandButton.dragging && listErrandButton.height>=button_h){
-        //                    
-        //                    Qt.createQmlObject('
-        //                        Item {
-        //                            id: errandItem
-        //                            width: parent.width
-        //                            height: parent.height-2.5
-
-        //                            Rectangle {
-        //                                anchors.fill: parent
-        //                                color: "#333"
-        //                                radius: 6
-        //                                
-        //                                TextArea { 
-        //                                    property bool posD: false
-        //                                    id: errand
-        //                                    width: 300
-        //                                    height: 80
-        //                                    text: nameField.text
-        //                                    anchors.fill: parent
-        //                                    anchors.margins: 6
-        //                                    wrapMode: TextArea.Wrap
-        //                                }
-        //                                MouseArea {
-        //                                    anchors.fill: parent
-        //                                    drag.target: errand
-        //                                    acceptedButtons: Qt.LeftButton
-        //                                    onPressed: {
-        //                                        if (mouse.button === Qt.LeftButton) {
-        //                                            lastMousePos = Qt.point(mouse.x, mouse.y)
-        //                                        }
-        //                                    }
-        //                                    
-        //                                    onReleased: {
-        //                                        var indexObj=listErrand.children[listErrand.children.indexOf(errandItem)]
-        //                                        bool objOk=false
-        //                                        if ( Math.abs(mouse.x - lastMousePos.x)>20 && indexObj!==-1 ) {
-        //                                            // **任務左右位移時移除 ，GPT 寫錯 GPT已死
-        //                                            indexObj.destroy(); 
-        //                                        }else if ( Math.abs( mouse.y - lastMousePos.y)>20 ) {
-        //                                            // ***任務上下位移時變更順序，放開在哪一個子物件上面，該順序以後的全部子物件都後移一位
-        //                                            for (real child of listErrand.children) {
-        //                                                if(listErrand.children.indexOf(child)==1)
-        //                                                    objOk=false
-        //                                                if (mouse.y >= child.y && mouse.y < child.y + child.height){
-        //                                                    child.parent = null;
-        //                                                    child.parent = listErrand;
-        //                                                    listErrand.stackBefore(child);
-        //                                                    objOk=true
-        //                                                }
-        //                                                if(objOk){
-        //                                                    child.parent = null;
-        //                                                    child.parent = listErrand;
-        //                                                }
-        //                                            }
-        //                                        }else{
-        //                                            // **無位移時重新命名
-        //                                            errandItem.errand.text= nameField.text 
-        //                                            nameField.text=""
-        //                                        }
-        //                                    }
-        //                                }
-        //                            }
-        //                        }', listErrand
-        //                    )
-        //                    nameField.text = ""
-        //                }
-        //            }
-        //        }
-        //    }
-        //    // end 新增與移除任務
-
-
         // =========================================================================
-        // 1. 中央 任務欄（完全遵循您說的：點擊 ➡️ 判斷 ➡️ 觸發 Function）
+        // 1. 中央 任務欄（新增與移除任務） //點擊任務欄內的空處即新增按鈕(CamButton)，按下按鈕即重新命名，左右拉即移除，上下拉即重新調整任務順位 TODO:***目前點擊不到
         // =========================================================================
         Item {
             id: taskBarWrapper
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.max(50, listErrand.height) // 高度完全由按鈕數量決定
+            Layout.preferredHeight: Math.max(button_h, listErrand.height) // 高度完全由按鈕數量決定
             z: 99
 
             // 💡 核心中央控制：點擊整塊區域時，統一進行邏輯判斷
@@ -382,12 +236,11 @@ Window {
                 }
             }
         }
-//不合理，照理說只要有一個text欄位，點擊時無按鈕即新增CamButton，判斷是否按下，觸發function
-        // #--------
+
         
         
         // =========================================================================
-        // 顯示用戶輸入的文本
+        // 回覆用戶的文本 TODO:***目前一行高
         // =========================================================================
         Item {
             id: container
@@ -397,8 +250,8 @@ Window {
             
             // 設定實質邊界，Flow 才知道在哪裡折行
             Layout.fillWidth: true
-            Layout.fillHeight: true //最大顯示長度
-            // anchors.top: inputBox.top
+            Layout.fillHeight: true
+            // Layout.preferredHeight: Math.max(button_h, flowLayout.height) // 高度完全由按鈕數量決定
             
             readonly property string customFont: "Courier"
             readonly property int customSize: 18
@@ -443,13 +296,16 @@ Window {
             // =========================================================================
             Flow {
                 id: flowLayout
-                anchors.left: parent.left
-                anchors.right: parent.right
+                // anchors.left: parent.left
+                // anchors.right: parent.right
+                Layout.preferredHeight: Math.max(button_h, listErrand.height) // 高度完全由按鈕數量決定
+                Layout.fillWidth: true
+
                 spacing: 0
                 // 💡 4. 注意：在 Flickable 內部，左右邊界要錨定在 Flickable 的父層或固定寬度
                 x:0
                 y:0
-                width: flickableContainer.width
+                //width: container.width
 
                 Repeater {
                     model: container.textModel
@@ -494,7 +350,7 @@ Window {
             // =========================================================================
             Item {
                 anchors.fill: flowLayout
-
+                
                 // 遮罩文字（結構必須與下方 flowLayout 完全對稱，包證換行位置 100% 貼合）
                 Flow {
                     id: maskFlow
@@ -575,8 +431,8 @@ Window {
                 MouseArea {
                     anchors.fill: parent
                     onClicked: (mouse) => { // 點擊文字請求圖片列表
-                    imgTimer.stop()       // 切換前先停止播放
-                    Backend.getImages(dialogue.text) // 傳文字給後端
+                        imgTimer.stop()       // 切換前先停止播放
+                        Backend.getImages(dialogue.text) // 傳文字給後端
                     }  
                 }
             }
@@ -623,13 +479,13 @@ Window {
         }
 
         // =========================================================================
-        // 輸入框
+        // 輸入框 TODO:***要更高
         // =========================================================================
         TextArea {
             id: inputBox
             Layout.fillWidth: true
-            // Layout.preferredHeight: Math.max(50, Math.min(contentHeight, window_h * 0.4))
-            height:Math.max(50, Math.min(contentHeight, window_h * 0.4))
+            Layout.preferredHeight: Math.max(button_h, Math.min(contentHeight, window_h * 0.4))
+            //height:Math.max(50, Math.min(contentHeight, window_h * 0.4))
             text:""
             wrapMode: Text.Wrap // 自動換行
             placeholderText: "請輸入windowTittle, path, action... (:多重路徑、::分行、<>錄製)"
@@ -681,7 +537,7 @@ Window {
         CamButton {
             id: animButton
             buttonText: "輸出動畫"
-            opacity: listErrandButton.x < 50 ? 0 : 1
+            opacity: root.x < 50 ? 0 : 1
             Behavior on opacity { NumberAnimation { duration: 300 } }
 
             onClicked: (mouse) => {
@@ -714,7 +570,7 @@ Window {
         CamButton {
             id: quit
             buttonText: "關閉"
-            opacity: listErrandButton.x < 50 ? 0 : 1
+            opacity: root.x < 50 ? 0 : 1
             Behavior on opacity { NumberAnimation { duration: 300 } }
 
             onClicked: (mouse) => {
