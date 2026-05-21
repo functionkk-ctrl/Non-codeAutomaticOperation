@@ -1,3 +1,5 @@
 {
-    "python-envs.defaultEnvManager": "ms-python.python:system"
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "qmlFormat.command": "C:\\Users\\User\\Documents\\GitHub\\test\\6.6.0\\mingw_64\\bin\\qmlformat.exe",
+    "qmlFormat.extraArguments": []
 }
