@@ -97,26 +97,34 @@ Window {
     component CamButton: Button {
         id: control
         checkable: true
-        //implicitWidth: button_w
-        //implicitHeight: button_h
-        Layout.preferredWidth: button_w
-        Layout.preferredHeight: button_h
+        implicitWidth: button_w
+        implicitHeight: button_h
+        //Layout.preferredWidth: button_w
+        //Layout.preferredHeight: button_h
 
         // 宣告一個屬性別名，指向內部 mainText 的 text 屬性
         property alias buttonText: mainText.text
         property real maxFontSize: 28
-        z:99
+        z:9
+        
+        opacity: root.x < 50 ? 0 : 1
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 300
+            }
+        }
 
         onClicked: {
             if (control.checked) {
-                backend.conversation("按下了" + mainText.text)
+                Backend.conversation("按下了" + mainText.text)
             } else {    
-                backend.conversation("取消了" + mainText.text)
+                Backend.conversation("取消了" + mainText.text)
             }
         }
         // 純平背景，不需要任何外框陰影
         background: Rectangle {
-            color: "#9ccbf4"
+            id:diamondRect
+            color:  Qt.rgba(156/255, 203/255, 244/255, 0.8) // "#9ccbf4"
             radius: 10
             // TODO:***鑽石外觀
         }
@@ -125,18 +133,19 @@ Window {
             id: textContainer
             //implicitWidth: mainText.implicitWidth
             //implicitHeight: mainText.implicitHeight
-            width: control.availableWidth
-            height: control.availableHeight
-            anchors.fill: parent
+            //width: control.availableWidth
+            //height: control.availableHeight
+            //anchors.fill: parent
             //anchors.centerIn: parent // 讓文字與陰影居中在按鈕中央
-            Layout.alignment: Qt.AlignHCenter // Qt.AlignHCenter Qt.AlignLeft
-            enabled: false // ⭕ 修正 2：強制讓整個內容物不響應任何滑鼠點擊，點擊事件會直接穿透到 Button
+            //Layout.alignment: Qt.AlignHCenter // Qt.AlignHCenter Qt.AlignLeft
+            //enabled: false // ⭕ 修正 2：強制讓整個內容物不響應任何滑鼠點擊，點擊事件會直接穿透到 Button
 
             Text {
                 id: mainText
                 text: ""
                 color: "white" // 文字主顏色
                 anchors.centerIn: parent
+                padding:1
 
                 // 關鍵設定 1：設定字型錨定與最大大小
                 font.pixelSize: control.maxFontSize
@@ -144,9 +153,9 @@ Window {
                 verticalAlignment: Text.AlignVCenter
                 // 關鍵設定 2：啟動自動縮小機制
                 fontSizeMode: Text.Fit  // 當文字超出寬度時，自動縮小字型大小
-                minimumPixelSize: 10     // 允許縮小到的最小極限（避免縮到 0 變看不見）
+                minimumPixelSize: 11     // 允許縮小到的最小極限（避免縮到 0 變看不見）
                 // 關鍵設定 3：必須限制文字元件的寬度，否則它不知道何時該縮小
-                width: control.availableWidth - 2 // 避免貼邊
+                width: control.availableWidth 
                 // 4. 精髓：如果字多到連 9 號字都塞不下，自動在末端加上 "..."
                 elide: Text.ElideRight
                 wrapMode: Text.NoWrap   // 不換行，強迫在單行內縮小
@@ -175,6 +184,81 @@ Window {
             }
         }
     }
+    
+    // == = 視窗拖曳 == = // MouseArea 必須在 GridLayout 之前
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.LeftButton
+
+        onPressed: {
+            if (mouse.button === Qt.LeftButton) {
+                if (!rotatingModel && !panningModel) {
+                    draggingWindow = true;
+                    lastMousePos = Qt.point(mouse.x, mouse.y);
+                }
+            } else if (mouse.button === Qt.RightButton) {
+                rotatingModel = true;
+                lastMousePos = Qt.point(mouse.x, mouse.y);
+            } else if (mouse.button === Qt.MiddleButton) {
+                panningModel = true;
+                lastMousePos = Qt.point(mouse.x, mouse.y);
+            }
+        }
+
+        onPositionChanged: {
+            if (draggingWindow) {
+                root.x += mouse.x - lastMousePos.x;
+                root.y += mouse.y - lastMousePos.y;
+            }
+            if (rotatingModel) {
+                iluluModel.eulerRotation.y += mouse.x - lastMousePos.x;
+                iluluModel.eulerRotation.x += mouse.y - lastMousePos.y;
+                lastMousePos = Qt.point(mouse.x, mouse.y);
+            }
+            if (panningModel) {
+                iluluModel.position.x += (mouse.x - lastMousePos.x) * 0.5;
+                iluluModel.position.y -= (mouse.y - lastMousePos.y) * 0.5;
+                lastMousePos = Qt.point(mouse.x, mouse.y);
+            }
+        }
+        onReleased: {
+            draggingWindow = false;
+            rotatingModel = false;
+            panningModel = false;
+        }
+    }
+    // 視窗
+    MouseArea {
+        anchors.fill: parent
+
+        onPressed: mouse => {
+            lastMousePos = Qt.point(mouse.x, mouse.y);
+            draggingWindow = true;
+        }
+
+        onPositionChanged: mouse => {
+            if (draggingWindow) {
+                root.x += mouse.x - lastMousePos.x;
+                root.y += mouse.y - lastMousePos.y;
+                // 左右邊緣自動最小化
+                if (root.x <= 0) {
+                    root.width = 50; // 最小化寬度
+                    root.x = 0;
+                    root.height = Math.max(50, window_h * (root.width / window_w));
+                } else if (root.x + (window_w / 2) >= Screen.width) {
+                    root.width = 50;
+                    root.x = Screen.width - 50;
+                    root.height = Math.max(50, window_h * (root.width / window_w));
+                } else {
+                    root.width = window_w;
+                    root.height = window_h;
+                }
+            }
+        }
+
+        onReleased: draggingWindow = false
+    }
+    
     // CamButton
     // TaskBarItem
     // ContainerItem
@@ -194,26 +278,30 @@ Window {
     //ImgItem 23,4
     //InputBoxTextArea 4,0123
     GridLayout {
-        Layout.fillWidth: true; Layout.fillHeight: true
-        
+        //Layout.fillWidth: true; 
+        //Layout.fillHeight: true
         anchors.fill: parent
         columns: 5 // 修正：索引要到 4，總欄數必須是 5 (0,1,2,3,4)
         rows: 5    // 總列數為 5 (0,1,2,3,4)
         columnSpacing: 10
-        rowSpacing: 10
+        rowSpacing: 6
 
 
         // 【ColButton】 座標 (0, 0) -> 第一列、第一欄
         ColButton {
+            id:btn
             Layout.row: 0; Layout.column: 0
             Layout.columnSpan: 2 
-            Layout.preferredWidth: parent.width * 0.2 // 固定側邊欄比例
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            //Layout.preferredWidth: parent.width * 0.2 // 固定側邊欄比例
         }
 
         // 【TaskBarItem】 座標 (0, 4) 且跨 4 列 -> 右側整條側邊欄
         TaskBarItem {
             Layout.row: 0; Layout.column: 4
-            Layout.rowSpan: 4 // 縱跨 4 列 (0,1,2,3)
+            Layout.rowSpan: 5 // 縱跨 5 列 (0,1,2,3,4)
+            Layout.fillWidth: true
             //Layout.preferredWidth: listErrand.width
             //Layout.preferredHeight: Math.max(button_h, listErrand.height) // 高度完全由按鈕數量決定
             //Layout.alignment: Qt.AlignHCenter // Qt.AlignHCenter Qt.AlignLeft
@@ -222,7 +310,7 @@ Window {
         // 【RectAinmate】 座標 (1, 0) 且跨 2 列 -> 左側中間動畫區
         RectAinmate {
             Layout.row: 1; Layout.column: 0
-            Layout.rowSpan: 2 // 縱跨 2 列 (1,2)
+            Layout.rowSpan: 2 // 縱跨 2 列 (1,2) // 0,3 放動畫角色
         }
 
         // 【containerItem】 座標 (1, 1) 跨 2 列 3 欄 -> 中央核心容器
@@ -230,13 +318,16 @@ Window {
             Layout.row: 1; Layout.column: 1
             Layout.rowSpan: 2    // 縱跨 2 列 (1,2)
             Layout.columnSpan: 3 // 橫跨 3 欄 (1,2,3)
+            Layout.fillWidth: true
+            Layout.preferredHeight:childrenRect.height 
         }
 
         // 【InputBoxTextArea】 座標 (4, 0) 橫跨 4 欄 -> 底部輸入框
         InputBoxTextArea {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
             Layout.row: 4; Layout.column: 0
             Layout.columnSpan: 4 // 橫跨 4 欄 (0,1,2,3)
-            Layout.fillWidth: true; Layout.preferredHeight: button_h // 固定輸入高度
         }
     }
 
@@ -539,7 +630,6 @@ Window {
     // 輸入框 TODO:***要更高
     component InputBoxTextArea: TextArea {
         id: inputBox
-        Layout.fillWidth: true
         Layout.preferredHeight: Math.max(button_h, Math.min(contentHeight, window_h * 0.4))
         //height:Math.max(50, Math.min(contentHeight, window_h * 0.4))
         text: ""
@@ -553,7 +643,7 @@ Window {
 
         background: Rectangle {
             //anchors.fill: parent
-            width:parent.width;height:parent.height;
+            width:parent.width;height:parent.height
             color: Qt.rgba(0.68, 1, 0.18, 0.4)
             radius: 8
             border.color: Qt.rgba(0.68, 1, 0.18, 1)  // 深一點的邊框讓邊界更清晰
@@ -566,7 +656,7 @@ Window {
                 if (!/^(.*)_W(\d+)_H(\d+)_Z([\d.]+)\.png$/.test(text)) {
                 }
                 // 當用戶輸入時更新 `userInput`
-                userInput = text;
+                userInput = text
             }
         }
         Keys.onPressed: event => {
@@ -574,87 +664,13 @@ Window {
             if ([Qt.Key_Return, Qt.Key_Enter].includes(event.key)) {
                 event.accepted = true;
                 if (!(event.modifiers & (Qt.ShiftModifier | Qt.ControlModifier | Qt.AltModifier))) {
-                    animButton.clicked();
-                    IC.input_line(userInput); // 執行失敗時同時不執行下一行
+                    btn.animButton.clicked()
+                    IC.input_line(userInput) // 執行失敗時同時不執行下一行
 
-                    text = "";
+                    text = ""
                 }
             }
         }
-    }
-
-    // == = 視窗拖曳 == =
-    MouseArea {
-        anchors.fill: parent
-        acceptedButtons: Qt.LeftButton
-
-        onPressed: {
-            if (mouse.button === Qt.LeftButton) {
-                if (!rotatingModel && !panningModel) {
-                    draggingWindow = true;
-                    lastMousePos = Qt.point(mouse.x, mouse.y);
-                }
-            } else if (mouse.button === Qt.RightButton) {
-                rotatingModel = true;
-                lastMousePos = Qt.point(mouse.x, mouse.y);
-            } else if (mouse.button === Qt.MiddleButton) {
-                panningModel = true;
-                lastMousePos = Qt.point(mouse.x, mouse.y);
-            }
-        }
-
-        onPositionChanged: {
-            if (draggingWindow) {
-                root.x += mouse.x - lastMousePos.x;
-                root.y += mouse.y - lastMousePos.y;
-            }
-            if (rotatingModel) {
-                iluluModel.eulerRotation.y += mouse.x - lastMousePos.x;
-                iluluModel.eulerRotation.x += mouse.y - lastMousePos.y;
-                lastMousePos = Qt.point(mouse.x, mouse.y);
-            }
-            if (panningModel) {
-                iluluModel.position.x += (mouse.x - lastMousePos.x) * 0.5;
-                iluluModel.position.y -= (mouse.y - lastMousePos.y) * 0.5;
-                lastMousePos = Qt.point(mouse.x, mouse.y);
-            }
-        }
-        onReleased: {
-            draggingWindow = false;
-            rotatingModel = false;
-            panningModel = false;
-        }
-    }
-    // 視窗
-    MouseArea {
-        anchors.fill: parent
-
-        onPressed: mouse => {
-            lastMousePos = Qt.point(mouse.x, mouse.y);
-            draggingWindow = true;
-        }
-
-        onPositionChanged: mouse => {
-            if (draggingWindow) {
-                root.x += mouse.x - lastMousePos.x;
-                root.y += mouse.y - lastMousePos.y;
-                // 左右邊緣自動最小化
-                if (root.x <= 0) {
-                    root.width = 50; // 最小化寬度
-                    root.x = 0;
-                    root.height = Math.max(50, window_h * (root.width / window_w));
-                } else if (root.x + (window_w / 2) >= Screen.width) {
-                    root.width = 50;
-                    root.x = Screen.width - 50;
-                    root.height = Math.max(50, window_h * (root.width / window_w));
-                } else {
-                    root.width = window_w;
-                    root.height = window_h;
-                }
-            }
-        }
-
-        onReleased: draggingWindow = false
     }
 
     //WheelHandler {onWheel: root.scaleFactor += wheel.angleDelta.y * 0.001} 滾輪縮放
@@ -663,19 +679,14 @@ Window {
         //anchors.top: parent.top
         // width: childrenRect.width
         // height: childrenRect.height
-        Layout.preferredWidth: button_w  
-        Layout.preferredHeight: button_h
+        //Layout.preferredWidth: button_w  
+        //Layout.preferredHeight: button_h
         spacing: 10 // 按鈕之間的間距
+        property alias animButton: animButton //讓 btn.animButton.clicked() 抓到此id
 
         CamButton {
             id: animButton
             buttonText: "輸出動畫"
-            opacity: root.x < 50 ? 0 : 1
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: 300
-                }
-            }
 
             onClicked: mouse => {
                 // 拆字判斷動畫
@@ -707,12 +718,6 @@ Window {
         CamButton {
             id: quit
             buttonText: "關閉"
-            opacity: root.x < 50 ? 0 : 1
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: 300
-                }
-            }
 
             onClicked: mouse => {
                 Qt.quit();
