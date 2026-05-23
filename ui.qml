@@ -71,7 +71,7 @@ Window {
         // == == == == GLB 模型 == == == ==
         Ilulu {
             id: iluluModel
-            scale: Qt.vector3d(scaleFactor * 0.1, scaleFactor * 0.1, scaleFactor * 0.1)
+            scale: Qt.vector3d(scaleFactor * 1, scaleFactor * 1, scaleFactor * 1)
             position: Qt.vector3d(0, 0, 0)
 
             SequentialAnimation on eulerRotation.y {
@@ -105,8 +105,8 @@ Window {
         // 宣告一個屬性別名，指向內部 mainText 的 text 屬性
         property alias buttonText: mainText.text
         property real maxFontSize: 28
-        z:9
-        
+        z: 9
+
         opacity: root.x < 50 ? 0 : 1
         Behavior on opacity {
             NumberAnimation {
@@ -116,20 +116,20 @@ Window {
 
         onClicked: {
             if (control.checked) {
-                Backend.conversation("按下了" + mainText.text)
-            } else {    
-                Backend.conversation("取消了" + mainText.text)
+                Backend.conversation("按下了" + mainText.text);
+            } else {
+                Backend.conversation("取消了" + mainText.text);
             }
         }
         // 純平背景，不需要任何外框陰影
         background: Rectangle {
-            id:diamondRect
-            color:  Qt.rgba(156/255, 203/255, 244/255, 0.8) // "#9ccbf4"
+            id: diamondRect
+            color: Qt.rgba(156 / 255, 203 / 255, 244 / 255, 0.8) // "#9ccbf4"
             radius: 10
             // TODO:***鑽石外觀
         }
         // 主要文字內容
-        contentItem:  Item {
+        contentItem: Item {
             id: textContainer
             //implicitWidth: mainText.implicitWidth
             //implicitHeight: mainText.implicitHeight
@@ -145,7 +145,7 @@ Window {
                 text: ""
                 color: "white" // 文字主顏色
                 anchors.centerIn: parent
-                padding:1
+                padding: 1
 
                 // 關鍵設定 1：設定字型錨定與最大大小
                 font.pixelSize: control.maxFontSize
@@ -155,7 +155,7 @@ Window {
                 fontSizeMode: Text.Fit  // 當文字超出寬度時，自動縮小字型大小
                 minimumPixelSize: 11     // 允許縮小到的最小極限（避免縮到 0 變看不見）
                 // 關鍵設定 3：必須限制文字元件的寬度，否則它不知道何時該縮小
-                width: control.availableWidth 
+                width: control.availableWidth
                 // 4. 精髓：如果字多到連 9 號字都塞不下，自動在末端加上 "..."
                 elide: Text.ElideRight
                 wrapMode: Text.NoWrap   // 不換行，強迫在單行內縮小
@@ -184,7 +184,7 @@ Window {
             }
         }
     }
-    
+
     // == = 視窗拖曳 == = // MouseArea 必須在 GridLayout 之前
     MouseArea {
         anchors.fill: parent
@@ -258,7 +258,7 @@ Window {
 
         onReleased: draggingWindow = false
     }
-    
+
     // CamButton
     // TaskBarItem
     // ContainerItem
@@ -273,12 +273,12 @@ Window {
     //4, 01234
     //ColButton 0,0
     //TaskBarItem 01234,4
-    //RectAinmate 234,0 
+    //RectAinmate 234,0
     //ContainerItem 234,123
     //ImgItem 23,4
     //InputBoxTextArea 4,0123
     GridLayout {
-        //Layout.fillWidth: true; 
+        //Layout.fillWidth: true;
         //Layout.fillHeight: true
         anchors.fill: parent
         columns: 5 // 修正：索引要到 4，總欄數必須是 5 (0,1,2,3,4)
@@ -286,12 +286,12 @@ Window {
         columnSpacing: 10
         rowSpacing: 6
 
-
         // 【ColButton】 座標 (0, 0) -> 第一列、第一欄
         ColButton {
-            id:btn
-            Layout.row: 0; Layout.column: 0
-            Layout.columnSpan: 2 
+            id: btn
+            Layout.row: 0
+            Layout.column: 0
+            Layout.columnSpan: 2
             Layout.fillWidth: true
             Layout.fillHeight: true
             //Layout.preferredWidth: parent.width * 0.2 // 固定側邊欄比例
@@ -299,7 +299,8 @@ Window {
 
         // 【TaskBarItem】 座標 (0, 4) 且跨 4 列 -> 右側整條側邊欄
         TaskBarItem {
-            Layout.row: 0; Layout.column: 4
+            Layout.row: 0
+            Layout.column: 4
             Layout.rowSpan: 5 // 縱跨 5 列 (0,1,2,3,4)
             Layout.fillWidth: true
             //Layout.preferredWidth: listErrand.width
@@ -309,28 +310,30 @@ Window {
 
         // 【RectAinmate】 座標 (1, 0) 且跨 2 列 -> 左側中間動畫區
         RectAinmate {
-            Layout.row: 1; Layout.column: 0
+            Layout.row: 1
+            Layout.column: 0
             Layout.rowSpan: 2 // 縱跨 2 列 (1,2) // 0,3 放動畫角色
         }
 
         // 【containerItem】 座標 (1, 1) 跨 2 列 3 欄 -> 中央核心容器
         ContainerItem {
-            Layout.row: 1; Layout.column: 1
+            Layout.row: 1
+            Layout.column: 1
             Layout.rowSpan: 2    // 縱跨 2 列 (1,2)
             Layout.columnSpan: 3 // 橫跨 3 欄 (1,2,3)
             Layout.fillWidth: true
-            Layout.preferredHeight:childrenRect.height 
+            Layout.preferredHeight: childrenRect.height
         }
 
         // 【InputBoxTextArea】 座標 (4, 0) 橫跨 4 欄 -> 底部輸入框
         InputBoxTextArea {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.row: 4; Layout.column: 0
+            Layout.row: 4
+            Layout.column: 0
             Layout.columnSpan: 4 // 橫跨 4 欄 (0,1,2,3)
         }
     }
-
 
     // 1. 中央 任務欄（新增與移除任務） //點擊任務欄內的空處即新增按鈕(CamButton)，按下按鈕即重新命名，左右拉即移除，上下拉即重新調整任務順位 TODO:***目前點擊不到
     component TaskBarItem: Item {
@@ -408,8 +411,7 @@ Window {
                 targetButton.destroy();
             } else if (direction === "moveUp")
             // 執行向上排序邏輯...
-            {
-            }
+            {}
         }
     }
 
@@ -423,7 +425,7 @@ Window {
 
         // Layout.preferredHeight: Math.max(button_h, flowLayout.height) // 高度完全由按鈕數量決定
         readonly property string customFont: "Courier"
-        readonly property int customSize: 18
+        readonly property int customSize: 20
 
         // 💡 修正 1：主動監聽滑鼠滾輪事件，強制 Flickable 滾動
         MouseArea {
@@ -449,15 +451,15 @@ Window {
 
                 // 💡 核心修改：等待 QML 將新文字排版完畢後，自動滾動到最底部
                 Qt.callLater(function () {
-                        // 計算最底部的 y 座標（必須是負值或 0）
-                        var bottomY = container.height - flowLayout.height;
-                        // 如果文字總高度超過了容器可視高度，才需要滾動
-                        if (bottomY < 0) {
-                            flowLayout.y = bottomY;
-                        } else {
-                            flowLayout.y = 0; // 字數還很少時，維持在最頂端
-                        }
-                    });
+                    // 計算最底部的 y 座標（必須是負值或 0）
+                    var bottomY = container.height - flowLayout.height;
+                    // 如果文字總高度超過了容器可視高度，才需要滾動
+                    if (bottomY < 0) {
+                        flowLayout.y = bottomY;
+                    } else {
+                        flowLayout.y = 0; // 字數還很少時，維持在最頂端
+                    }
+                });
             }
         }
         // =========================================================================
@@ -643,7 +645,8 @@ Window {
 
         background: Rectangle {
             //anchors.fill: parent
-            width:parent.width;height:parent.height
+            width: parent.width
+            height: parent.height
             color: Qt.rgba(0.68, 1, 0.18, 0.4)
             radius: 8
             border.color: Qt.rgba(0.68, 1, 0.18, 1)  // 深一點的邊框讓邊界更清晰
@@ -653,10 +656,9 @@ Window {
         onTextChanged: {
             if (text.length > 0) {
                 // *** 進入 計算物體實際大小的 抓取模式
-                if (!/^(.*)_W(\d+)_H(\d+)_Z([\d.]+)\.png$/.test(text)) {
-                }
+                if (!/^(.*)_W(\d+)_H(\d+)_Z([\d.]+)\.png$/.test(text)) {}
                 // 當用戶輸入時更新 `userInput`
-                userInput = text
+                userInput = text;
             }
         }
         Keys.onPressed: event => {
@@ -664,10 +666,10 @@ Window {
             if ([Qt.Key_Return, Qt.Key_Enter].includes(event.key)) {
                 event.accepted = true;
                 if (!(event.modifiers & (Qt.ShiftModifier | Qt.ControlModifier | Qt.AltModifier))) {
-                    btn.animButton.clicked()
-                    IC.input_line(userInput) // 執行失敗時同時不執行下一行
+                    btn.animButton.clicked();
+                    IC.input_line(userInput); // 執行失敗時同時不執行下一行
 
-                    text = ""
+                    text = "";
                 }
             }
         }
@@ -679,7 +681,7 @@ Window {
         //anchors.top: parent.top
         // width: childrenRect.width
         // height: childrenRect.height
-        //Layout.preferredWidth: button_w  
+        //Layout.preferredWidth: button_w
         //Layout.preferredHeight: button_h
         spacing: 10 // 按鈕之間的間距
         property alias animButton: animButton //讓 btn.animButton.clicked() 抓到此id
@@ -737,7 +739,8 @@ Window {
             //width: 300
             //height: 300
             //anchors.fill: parent
-            width: parent.width; height:parent.height
+            width: parent.width
+            height: parent.height
             fillMode: Image.PreserveAspectFit
         }
 
@@ -787,7 +790,8 @@ Window {
         Column {
             //anchors.fill: parent
             //anchors.margins: 10
-            width: parent.width; height: parent.height;
+            width: parent.width
+            height: parent.height
             spacing: 8
             Text {
                 text: selectedNode ? "選取: " + selectedNode.objectName : "未選取節點"

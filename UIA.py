@@ -425,7 +425,7 @@ def 看字():
                 # 這裡您可以選擇把截圖也存進該資料夾，例如：
                 # cv2.imwrite(f"{folder_name}/screenshot.png", img)
             else:
-                回覆(f"找不到 文字")
+                回覆("找不到文字")
             # 5. 後台除錯專用 (使用 print 隔離，絕不呼叫 回覆() 灌爆主線)
             print(f"[OCR] 辨識成功 | 總字數: {len(folder_name)} | 耗時: {time.time() - start_time:.3f}s")
         except Exception as e:
@@ -1034,10 +1034,14 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
 
 
 class C:
+    """
+    條件分析器
+    array[:,判斷中...] 或 array[判斷中...]
+    """
     def __init__(self, func_or_arg):
-        # 關鍵自動升維與欄位提取：如果是整數，自動提取該欄位並維持 (N, 1) 二維形狀
         if isinstance(func_or_arg, int):
-            self.func = lambda x: np.asarray(x)[:, [func_or_arg]] if np.asarray(x).ndim > 1 else np.asarray(x).reshape(-1, 1)[:, [func_or_arg]]
+            #self.func = lambda x: np.asarray(x)[:, [func_or_arg]] if np.asarray(x).ndim > 1 else np.asarray(x).reshape(1, -1)[:, [func_or_arg]]
+            self.func = lambda x: np.asarray(x)[:, func_or_arg] if np.asarray(x).ndim > 1 else np.asarray(x)
         elif callable(func_or_arg):
             self.func = func_or_arg
         else:
@@ -1064,6 +1068,8 @@ class C:
     # 擴充標準條件判斷
     def isin(self, values):   return C(lambda x: np.isin(self.func(x), values))
     def between(self, a, b):  return C(lambda x: (self.func(x) >= a) & (self.func(x) <= b))
+    # 用 << 代替等號，回傳一個 (欄位, 計算式) 的組合包
+    # def __lshift__(self, other):return [(self.col, other)]
 
     # 進階波形與數據特徵分析
     def argsort(self):        return lambda x: np.argsort(self.func(x).ravel())
@@ -1109,14 +1115,12 @@ class C:
                     res.append(chunk.tolist())
             return res
         return C(neighbor)
-
     # 橫向欄位合併與全選支援
     @staticmethod
     def stack(*args):
         if not args: return C(lambda x: np.ones((len(x), 1), dtype=bool))
         processed = [C(a) if not isinstance(a, C) else a for a in args]
         return C(lambda x: np.hstack([p.func(x) for p in processed]))
-
     # 延遲求值觸發點
     def __call__(self, array): return self.func(array)
 
@@ -1124,60 +1128,62 @@ class C:
 # 全新對應的過濾函數
 def find_array(array, cond):
     """
-    # 情境：找出第 0 欄大於 20 且第 1 欄小於 50 的資料
-    cond = (C(0) > 20) & (C(1) < 50)
-    res = find_array(data, cond)
-
-    # 情境：找出第 0 欄在 10 到 100 之間的資料
-    cond = C(0).between(10, 100)
-    res = find_array(data, cond)
-    
-    
-
-    # 情境：只留下第 2 欄的值為 101, 105, 110 的資料
-cond = C(2).isin([101, 105, 110])
-res = find_array(data, cond)
-
-# 情境：排除第 2 欄值為 999 或 -1 的異常資料
-cond = C(2) != [999, -1]
-res = find_array(data, cond)
-
-
-# 情境：找出第 0 欄數值「正在上漲」（比前一筆大）的所有資料
-cond = C(0).is_up()
-res = find_array(data, cond)
-
-# 情境：找出第 0 欄的「前後差值」大於 5 的資料
-cond = C(0).diff() > 5
-res = find_array(data, cond)
-
-
-# 情境：找出第 0 欄處於「波峰」（比前後都大）的資料
-cond = C(0).is_peak()
-res = find_array(data, cond)
-
-
-# 情境：在第 0 欄中，找出 A 狀態(20)及其鄰居 B 狀態(10, 30)的連續片段
-# 注意：此功能直接呼叫，會回傳符合結構的 list 區塊列表
-blocks = C(0).a_neighbor_b(target_a=[20], neighbor_b=[10, 30])(data)
-
-
-# 情境：無條件輸出，自動把字典轉為 numpy 陣列
-res = find_array(data, C.stack())
-
-# 情境：橫向合併第 0 欄與第 1 欄的數據
-combined_data = C.stack(0, 1)(data)
-
-
-
-"""
-    if isinstance(array, dict):
+    # cond= True/False 的布林索引陣列，也是整合後的條件，所以在外面先整理好多個條件在丟進來，不需要寫def get_mask!
+    C(index 欄位)
+    if & if
+    index.between(a, b)
+    index.isin(values)
+    index!= values
+    index.is_up():比前一筆大
+    index.diff():比前一筆大多少
+    index.is_peak():比前後都大
+    # 情境：在第 0 欄中，找出 A 狀態(20)及其鄰居 B 狀態(10, 30)的連續片段
+    # 注意：此功能直接呼叫，會回傳符合結構的 list 區塊列表
+    blocks = C(0).a_neighbor_b(target_a=[20], neighbor_b=[10, 30])(data)
+    # 情境：無條件輸出，自動把字典轉為 numpy 陣列
+    res = find_array(data, C.stack())
+    # 情境：橫向合併第 0 欄與第 1 欄的數據
+    combined_data = C.stack(0, 1)
+    """
+    if isinstance(array, dict): # 資料合併好的種類
         array = np.array(list(array.values()), dtype=object).T
     if not isinstance(cond, C): 
         raise ValueError(f"cond 必須是全新的 C 類別物件，而非 {type(cond)}")
-    return array[cond(array).ravel()]
+    return array[cond(array).ravel().astype(int)]
 
+# ====================================================
+# 1. 安全全局外掛：只掛載 <<，絕對不碰 |，完美保護 find_array
+# ====================================================
+def _ext_lshift(self, other):
+    try:
+        col_index = self.func.__closure__[0].cell_contents
+    except (AttributeError, IndexError, TypeError):
+        try:
+            col_index = self.func.__closure__.cell_contents
+        except:
+            col_index = 0
+    return (col_index, other)
 
+C.__lshift__ = _ext_lshift  # 只有 << 被啟用，find_array 的條件整合（&, |）穩如泰山！
+
+def write_array(array,*modifications_tuple):
+    """
+    , 多個欄位
+    = 算式
+    不判斷條件，修改欄位的值
+    write_array(a, (C(1) << (C(1)+(C(3)//2))//2) | (C(2) << (C(2)+(C(4)//2))//2))
+    """
+    # 2. 處理資料合併好的種類 (Dict 轉 NumPy)
+    if isinstance(array, dict): 
+        array = np.array(list(array.values()), dtype=object).T
+    # 3. 執行賦值（變數對齊為參數傳入的 array）
+    for col, expression_obj in modifications_tuple:
+        array[:, col] = expression_obj.func(array).ravel()
+
+     
+    
+
+# 優化代碼方式:可能是看堆積在哪處，內部的編譯器讀取代碼文字，然後我丟進矩陣分析，得到重複的自定義變數(含def class) 功能(條件 樣式) 註解紀錄耗時
 
 
 # class Expr:
@@ -1524,22 +1530,18 @@ def selected(keyword,sort=1,num=1,classA=None):
     回覆("找字中...")
     # 最高強度的相似度比對，當場撈出最新 X, Y 坐標
     # 10:text, 5:left, 6:top, 7:width, 8:height, 9:conf
-#    text_pts_data=C(row([10,5,6,7,8,9],data) )
+    text_pts_data=find_array(data,C.stack(10,5,6,7,8,9))
     #回覆(f"row(None,data)[:10]:{row(None,data)[:10]}")
     #回覆(f"row(10,data)[:10]:{row(10,data)[:10]}")
-    回覆(C(10).func(data))
-    回覆(find_array(data,C(0).get_mask()))
+#    回覆(find_array(data,C.stack(10,5,6,7,8,9)))
     
-    回覆(f"C(row([10,5,6,7,8,9],data) )[:10]:{C(0).func(C(
-        row([10,5,6,7,8,9],data)
-        ))[:10]}")
-    回覆(f"find_array(data,C(10))[:10]:{find_array(data,C(10))[:10]}")
+#    回覆(f"find_array(data,C(10))[:10]:{find_array(data,C(10))[:10]}")
     #回覆(f"{find_array(text_pts_data,C(5) == None )}")，c(5)型態 <class 'bool'>，內容 True
-#    text  = find_array(text_pts_data,(C(5) > 60) & (C(0).isin(kw)) ) # 符合cond或Expr，但 TypeError: '>' not supported between instances of 'NoneType' and 'int'
+    text  = find_array(text_pts_data,(C(5) > 60) & (C(0).isin(kw)) ) # 符合cond或Expr，但 TypeError: '>' not supported between instances of 'NoneType' and 'int'
     if len(text)>0:
         text_pts=C(
-            find_array(text,(C(1)+(C(3)//2))//2),
-            find_array(text,(C(2)+(C(4)//2))//2)
+            write_array(a,(C(1)+(C(3)//2))//2),
+            write_array(a,(C(2)+(C(4)//2))//2)
             )
         回覆("找到字")
         final_pts.extend(text_pts)
@@ -3105,12 +3107,18 @@ if __name__ == "__main__":
     # 測試：搜尋「積極」
     # data = asbc_stealth_search(url)
     # 回覆(f"網路抓取結果: {data}")
-    data = np.zeros((5, 11))
-    data[:, 10] = 999
-    # 實體資料 = C(10).func(data)
-    實體資料 = find_array(data, C(10))
-    # [999. 999. 999. 999. 999.]
-    回覆(實體資料)
+    #data = np.zeros((5, 11))
+    #data[:, 10] = 999 # [999. 999. 999. 999. 999.]
+    a = np.array([
+        [0, 10, 20, 30, 40],
+        [2, 12, 22, 32, 42]
+    ], dtype=int)
+    print(f"a:{a}")
+    print(write_array(a, 
+        (C(1) << (C(1) + (C(3) // 2)) // 2), 
+        (C(2) << (C(2) + (C(4) // 2)) // 2)) 
+        )
+    print(f"a:{a}")
 
     monitor_info = {"width": 1920, "height": 1080} 
     # 實例化
