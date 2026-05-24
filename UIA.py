@@ -75,7 +75,7 @@ if platform == 'android':
 # --- 基礎設定 --- python *.py
 # D:\Python\Non-codeAutomaticOperation\Non-codeAutomaticOperation
 # C:\Program Files\Tesseract-OCR\tesseract.exe # C:\Users\USER\AppData\Local\Programs\Tesseract-OCR\tesseract.exe
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+pytesseract.pytesseract.tesseract_cmd = r"C:\Users\USER\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
 # 這是最穩定的寫法：獲取「目前這個 Python 檔案」所在的資料夾
 if getattr(sys, 'frozen', False):
     # 如果是打包後的 .exe
@@ -297,7 +297,7 @@ def 回覆(*args):
     # 將所有傳進來的參數（不論是數字還是字串）都轉成字串，並用空格串接
     ss = " ".join(str(arg) for arg in args)
     if ss.strip():  # 確保內容不為空
-        MAX_LEN = 1500 
+        MAX_LEN = 1000 
         if len(ss) > MAX_LEN:
             ss = ss[:MAX_LEN] + "..."
         print(ss)
@@ -412,22 +412,23 @@ def 看字():
             回覆("分析文章中...")
             # 最高強度的相似度比對，當場撈出最新 X, Y 坐標
             # 10:text, 5:left, 6:top, 7:width, 8:height, 9:conf
-            text_pts_data=C(row([10,5,6,7,8,9],data) )
+            text_pts_data=C.where(10,5,6,7,8,9)(data)
             matrix  = find_array(text_pts_data,C(5)>60 )
             if len(matrix)>0:
                 回覆("找到字")
             else:
                 回覆("找不到字")
-            folder_name=row(0, find_array(matrix,(C(0).__ne__(invalid_chars)) and (C(1).argsort()) and (C(2).argsort()) and (C(5)>60)))[:資料夾最長字數]
+            folder_name=find_array(matrix,(C(0)!= invalid_chars) & (C(5)>60), C(1)&C(2) )
+            folder_name_text=C.where(0)(folder_name)[:資料夾最長字數]
             # 4. 如果有讀到有效的字，就建立資料夾
-            if folder_name:
-                make_folder(TEMPLATE_DIRS["live_capture"]/folder_name)
+            if folder_name_text:
+                make_folder(TEMPLATE_DIRS["live_capture"]/folder_name_text)
                 # 這裡您可以選擇把截圖也存進該資料夾，例如：
-                # cv2.imwrite(f"{folder_name}/screenshot.png", img)
+                # cv2.imwrite(f"{folder_name_text}/screenshot.png", img)
             else:
                 回覆("找不到文字")
             # 5. 後台除錯專用 (使用 print 隔離，絕不呼叫 回覆() 灌爆主線)
-            print(f"[OCR] 辨識成功 | 總字數: {len(folder_name)} | 耗時: {time.time() - start_time:.3f}s")
+            print(f"[OCR] 辨識成功 | 總字數: {len(folder_name_text)} | 耗時: {time.time() - start_time:.3f}s")
         except Exception as e:
             print(f"[OCR_ERROR] 發生異常: {e}")
         # 6. 動態精確配時 (確保每秒執行一次)
@@ -1032,11 +1033,12 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
         im2_orb(b)
         # P.S. cv2.imread 0 灰 1彩 -1全
 
-
+#  DSL（Domain-Specific Language，領域特定語言）
 class C:
     """
     條件分析器
     array[:,判斷中...] 或 array[判斷中...]
+    每一條 (條件)括號起來
     """
     def __init__(self, func_or_arg):
         if isinstance(func_or_arg, int):
@@ -1050,7 +1052,7 @@ class C:
     # 基礎數學與邏輯運算子重載 (自動支援 常數 或 其他 C 物件 混合運算)
     def _val(self, other, x): return other.func(x) if isinstance(other, C) else other
     def __add__(self, other): return C(lambda x: self.func(x) + self._val(other, x))
-    def __gt__(self, other):  return C(lambda x: self.func(x) > self._val(other, x))
+    def __gt__(self, other):  return C(lambda x: self.func(x) > self._val(other, x)) 
     def __lt__(self, other):  return C(lambda x: self.func(x) < self._val(other, x))
     def __eq__(self, other):  return C(lambda x: self.func(x) == self._val(other, x))
     def __and__(self, other): return C(lambda x: self.func(x) & self._val(other, x))
@@ -1068,11 +1070,9 @@ class C:
     # 擴充標準條件判斷
     def isin(self, values):   return C(lambda x: np.isin(self.func(x), values))
     def between(self, a, b):  return C(lambda x: (self.func(x) >= a) & (self.func(x) <= b))
-    # 用 << 代替等號，回傳一個 (欄位, 計算式) 的組合包
-    # def __lshift__(self, other):return [(self.col, other)]
 
     # 進階波形與數據特徵分析
-    def argsort(self):        return lambda x: np.argsort(self.func(x).ravel())
+    #def argsort(self):        return lambda x: np.argsort(self.func(x).ravel())
     def diff(self):           return C(lambda x: np.diff(self.func(x), axis=0, prepend=self.func(x)[:1]))
     def norm(self):           return C(lambda x: np.linalg.norm(self.func(x), axis=1, keepdims=True) if x.ndim > 1 else np.abs(self.func(x)))
     def is_up(self):          return C(lambda x: np.diff(self.func(x), axis=0, prepend=self.func(x)[:1]) > 0)
@@ -1115,21 +1115,26 @@ class C:
                     res.append(chunk.tolist())
             return res
         return C(neighbor)
-    # 橫向欄位合併與全選支援
-    @staticmethod
-    def stack(*args):
-        if not args: return C(lambda x: np.ones((len(x), 1), dtype=bool))
-        processed = [C(a) if not isinstance(a, C) else a for a in args]
-        return C(lambda x: np.hstack([p.func(x) for p in processed]))
-    # 延遲求值觸發點
-    def __call__(self, array): return self.func(array)
+    # 橫向欄位合併與全選支援 # C.where(0,2)(array)
+    @staticmethod 
+    def where(*args):
+        return C(lambda x: x[list(args), :])
+
+    # Gemini自殺式說法:延遲求值觸發點 # 講人話:延遲拿矩陣
+    def __call__(self, array): 
+        if isinstance(array, dict): # 資料合併好的種類 # 只有C.where 會觸發，因為find_array已經處理過了，不可能又出現dict
+            array_copy = np.array(list(array.values()), dtype=object)
+        else:
+            array_copy = np.asarray(array)
+        return self.func(array_copy)
 
 
 # 全新對應的過濾函數
-def find_array(array, cond):
+def find_array(array, cond,*sort_cols):
     """
+    # 列出符合條件的那些一列，一整筆值
     # cond= True/False 的布林索引陣列，也是整合後的條件，所以在外面先整理好多個條件在丟進來，不需要寫def get_mask!
-    C(index 欄位)
+    C(index 欄位)，C 寫進cond裡面，所以return時不寫 C
     if & if
     index.between(a, b)
     index.isin(values)
@@ -1143,17 +1148,38 @@ def find_array(array, cond):
     # 情境：無條件輸出，自動把字典轉為 numpy 陣列
     res = find_array(data, C.stack())
     # 情境：橫向合併第 0 欄與第 1 欄的數據
-    combined_data = C.stack(0, 1)
+    combined_data = C.stack(0, 1)(array) ，千萬不要find_array(array,C.stack(0, 1))，可以丟進array
     """
+    # 1. array.ravel() 把 array 拉平 ，屬於gemini自殺法。 .T將陣列的列（Row）與行（Column）對調，屬於gemini跳樓必輸法
     if isinstance(array, dict): # 資料合併好的種類
-        array = np.array(list(array.values()), dtype=object).T
+        array_copy = np.array(list(array.values()), dtype=object)
+    else:
+        array_copy = np.asarray(array)
+    if array.ndim == 1:
+        array_copy = array[np.newaxis, :]  # 變成 1列 x N欄 的二維矩陣 (1, N)
+        # 或者依您的需求：array_copy = array[:, np.newaxis] 變成 N列 x 1欄 (N, 1)
+    else:
+        array_copy = array
+
     if not isinstance(cond, C): 
         raise ValueError(f"cond 必須是全新的 C 類別物件，而非 {type(cond)}")
-    return array[cond(array).ravel().astype(int)]
+    #return array_copy[cond.func(array_copy)] # 判斷絕對正常! # 值[布林(條件)]
+    # 1. 取得過濾條件的原始布林遮罩 (大小與原始大矩陣一致)
+    mask = cond.func(array_copy)
+    # 2. 如果使用者有指定排序欄位
+    if sort_cols and len(array_copy) > 0:
+        # 🔥 核心修正：所有的排序特徵，一律使用「原始大矩陣 array_copy」來計算！
+        # 這樣一來，不論是 diff()、is_peak() 還是基本的欄位，算出來的長度都跟原始大矩陣完美對齊。
+        keys = [c.func(array_copy) if isinstance(c, C) else C(c).func(array_copy) for c in sort_cols]
+        # 3. 取得「原始大矩陣」物理排序後的整數索引
+        sort_indices = np.lexsort(keys[::-1])
+        # 4. 用排序索引去重組「大矩陣」與「布林遮罩」，讓兩者同步對齊
+        array_copy = array_copy[sort_indices]
+        mask = mask[sort_indices]
+    # 5. 最後，用同步排序後的布林遮罩，去物理過濾排序後的大矩陣
+    return array_copy[mask]
 
-# ====================================================
-# 1. 安全全局外掛：只掛載 <<，絕對不碰 |，完美保護 find_array
-# ====================================================
+# 1. 安全全局外掛：只掛載 << 代替等號，絕對不碰 |，完美保護 find_array
 def _ext_lshift(self, other):
     try:
         col_index = self.func.__closure__[0].cell_contents
@@ -1163,264 +1189,46 @@ def _ext_lshift(self, other):
         except:
             col_index = 0
     return (col_index, other)
-
 C.__lshift__ = _ext_lshift  # 只有 << 被啟用，find_array 的條件整合（&, |）穩如泰山！
 
 def write_array(array,*modifications_tuple):
     """
     , 多個欄位
-    = 算式
+    << 算式
     不判斷條件，修改欄位的值
-    write_array(a, (C(1) << (C(1)+(C(3)//2))//2) | (C(2) << (C(2)+(C(4)//2))//2))
+    write_array(a,
+        C(1)<<((C(1) + (C(3)//2)) //2),
+        C(2)<<((C(2) + (C(4)//2)) //2)
+        )
     """
     # 2. 處理資料合併好的種類 (Dict 轉 NumPy)
     if isinstance(array, dict): 
-        array = np.array(list(array.values()), dtype=object).T
-    # 3. 執行賦值（變數對齊為參數傳入的 array）
-    for col, expression_obj in modifications_tuple:
-        array[:, col] = expression_obj.func(array).ravel()
+        array = np.array(list(array.values()), dtype=object)
 
-     
-    
+    # 2. 遍歷傳入的多個修改組合包 (透過 *modifications 接收，用逗號隔開即可)
+    for mod in modifications_tuple:
+        if not isinstance(mod, tuple) or len(mod) != 2:
+            raise ValueError("每個修改項目必須由 C(col) << 算式 組成")
+            
+        col, expression = mod
+        # 3. 泛用性強化：如果右邊是普通的常數/矩陣，自動包裝成 C 物件以便求值
+        if not isinstance(expression, C):
+            expression = C(expression)
+            
+        # 4. 執行計算與寫入
+        calculated_value = expression.func(array)
+        
+        # 5. 形狀安全對齊：如果計算結果是單一欄位且跟原陣列高度一致，精準寫入
+        if isinstance(calculated_value, np.ndarray) and calculated_value.ndim > 1 and calculated_value.shape[1] == 1:
+            array[:, [col]] = calculated_value
+        else:
+            # 否則拉平寫入，啟動 NumPy 原生廣播
+            array[:, col] = calculated_value.ravel() if hasattr(calculated_value, 'ravel') else calculated_value
+            
+    return array
+         
 
 # 優化代碼方式:可能是看堆積在哪處，內部的編譯器讀取代碼文字，然後我丟進矩陣分析，得到重複的自定義變數(含def class) 功能(條件 樣式) 註解紀錄耗時
-
-
-# class Expr:
-#     def __init__(self, func):
-#         self.func = func
-#     
-#     def __add__(self, other):
-#         return Expr(lambda x: self.func(x) + other.func(x))
-#     
-#     def __gt__(self, val):
-#         return Cond(lambda x: self.func(x) > val)
-#     
-#     def __lt__(self, val):
-#         return Cond(lambda x: self.func(x) < val)
-#     
-#     def __truediv__(self, other):
-#         # 支援除法，自動處理除以 0 的風險
-#         return Expr(lambda x: self.func(x) / np.where(other.func(x) == 0, 1, other.func(x)))
-# 
-#     # 🔑 新增：支援整除 (//) 運算子，自動將除數為 0 的地方替換為 1
-#     def __floordiv__(self, other):
-#         return Expr(lambda x: self.func(x) // np.where(other.func(x) == 0, 1, other.func(x)))
-# 
-#     def argsort(self):
-#         """回傳由小到大的索引排序"""
-#         return lambda x: np.argsort(self.func(x))
-# 
-#     def diff(self):
-#         """
-#         對該欄位進行差分運算 (x[i] - x[i-1])
-#         axis=0,第一筆差值必為 0（對應你原本 if i==0: continue 的邏輯）。
-#         """
-#         return Expr(lambda x: np.diff(self.func(x), axis=0, prepend=[self.func(x)[0]]))
-# 
-#     def norm(self):
-#         """計算歐氏距離 (常用於速度向量轉純量)"""
-#         # 這裡假設傳入的是向量，或者你想對結果取絕對值
-#         return Expr(lambda x: np.linalg.norm(self.func(x), axis=1) if x.ndim > 1 else np.abs(self.func(x)))
-# 
-#     # np.diff [i]-[i-1]
-#     def is_peak(self):
-#         """偵測波峰：i-1 < i > i+1"""
-#         def peak_logic(x):
-#             # 用 np.pad 補位，確保回傳的布林陣列跟原陣列一樣長
-#             # 這樣你就永遠不用手動 +1
-#             d = np.diff(x, prepend=x[0]) 
-#             return (d > 0) & (np.append(np.diff(x) < 0, False))
-#         return Cond(peak_logic)
-# 
-#     def is_valley(self):
-#         """偵測波谷：i-1 > i < i+1"""
-#         def valley_logic(x):
-#             d = np.diff(x, prepend=x[0])
-#             return (d < 0) & (np.append(np.diff(x) > 0, False))
-#         return Cond(valley_logic)
-#     
-#     def is_up(self):
-#         """上波：只要這格比前一格大 (diff > 0)"""
-#         return Cond(lambda x: np.diff(self.func(x), prepend=self.func(x)[0]) > 0) # self.func 把那一欄「抽出來」再做 diff。避免全部起diff
-# 
-#     def is_down(self):
-#         """下波：只要這格比前一格小 (diff < 0)"""
-#         return Cond(lambda x: np.diff(self.func(x), prepend=self.func(x)[0]) < 0) # self.func 把那一欄「抽出來」再做 diff。避免全部起diff
-# 
-#     # np
-#     def unify(self):
-#         """這就是你的『統一時間』邏輯：將數據壓縮到 0~1 的標準空間"""
-#         def unify_logic(x):
-#             val = self.func(x)
-#             # t / (t_max - t_min)
-#             diff = val[-1] - val[0]
-#             return val / (diff if diff != 0 else 1)
-#         return Expr(unify_logic)
-# 
-#     def tile(self, reps):
-#         """這就是你的『np.tile』邏輯：實現全向量化的鋪地磚比對"""
-#         return Expr(lambda x: np.tile(self.func(x), reps))
-# 
-#     def roll(self,i):
-#         """前i位判斷，>0是前i位，<0是後i位"""
-#         return Expr(lambda x: np.roll(self.func(x), i))
-# 
-#     def a_neighbor_b(self, target_a, neighbor_b):
-#         def neighbor(x):
-#             data = np.asarray(x)
-#             # 1. 建立標籤（布林陣列）
-#             is_a = np.isin(data, target_a)
-#             is_b = np.isin(data, neighbor_b)
-#             # 2. 核心：只要是 a，或「緊鄰 a 的 b」，都標記為 True
-#             # np.roll(is_a, 1) | np.roll(is_a, -1) 是 a 的左右鄰居
-#             keep_mask = is_a | (is_b & (np.roll(is_a, 1) | np.roll(is_a, -1)))
-#             # 3. 處理「連續多個 b」的情況：如果一個 b 旁邊是「已經被標記的 b」，也把它標記起來
-#             # 如果你的 b 可能很長 (如 b,b,b,a)，這裡可以用 while 或簡單的兩次 dilation
-#             # 但最快的方式是直接找「連通區塊」中是否有 a
-#             all_candidates = is_a | is_b
-#             diff = np.diff(all_candidates.astype(int), prepend=0, append=0)
-#             starts = np.where(diff == 1)[0]
-#             ends = np.where(diff == -1)[0]
-# 
-#             res = []
-#             for s, e in zip(starts, ends):
-#                 chunk = data[s:e]
-#                 # DSL 邏輯：這組裡面必須「包含 a」且「不只有 a (也就是有旁邊的 b)」
-#                 if np.any(np.isin(chunk, target_a)) and len(chunk) > np.sum(np.isin(chunk, target_a)):
-#                     res.append(chunk.tolist())
-#             # data = [10, 10, 20, 30, 50, 20, 10], a=[20], b=[10, 30]
-#             return res # [[10, 10, 20, 30], [20, 10]]
-#         return Cond(neighbor)
-# 
-# class Cond:
-#     def __init__(self, func):
-#         self.func = func
-#     
-#     def __and__(self, other):
-#         return Cond(lambda x: self.func(x) & other.func(x))
-#     
-#     def __or__(self, other):
-#         return Cond(lambda x: self.func(x) | other.func(x))
-#     
-#     def apply(self, array):
-#         return array[self.func(array)]
-# 
-#     def get_mask(self, array):
-#         """回傳 True/False 的布林索引陣列"""
-#         return self.func(array)
-# 
-# 
-# class Col(Expr):
-#     """
-#     用途:取得多維資料(array)的每一筆的某些幾維資料的內容(可能array)，一維[0,1]生成二維[[0],[1]]。主要是分析內容符合條件的哪些筆要回傳
-#     Col 繼承自 Expr，把後面的函數交給父類別 Expr 的 __init__ 來儲存，這個函數存在 self.func 中
-#     """
-#     def __init__(self, arg):
-#         if isinstance(arg, int):
-#             def fn(x):
-#                 x_arr = np.asarray(x)
-#                 # 🔑 關鍵：統一升維
-#                 if x_arr.ndim == 1:
-#                     x_arr = x_arr.reshape(-1, 1)
-#                 return x_arr[:, arg]
-#             super().__init__(fn)
-#         else:
-#             # 如果是直接給資料 (speed)，則封裝成一個直接回傳該資料的函數
-#             # 這樣它就能參與後面的 .stack() 運算
-#             arr = np.asarray(arg)
-#             super().__init__(lambda x, arr=arr: arr)
-# 
-#     def __eq__(self, val):
-#         return Cond(lambda x: self.func(x) == val)
-#     
-#     def isin(self, values):
-#         return Cond(lambda x: np.isin(self.func(x), values))
-#     
-#     def between(self, a, b):
-#         return Cond(lambda x: (self.func(x) >= a) & (self.func(x) <= b))
-# 
-#     def __ne__(self, val):
-#         if isinstance(val, (list, np.ndarray)):
-#             return Cond(lambda x: ~np.isin(self.func(x), val)) # 這裡就是你要的 "排除"
-#         return Cond(lambda x: self.func(x) != val)
-# 
-# def C(*args):
-#     """
-#     【欄位選取器】與【邏輯封裝器】
-#     這是一個工廠函數，回傳一個 Col(i) 物件。
-#     核心機制：
-#     1. 延遲執行 (Lazy Evaluation): 
-#        呼叫 C(i) 時並不執行計算，而是透過 Col 的 super().__init__ 
-#        定義一個 'lambda x: x[:, i]' 函數(選取第 i 欄)，存入 self.func 中。
-#        只有在最後執行 find_array 或 apply 時，才會把真正的 array 丟進去運算。
-#     2. 運算子重載 (Operator Overloading): 
-#        Expr 與 Cond 類別重新定義了 Python 原生的符號（如 +, >, <, ==, &, |），
-#        讓你可以像寫 SQL 或 Pandas 一樣組合篩選條件。
-#     3. 波形偵測 (Waveform Detection):
-#        透過 is_peak() 與 is_valley()，在類別內部利用 np.diff 處理差分。
-#        其中 prepend=x[0] 與 np.append 的設計，解決了 np.diff 長度少 1 的問題，
-#        確保回傳的布林遮罩 (Mask) 與原陣列長度完全對齊，外層不需要手動修正索引 (+1)。
-#     用法範例：
-#         偵測特徵：mask = C(0).is_peak().get_mask(arr) -> 取得所有波峰的布林陣列
-#         # 必須先寫 find_array:
-#             find_array(array,C(索引))
-#             find_array(array,row(索引, array, C(索引)))
-#             可能的例外:C(int).func(array)
-#     進化後的 C：
-#     1. C(0, 1) -> 直接執行 np.column_stack (肏gemini的用法)
-#     2. C(0) -> 建立 Col(0)
-#     3. C(speed_array) -> 建立資料封裝 Expr
-#     """
-#     # 既然正處理過去你的過失，處理int =Col(int) ，順便處理 string?
-#     # 1. 修正您的 C 函數 (讓多參數分支能正確延遲求值)
-#     def C(*args):
-#         if not args:
-#             # 無條件時：回傳一個永遠為 True 的全選條件（對應你的 cond== [] 邏輯）
-#             # 這裡的 func 會根據傳進來的 array 長度，吐出等長的 True 布林陣列
-#             return Expr(lambda x: np.ones(len(np.asarray(x)), dtype=bool))
-#             
-#         # 自動內涵 Col 類別（直接把整數轉成 Col 物件）
-#         processed_args = [Col(arg) if isinstance(arg, int) else arg for arg in args]
-# 
-#         if len(processed_args) == 1:
-#             target = processed_args
-#             # 🔑 修正核心：當只有一個欄位 (例如 C(10)) 且直接丟進 find_array 時
-#             # 它必須吐出一個能夠符合 cond.func(array) 切片的「索引遮罩」！
-#             # 這裡直接回傳一個全選的布林陣列，這才符合無條件取值的物理邏輯
-#             return Expr(lambda x: np.ones(len(np.asarray(x)), dtype=bool))
-# 
-#         # 多個參數時的橫向/縱向合併
-#         return Expr(lambda x: np.vstack([arg.func(x) if hasattr(arg, 'func') else arg for arg in processed_args], dtype=object))
-# 
-#def find_array(array,cond):
-#    """
-#    用法:find_array(資料陣列,C(順位) 運算符號 數值或文字)，輸入對象請務必維持為 NumPy Array。
-#    -:find_array(目標,C(0)!="曲線")
-#    AND:find_array(array,(C(0) == 1) & (C(1) > 5)
-#    OR:find_array(array,(C(0) == 1) | (C(1) > 5)
-#    between:find_array(array,C(0).between(1, 5)
-#    between + isin:find_array(array,(C(0).between(1, 5)) & (C(1).isin([2,3,4])) 
-#        np.isin(A, B)
-#        A 裡每個元素
-#        是否存在於 B
-#    :find_array(array,((C(0) == 1) & (C(1) > 5)) | (C(2) < 3)
-#    +:find_array(array,(C(0) + C(1)) > 10)
-#    expression:find_array(array,((C(0) + C(1)) > 10) & (C(2) == 3)
-#    符合的列且不提取全部的欄:效果詞,效果值 = row([0,1],find_array(效果,C(0).isin(用戶回饋)))
-#    """
-#    if not hasattr(cond, 'func'):
-#        回覆("cond 的實際型態是:", type(cond))
-#        回覆("cond 的實際內容是:", cond)
-#        raise ValueError("cond 必須是 Cond 物件或 Expr 比較運算後的結果")
-#    if hasattr(array, dict):
-#        array = np.array(list(array.values()), dtype=object).T
-#        回覆("dict_to_list",array[:5])
-#    return array[cond.func(array)]
-#
-#     # def array_find_array(a,i,array):
-#     #     # [[1,2,3,4],[1,2,3,4],,,]。i副位 j主位，j主位的i副位若是同一值a，列出array[此主位]
-#     #     return array[array[:, i] == a] # array[array([True, True, False])] ，只留下 True 對應的列
 
 
 def row(i, data, func2=None):
@@ -1530,25 +1338,19 @@ def selected(keyword,sort=1,num=1,classA=None):
     回覆("找字中...")
     # 最高強度的相似度比對，當場撈出最新 X, Y 坐標
     # 10:text, 5:left, 6:top, 7:width, 8:height, 9:conf
-    text_pts_data=find_array(data,C.stack(10,5,6,7,8,9))
-    #回覆(f"row(None,data)[:10]:{row(None,data)[:10]}")
-    #回覆(f"row(10,data)[:10]:{row(10,data)[:10]}")
-#    回覆(find_array(data,C.stack(10,5,6,7,8,9)))
-    
-#    回覆(f"find_array(data,C(10))[:10]:{find_array(data,C(10))[:10]}")
-    #回覆(f"{find_array(text_pts_data,C(5) == None )}")，c(5)型態 <class 'bool'>，內容 True
-    text  = find_array(text_pts_data,(C(5) > 60) & (C(0).isin(kw)) ) # 符合cond或Expr，但 TypeError: '>' not supported between instances of 'NoneType' and 'int'
-    if len(text)>0:
-        text_pts=C(
-            write_array(a,(C(1)+(C(3)//2))//2),
-            write_array(a,(C(2)+(C(4)//2))//2)
+    text_pts_data=C.where(10,5,6,7,8,9)(data)
+    text_pts  = find_array(text_pts_data,(C(5) > 60) & (C(0).isin(kw)) ) 
+    if len(text_pts)>0:
+        write_array(text_pts,
+            C(1)<<((C(1) + (C(3)//2)) //2),
+            C(2)<<((C(2) + (C(4)//2)) //2)
             )
         回覆("找到字")
         final_pts.extend(text_pts)
     else:
         回覆("找不到字")
 
-    回覆(f"找圖中...") 
+    回覆("找圖中...") 
     start_time = time.time()  
     快取圖=list(path_all(dir,target=kw))
     回覆(f"失效1，{快取圖}")
@@ -2400,7 +2202,7 @@ class TargetExtractor:
         回覆("請用滑鼠左鍵圈選多邊形；右鍵結束；ESC 取消；R 重來")
         display = self.image.copy()
         done = False
-        # ***可能未監聽
+        mouse_listener = None
 
         def on_click(x, y, button, pressed):
             if not pressed:
@@ -2422,6 +2224,10 @@ class TargetExtractor:
                 if key == keyboard.Key.esc:
                     done = True
                     回覆("❌ 已取消圈選")
+                    self.pts.clear()            # 清空已圈選的點
+                    # 🔥 核心修正：如果滑鼠監聽器還活著，強行終止它！
+                    if mouse_listener is not None:
+                        mouse_listener.stop()
                     return False
                 elif key.char.lower() == 'r':
                     回覆("🔁 重新圈選")
@@ -3111,14 +2917,33 @@ if __name__ == "__main__":
     #data[:, 10] = 999 # [999. 999. 999. 999. 999.]
     a = np.array([
         [0, 10, 20, 30, 40],
-        [2, 12, 22, 32, 42]
+        [2, 11, 20, 30, 41],
+        [2, 12, 20, 30, 42]
     ], dtype=int)
     print(f"a:{a}")
-    print(write_array(a, 
-        (C(1) << (C(1) + (C(3) // 2)) // 2), 
-        (C(2) << (C(2) + (C(4) // 2)) // 2)) 
-        )
-    print(f"a:{a}")
+    #print(f"a:{        write_array(a, 
+    #    (C(1) << (C(1) + (C(3) // 2)) // 2), 
+    #    (C(2) << (C(2) + (C(4) // 2)) // 2))    }")
+    print(f"a2 >11: {find_array(a,C(2)>11)}")
+    print(f"a4 .isin: {find_array(a,C(4).isin(42))}")
+    print(f"a2 >11 & a4 .isin: {find_array(a,C(2)>11) & find_array(a,C(4).isin(42))}")
+    
+    b = {
+        "a":[0, 10, 20, 30, 40],
+        "b":[2, 11, 20, 30, 41],
+        "c":[2, 12, 20, 30, 42]
+    }
+    print(f"b:{b}")
+    #print(f"b:{        write_array(b, 
+    #    (C(1) << (C(1) + (C(3) // 2)) // 2), 
+    #    (C(2) << (C(2) + (C(4) // 2)) // 2))    }")
+    c= C.where(0,2)(b)
+    print(f"b where 02: { c }")
+    #print(f"b02.b0>0: { find_array(C.where(0,2)(b) 
+    #    ,C(0)>0)}")
+    #print(f"b1 >11: {find_array(b,C(1)>11)}")
+    #print(f"b4 .isin: {find_array(b,C(4).isin(42))}")
+    #print(f"b2 >11 & b4 .isin: {find_array(b,(C(2)>11) & (C(4).isin(42)))}")
 
     monitor_info = {"width": 1920, "height": 1080} 
     # 實例化
