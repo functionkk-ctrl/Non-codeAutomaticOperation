@@ -61,7 +61,7 @@ Window {
         }
         PerspectiveCamera {
             id: cam
-            position: Qt.vector3d(20, 158, 100)
+            position: Qt.vector3d(37, 158, 100)
             eulerRotation.x: -30
         }
         DirectionalLight {
@@ -71,7 +71,8 @@ Window {
         // == == == == GLB 模型 == == == ==
         Ilulu {
             id: iluluModel
-            scale: Qt.vector3d(scaleFactor * 1, scaleFactor * 1, scaleFactor * 1)
+            property real size: 0.88 // 1 幾乎占滿視窗整個高度
+            scale: Qt.vector3d(scaleFactor * size, scaleFactor * size, scaleFactor * size)
             position: Qt.vector3d(0, 0, 0)
 
             SequentialAnimation on eulerRotation.y {
@@ -162,7 +163,7 @@ Window {
                 // 當我們在外部用 MultiEffect 渲染時，這裡保持純文字即可
                 //horizontalAlignment: Text.AlignHCenter
                 //verticalAlignment: Text.AlignVCenter
-                visible: false // 因為我們只要 MultiEffect 渲染後的結果，這樣才不會有雙重重影 Bug
+                //visible: false // 因為我們只要 MultiEffect 渲染後的結果，這樣才不會有雙重重影 Bug
             }
 
             MultiEffect {
@@ -303,7 +304,9 @@ Window {
             Layout.column: 4
             Layout.rowSpan: 5 // 縱跨 5 列 (0,1,2,3,4)
             Layout.fillWidth: true
-            //Layout.preferredWidth: listErrand.width
+            Layout.fillHeight: true
+            Layout.preferredWidth: button_w * 2
+            //implicitHeight:button_h
             //Layout.preferredHeight: Math.max(button_h, listErrand.height) // 高度完全由按鈕數量決定
             //Layout.alignment: Qt.AlignHCenter // Qt.AlignHCenter Qt.AlignLeft
         }
@@ -322,11 +325,13 @@ Window {
             Layout.rowSpan: 2    // 縱跨 2 列 (1,2)
             Layout.columnSpan: 3 // 橫跨 3 欄 (1,2,3)
             Layout.fillWidth: true
-            Layout.preferredHeight: childrenRect.height
+            Layout.fillHeight: true
+            //implicitHeight: childrenRect.height
         }
 
         // 【InputBoxTextArea】 座標 (4, 0) 橫跨 4 欄 -> 底部輸入框
         InputBoxTextArea {
+            id: inputTextArea
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.row: 4
@@ -335,83 +340,147 @@ Window {
         }
     }
 
-    // 1. 中央 任務欄（新增與移除任務） //點擊任務欄內的空處即新增按鈕(CamButton)，按下按鈕即重新命名，左右拉即移除，上下拉即重新調整任務順位 TODO:***目前點擊不到
+    // 1. 中央 任務欄（新增與移除任務） //點擊任務欄內的空處即新增按鈕(CamButton)，按下按鈕即重新命名，左右拉即移除，上下拉即重新調整任務順位 //drag時的高度
     component TaskBarItem: Item {
         id: taskBarWrapper
-        //Layout.fillWidth: true
-        Layout.preferredWidth: listErrand.width
-        Layout.preferredHeight: Math.max(button_h, listErrand.height) // 高度完全由按鈕數量決定
-        Layout.alignment: Qt.AlignHCenter // Qt.AlignHCenter Qt.AlignLeft
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        width: parent ? parent.width : implicitWidth
+        height: parent ? parent.height : implicitHeight
 
-        // 垂直排列按鈕的純粹容器
-        Column {
-            id: listErrand
-            width: button_w
-            height: button_h
-            spacing: 10
+        //新增樣式
+        ListModel {
+            id: taskListModel
 
-            // 💡 核心中央控制：點擊整塊區域時，統一進行邏輯判斷
-            MouseArea {
-                //anchors.fill: parent
-                propagateComposedEvents: true // 讓已存在的按鈕點擊事件可以穿透
+            ListElement {
+                taskName: "初始按鈕"
+                checked: false
+                index: 0
+            }
+        }
+        //顯示區
+        Rectangle {
+            width: parent.width
+            anchors.fill: parent
+            color: Qt.rgba(0.435, 0.306, 0.216, 1.0)
+            radius: 10
 
-                onClicked: mouse => {
-                    // 💡 邏輯 1：判斷點擊的位置「有沒有撞到現有的按鈕」
-                    var clickedChild = listErrand.childAt(mouse.x, mouse.y);
-                    if (clickedChild === null || clickedChild === bgRect) {
-                        // 💡 邏輯 2：點擊之處無按鈕 ➡️ 觸發新增 CamButton 的 Function
-                        createNewTaskButton();
-                    } else {
-                        // 💡 邏輯 3：點擊之處有按鈕 ➡️ 觸發按下/重新命名的 Function
-                        handleButtonInteraction(clickedChild);
+            Text {
+                id: headerText
+                anchors.top: parent.bottomY
+                text: "任務欄"
+                color: Qt.rgba(0.0, 1.0, 0.85, 1.0)
+                font.pixelSize: 16
+            }
+        }
+        //新增按鈕
+        MouseArea {
+            anchors.fill: parent
+            //acceptedButtons: Qt.LeftButton
+            propagateComposedEvents: true
+            z: 0
+
+            onClicked: mouse => {
+                // 💡 既然能走到這一層，代表內部的按鈕都沒有被點擊（點到空白處）
+                // 直接觸發新增任務！
+                Backend.conversation("點擊到空白處");
+                createNewTaskButton();
+            }
+        }
+        // 垂直排列任務按鈕
+        GridLayout {
+            columns: 1 // 上下拖曳，設定為單欄
+            rowSpacing: 3
+            Repeater {
+                id: taskRepeater
+                model: taskListModel
+
+                delegate: CamButton {
+                    id: currentButton
+                    buttonText: model.taskName
+                    checked: model.checked
+                    property int itemIndex: index
+                    Drag.active: dragArea.drag.active
+                    Drag.source: currentButton
+
+                    MouseArea {
+                        id: dragArea
+                        property Item buttonItem: parent
+                        anchors.fill: parent
+                        acceptedButtons: Qt.LeftButton
+                        propagateComposedEvents: true // 讓已存在的按鈕點擊事件可以穿透
+
+                        drag.target: buttonItem
+                        drag.axis: Drag.XAndYAxis // 允許左右與上下拖動
+                        Drag.hotSpot.x: width / 2
+                        Drag.hotSpot.y: height / 2
+                        property real startY: 0
+
+                        onClicked: mouse => {
+                            handleButtonInteraction(buttonItem, buttonItem.itemIndex);
+                            // ⚠️ 關鍵：阻止點擊事件傳給底層的空白處，防止一邊點按鈕一邊新增任務
+                            mouse.accepted = true;
+                        }
+                        onPressed: mouse => {
+                            taskRepeater.Layout.fillWidth = false;
+                            startY = buttonItem.y;
+                        }
+                        onReleased: mouse => {
+                            taskRepeater.Layout.fillWidth = true;
+                            var startIndex = Math.floor((startY + buttonItem.height / 2) / (button_h + 3)); // spacing 3
+                            var toIndex = Math.floor((buttonItem.y + buttonItem.height / 2) / (button_h + 3)); // spacing 3
+                            if (Math.abs(buttonItem.x) > 30) {
+                                taskListModel.remove(startIndex);
+                            } else if (toIndex !== buttonItem.itemIndex) {
+                                taskListModel.move(buttonItem.itemIndex, toIndex, 1);
+                                buttonItem.Drag.drop();
+                            } else {
+                                yAnimation.start();
+                            }
+                            buttonItem.x = 0;
+                        }
                     }
                 }
             }
-
-            Rectangle {
-                //anchors.fill: parent
-                color: Qt.rgba(0.435, 0.306, 0.216, 1.0)
-                //height:button_h
-                z: -1 // 確保背景在文字或按鈕的下方
-            }
         }
-
-        // =========================================================================
-        // ⚙️ 中央控制 Functions (集中管理，乾淨俐落)
-        // =========================================================================
 
         // 💡 Function A: 新增按鈕
         function createNewTaskButton() {
-            var txt = nameField.text.trim();
+            var txt = inputTextArea.text.trim();
             if (txt === "")
                 txt = "新自動化任務";
-            Qt.createQmlObject(`CamButton {
-                    width: parent.width
-                    buttonText: "' + txt + '"
-                }`, listErrand);
-            nameField.text = ""; // 清空輸入框
+            taskListModel.append({
+                "taskName": txt,
+                "checked": false,
+                "index": taskListModel.count
+            });
+            inputTextArea.text = ""; // 清空輸入框
         }
 
         // 💡 Function B: 點擊已有按鈕（按下 / 重新命名）
-        function handleButtonInteraction(targetButton) {
-            var txt = nameField.text.trim();
+        function handleButtonInteraction(targetButton, itemIndex) {
+            var txt = inputTextArea.text.trim();
             if (txt !== "") {
-                // 如果文字欄位有字 ➡️ 重新命名
-                targetButton.buttonText = txt;
-                nameField.text = "";
+                taskListModel.set(itemIndex, {
+                    "taskName": txt,
+                    "checked": !targetButton.checked
+                });
+                inputTextArea.text = "";
             } else {
                 // 如果文字欄位沒字 ➡️ 執行按鈕原本的動作（例如切換選取狀態）
                 targetButton.checked = !targetButton.checked;
+                taskListModel.set(itemIndex, {
+                    "taskName": targetButton.buttonText,
+                    "checked": !targetButton.checked
+                });
             }
         }
-
-        // 💡 Function C: 左右拉移除 / 上下拉排序 (此處可對應您後續的手勢監聽)
-        function handleGesture(targetButton, direction) {
-            if (direction === "remove") {
-                targetButton.destroy();
-            } else if (direction === "moveUp")
-            // 執行向上排序邏輯...
-            {}
+        // 歸位動畫
+        NumberAnimation on y {
+            id: yAnimation
+            running: false
+            to: buttonItem.itemIndex * (button_h + 10)
+            duration: 200
         }
     }
 
@@ -422,15 +491,16 @@ Window {
         // 💡 1. 修改高度：外層 container 必須是「固定高度」或錨定到底部，滾輪才會生效
         clip: true
         // 設定實質邊界，Flow 才知道在哪裡折行
-
-        // Layout.preferredHeight: Math.max(button_h, flowLayout.height) // 高度完全由按鈕數量決定
+        //height: Math.max(button_h, flowLayout.height) // 高度完全由按鈕數量決定
         readonly property string customFont: "Courier"
         readonly property int customSize: 20
 
         // 💡 修正 1：主動監聽滑鼠滾輪事件，強制 Flickable 滾動
         MouseArea {
-            //anchors.fill: parent
-            // propagateComposedEvents: true // 允許事件傳下去
+            anchors.fill: parent
+            propagateComposedEvents: true // 允許事件傳下去
+            // 點擊按下時，拒絕獨佔事件，強迫點擊穿透給底下的按鈕
+            onPressed: mouse => mouse.accepted = false
             onWheel: wheel => {
                 // 將滾輪力道除以 8 (120 / 8 = 15 像素)，這樣滑動幅度會非常溫和、平滑
                 var scrollStep = wheel.angleDelta.y / 8;
@@ -469,21 +539,19 @@ Window {
             id: flowLayout
             //anchors.left: parent.left
             //anchors.right: parent.right
+            //implicitHeight: childrenRect.height
+            width: container.width
 
-            // Layout.preferredHeight: Math.max(button_h, listErrand.height) // 高度完全由按鈕數量決定
-
-            spacing: 0
+            spacing: 1
             // 💡 4. 注意：在 Flickable 內部，左右邊界要錨定在 Flickable 的父層或固定寬度
             x: 0
             y: 0
-
-            //width: container.width
 
             Repeater {
                 model: container.textModel
                 Text {
                     text: modelData // 這裡可以直接拿 modelData，完全不會報錯
-                    color: Qt.rgba(0.435, 0.306, 0.216, 1.0)
+                    color: Qt.rgba(0.68, 1, 0.18, 1.0)
                     font.family: container.customFont
                     font.pixelSize: container.customSize
 
@@ -494,6 +562,8 @@ Window {
                             Backend.getImages(modelData); // 傳文字給後端
                         }
                     }
+
+                    // TODO:***填補最後一行的剩餘長度，達成換行
 
                     // 特效層位移
                     transform: Translate {
@@ -537,7 +607,7 @@ Window {
             // 遮罩文字（結構必須與下方 flowLayout 完全對稱，包證換行位置 100% 貼合）
             Flow {
                 id: maskFlow
-                //anchors.fill: parent
+                anchors.fill: parent
                 spacing: 0
                 visible: false // 必須隱藏，僅供遮罩裁切使用
 
@@ -554,11 +624,12 @@ Window {
             // 霓虹斜線漸層
             LinearGradient {
                 id: neonFlow
-                ////anchors.fill: parent
+                anchors.fill: parent
                 visible: false
                 start: Qt.point(0, 0)
                 end: Qt.point(parent.width * 0.5, parent.height)
                 property real pos: -1.0
+                //propagateComposedEvents: true // 允許事件傳下去
 
                 gradient: Gradient {
                     GradientStop {
@@ -611,7 +682,7 @@ Window {
             // 外發光
             Glow {
                 id: neonGlow
-                //anchors.fill: parent
+                anchors.fill: parent
                 source: neonFlow
                 radius: 9
                 samples: 19
@@ -622,14 +693,13 @@ Window {
 
             // 最終裁剪混合
             OpacityMask {
-                //anchors.fill: parent
+                anchors.fill: parent
                 source: neonGlow
                 maskSource: maskFlow
             }
         }
     }
 
-    // 輸入框 TODO:***要更高
     component InputBoxTextArea: TextArea {
         id: inputBox
         Layout.preferredHeight: Math.max(button_h, Math.min(contentHeight, window_h * 0.4))

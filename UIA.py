@@ -400,7 +400,7 @@ def 看字():
     """ 
     獨立的 OCR 執行緒，確保每秒穩定執行
     OCR給圖中的文字，移除 資料夾不可用詞，由左至右，由上往下，可能是文字
-    TODO:*** 理解拓樸關係
+    TODO:*** 理解拓樸關係 
     儲存為資料夾
     """
     invalid_chars = re.compile(r'[\/\\\:\*\?\"\<\>\|]')
@@ -418,7 +418,7 @@ def 看字():
                 回覆("找到字")
             else:
                 回覆("找不到字")
-            folder_name=find_array(matrix,(C(0)!= invalid_chars) & (C(5)>60), C(1)&C(2) )
+            folder_name=find_array(matrix,(C(0)!= invalid_chars) & (C(5)>60), (C(1),C(2)) )
             folder_name_text=C.where(0)(folder_name)[:資料夾最長字數]
             # 4. 如果有讀到有效的字，就建立資料夾
             if folder_name_text:
@@ -599,7 +599,7 @@ def text_make_background(path=None):
         for s in ss:
             p=path_all(path,s)
             if next(p):
-                s=row(1,p)
+                s=C(1)(p)
     形容詞,名詞=[],[]
     取詞(["形容詞","名詞"])
     從對主的向量 = { "相似詞","反義詞"} # (詞)意義，找到主從詞(的顯示)，增加主是正向、減少主是負向
@@ -625,8 +625,8 @@ def text_make_background(path=None):
     出題第幾行開始=find_array(ocr_lines,(C(0) in "出題幾行").get_mask)  
     出題幾行=find_array(ocr_lines,((C(0).roll(1)== "出題") and (C(0).roll(-1)== "行")).get_mask)
     出題囉=find_array(ocr_lines,C(0).get_mask- 出題第幾行開始<出題幾行) 
-    if next(row(1,path_all(path,C(0).func(出題囉)/"主"))): # 詞/主
-        找到主=row([0,1],path_all(path,C(0).func(出題囉)/"主")) # path/.../(從)詞/主,找到主(詞)
+    if next(C(1)(path_all(path,C(0).func(出題囉)/"主"))): # 詞/主
+        找到主=C(0,1)(path_all(path,C(0).func(出題囉)/"主")) # path/.../(從)詞/主,找到主(詞)
         上=找到主[1] 
         下=find_array(找到主,C(0).roll(-1)=="主")
     問題類型_粗_mask=find_array(ocr_lines,(C(0) in 粗略提問).get_mask) 
@@ -692,7 +692,7 @@ def text_make_background(path=None):
     def 尋主(a,b):
         主_p=path_all(path/a/"主")
         if next(主_p):
-            出現的主=row(1,find_array(主_p,C(0) in b)) 
+            出現的主=C(1)(find_array(主_p,C(0) in b)) 
             for 主 in 出現的主:
                 從_p=path_all(path/主/"從"/"中"/a)
                 if next(從_p):
@@ -741,11 +741,11 @@ def 解題(出題,介詞,名詞,
         }
     }
     def 相似詞(a):
-        尋主=row([0,1],path_all(TEMPLATE_DIRS["Noesis"]/a,"主"))
-        同向=row(1,path_all(尋主[0]/尋主[1]/"從",a))
+        尋主=C([0,1])(path_all(TEMPLATE_DIRS["Noesis"]/a,"主"))
+        同向=C(1)(path_all(尋主[0]/尋主[1]/"從",a))
         return 同向
     def 不在場(a):
-        從正負=row(1,path_all(TEMPLATE_DIRS["Noesis"]/a/"從",["正向","負向"])) # 從/+-
+        從正負=C(1)(path_all(TEMPLATE_DIRS["Noesis"]/a/"從",["正向","負向"])) # 從/+-
         return 從正負
 
     if isinstance(出題,str):
@@ -756,12 +756,15 @@ def 解題(出題,介詞,名詞,
         # 先抓人名 或物品 ，在找共同的主，計算差異，看子異異(人名或物品)的從(隱含異異)受到的影響。先對獲益，後對流轉。
             # 沈秋 和貓，共同主為江湖，沈秋(轉換)總帶著一隻獨眼黑貓(獲益)。 (流轉)到七年前  沈秋樸通少年 官兵剿民(流轉) (轉換方式)兩死一傷貓 (獲益)求教於老劍客 (動機)老劍客說復仇
         """
-        劫_mask= find_array(出題,(C(0) in 相似詞("姓氏與名字")).get_mask) # 包含各語言的姓氏，名字，代名詞我以外的均要往更前面找，找不到則是後面會提
-        土_mask= find_array(出題,(C(0) in 名詞).get_mask) # 獲益 名詞
-        金_mask= find_array(出題,(C(0) in 相似詞("動名詞")).get_mask) # 動機 動名詞
-        水_mask= find_array(出題,(C(0) in 連接詞).roll(-1).get_mask) # 過程 連接詞
-        木_mask= find_array(出題,(C(0).isin(C(0).func(出題)) ).roll(-1).get_mask) # 有規律 出現時長高
-        火_mask= find_array(出題,(C(0) in 介詞).roll(-1).get_mask) # 轉換 介詞
+        標點符號= find_array(出題,(C(0) in all_punc))
+        劫_mask= find_array(出題,(C(0) in 相似詞("姓氏與名字")) ) # 包含各語言的姓氏，名字，代名詞我以外的均要往更前面找，找不到則是後面會提
+        土_mask= find_array(出題,(C(0) in 名詞) ) # 獲益 名詞
+        金_mask= find_array(出題,(C(0) in 相似詞("動名詞")) ) # 動機 動名詞
+        水_mask= find_array(出題,(C(0) in 連接詞).roll(-1) ) # 過程 連接詞
+        木_mask= find_array(出題,(C(0).isin(C(0).func(出題)) ).roll(-1) ) # 有規律 出現時長高
+        火_mask= find_array(出題,(C(0) in 介詞).roll(-1) ) # 轉換 介詞
+        # TODO:*** 無索引只有找到，那就用噴塗法，找到的顏色，間格都是這個顏色，共五種顏色
+        # 表面打磨去除"無意義詞"  多次細微噴塗"類型有 人名 獲益 動機 過程 有規律的 轉換的相關詞 的間隔" 霧化界線"五類型" 拋光"目標主題" ?
         # 找到的代名詞為上一位
         土=(出題[土_mask:-1] , find_array(劫_mask,(C(0)<土_mask)) and (C(0).roll(-1)>土_mask))
         金=(出題[金_mask:-1] , find_array(劫_mask,(C(0)<金_mask)) and (C(0).roll(-1)>金_mask))
@@ -868,8 +871,8 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
         similar_ratio:回傳相似度
     """
     if ["a","b"] in npy:
-        kp1, desA =  np.load(row(0,a)),  np.load(row(1,a))
-        kp2, desB =  np.load(row(0,b)),  np.load(row(1,b))
+        kp1, desA =  np.load(C(0)(a)),  np.load(C(1)(a))
+        kp2, desB =  np.load(C(0)(b)),  np.load(C(1)(b))
         # 輸入後，儲存(新向量)、傳遞(向量不變)、抵銷(向量互撞)
         result_des = np.zeros_like(desA)
         kp_dataA=C(kp1, desA)
@@ -902,7 +905,7 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
         result_kp[pass_mask, 4] = kp_dataA[pass_mask, 4] # 強度維持
 
         if path is None:
-            path = row(0,path_all(base_path, a))
+            path = C(0)(path_all(base_path, a))
         des_path =path/ f"{a.name}_des.npy"  # 使用 e (傳入的對象) 而非 a
         kp_path =path/ f"{a.name}_kp.npy"
         # --- 儲存成NPY檔案 ---
@@ -914,7 +917,7 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
     
     def im2_orb(b,png="_相似拓樸結構"):
         if "b" in npy:
-            kp2, desB =  np.load(row(0,b)),  np.load(row(1,b))
+            kp2, desB =  np.load(C(0)(b)),  np.load(C(1)(b))
         else:
             img2 = cv2.imread(b) 
             if img2 is None:
@@ -968,13 +971,13 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
     
     if path is None:
         # row[0] 只存（Index 0）比起[:,0]整個 path_all 轉成 np.array，記憶體佔用會小很多。
-        path = row(0,path_all(base_path, a))
+        path = C(0)(path_all(base_path, a))
     sift = cv2.SIFT_create(nfeatures=4200, contrastThreshold=0.03, edgeThreshold=10)
     img1 =( cv2.imread(aa) for aa in a)
     if img1 is None:
         raise ValueError(f"讀取圖檔失敗: {a}")
     if "a" in npy:
-        kp1, desA =  np.load(row(0,a)),  np.load(row(1,a))
+        kp1, desA =  np.load(C(0)(a)),  np.load(C(1)(a))
     else:
         kp1, desA = sift.detectAndCompute(img1, None)
     if color=="color":
@@ -1155,7 +1158,7 @@ def find_array(array, cond,*sort_cols):
         array_copy = np.array(list(array.values()), dtype=object)
     else:
         array_copy = np.asarray(array)
-    if array.ndim == 1:
+    if array.ndim == 1: # 升維
         array_copy = array[np.newaxis, :]  # 變成 1列 x N欄 的二維矩陣 (1, N)
         # 或者依您的需求：array_copy = array[:, np.newaxis] 變成 N列 x 1欄 (N, 1)
     else:
@@ -1229,44 +1232,6 @@ def write_array(array,*modifications_tuple):
          
 
 # 優化代碼方式:可能是看堆積在哪處，內部的編譯器讀取代碼文字，然後我丟進矩陣分析，得到重複的自定義變數(含def class) 功能(條件 樣式) 註解紀錄耗時
-
-
-def row(i, data, func2=None):
-    """
-    複雜用法:
-        一維轉二維篩選後 要轉回一維:func2=lambda x: x.reshape(-1)
-        row(None, data) 或 row(slice(None), data) 回傳全部資料
-    用途:取得多維資料(array)的某一筆資料的內容(可能array)，或是每筆資料的某些索引的內容
-    等同於 [r[i] for r i in data]，i可以是list
-    如果data是 List，這行會跑 List Comprehension (慢但相容性高)
-    如果data是 NumPy，這行會跑向量化提取 (快)
-    """
-    if isinstance(data,dict):
-        # 2. 提取 values，轉成陣列後，必須加上 .T（轉置），讓形狀維持 (資料筆數, 12 欄)
-        # 使用 dtype=object 是為了相容數字（座標）與字串（辨識到的文字）
-        data_arr = np.array(list(data.values()), dtype=object).T
-        回覆("dict_to_list")
-    else:
-        # 3. 如果原本就是 NumPy 陣列或一般列表，直接轉換即可
-        data_arr = np.asarray(data)
-    # 🔑 這裡補上 0 維陣列的極端情況攔截（以防萬一），字串
-    if data_arr.ndim == 0:
-        data_arr = data_arr.reshape(1, 1)
-        回覆(f"{data} 升維")
-    # 🔑 一維升維
-    if data_arr.ndim == 1:
-        data_arr = data_arr.reshape(1, -1)
-        回覆(f"{data} 升維")
-    # index
-    if i is None or i == ":" or isinstance(i, slice):
-        column_data = data_arr
-    else:
-        回覆("🔑 統一 i")
-        idx = i if isinstance(i, (list, tuple, np.ndarray)) else [i] # 🔑 統一 i
-        column_data = data_arr[:, idx] # [6,9,42] [star:end:step]
-    if func2:
-        return func2(column_data)
-    return column_data
 
 
 def hide_file_windows(file_path):
@@ -1357,12 +1322,13 @@ def selected(keyword,sort=1,num=1,classA=None):
     if not 快取圖 or 快取圖[0] is False:
         回覆("找不到 快取圖")
     else:
-        for pngA in row(2,快取圖): # *** 多張圖像中偵測目標圖像
-            回覆(f"失效2，找到{row(2,快取圖)}")
+        for pngA in C(2)(快取圖): # *** 多張圖像中偵測目標圖像
+            回覆(f"失效2，找到{C(2)(快取圖)}")
             if pngA.endswith(".png"): # 快取圖片
                 pngA_合照=全能ORB(pngA,screen_img,ratio=0.9) # 去掉 不明顯相似的
                 if next(pngA_合照):
-                    img_pts = row(0,find_array(pngA_合照,C(1))>0) # 轉換成座標 特徵點位置
+                    img_pts = C(0)(find_array(pngA_合照,C(1))>0) # 轉換成座標 特徵點位置
+
                     final_pts.extend(img_pts)
                 else:
                     回覆("圖片找不到相似的")
@@ -2915,30 +2881,30 @@ if __name__ == "__main__":
     # 回覆(f"網路抓取結果: {data}")
     #data = np.zeros((5, 11))
     #data[:, 10] = 999 # [999. 999. 999. 999. 999.]
-    a = np.array([
-        [0, 10, 20, 30, 40],
-        [2, 11, 20, 30, 41],
-        [2, 12, 20, 30, 42]
-    ], dtype=int)
-    print(f"a:{a}")
-    #print(f"a:{        write_array(a, 
-    #    (C(1) << (C(1) + (C(3) // 2)) // 2), 
-    #    (C(2) << (C(2) + (C(4) // 2)) // 2))    }")
-    print(f"a2 >11: {find_array(a,C(2)>11)}")
-    print(f"a4 .isin: {find_array(a,C(4).isin(42))}")
-    print(f"a2 >11 & a4 .isin: {find_array(a,C(2)>11) & find_array(a,C(4).isin(42))}")
-    
-    b = {
-        "a":[0, 10, 20, 30, 40],
-        "b":[2, 11, 20, 30, 41],
-        "c":[2, 12, 20, 30, 42]
-    }
-    print(f"b:{b}")
+    #a = np.array([
+    #    [0, 10, 20, 30, 40],
+    #    [2, 11, 20, 30, 41],
+    #    [2, 12, 20, 30, 42]
+    #], dtype=int)
+    #print(f"a:{a}")
+    ##print(f"a:{        write_array(a, 
+    ##    (C(1) << (C(1) + (C(3) // 2)) // 2), 
+    ##    (C(2) << (C(2) + (C(4) // 2)) // 2))    }")
+    #print(f"a2 >11: {find_array(a,C(2)>11)}")
+    #print(f"a4 .isin: {find_array(a,C(4).isin(42))}")
+    #print(f"a2 >11 & a4 .isin: {find_array(a,C(2)>11) & find_array(a,C(4).isin(42))}")
+    #
+    #b = {
+    #    "a":[0, 10, 20, 30, 40],
+    #    "b":[2, 11, 20, 30, 41],
+    #    "c":[2, 12, 20, 30, 42]
+    #}
+    #print(f"b:{b}")
     #print(f"b:{        write_array(b, 
     #    (C(1) << (C(1) + (C(3) // 2)) // 2), 
     #    (C(2) << (C(2) + (C(4) // 2)) // 2))    }")
-    c= C.where(0,2)(b)
-    print(f"b where 02: { c }")
+    #c= C.where(0,2)(b)
+    #print(f"b where 02: { c }")
     #print(f"b02.b0>0: { find_array(C.where(0,2)(b) 
     #    ,C(0)>0)}")
     #print(f"b1 >11: {find_array(b,C(1)>11)}")
