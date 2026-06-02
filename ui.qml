@@ -116,7 +116,7 @@ Window {
         }
 
         onClicked: {
-            let 最後一行剩幾個空白號才填滿 = (container.width - parent.x) / container.customSize; //TODO:***自動換行
+            let 最後一行剩幾個空白號才填滿 = (containerItem.width - containerItem.flowLayout.x) / containerItem.customSize; //TODO:***自動換行
             if (control.checked) {
                 Backend.conversation("按下了" + mainText.text + "  ".repeat(最後一行剩幾個空白號才填滿));
             } else {
@@ -321,6 +321,7 @@ Window {
 
         // 【containerItem】 座標 (1, 1) 跨 2 列 3 欄 -> 中央核心容器
         ContainerItem {
+            id: containerItem
             Layout.row: 1
             Layout.column: 1
             Layout.rowSpan: 2    // 縱跨 2 列 (1,2)
@@ -386,7 +387,7 @@ Window {
             onClicked: mouse => {
                 // 💡 既然能走到這一層，代表內部的按鈕都沒有被點擊（點到空白處）
                 // 直接觸發新增任務！
-                let 最後一行剩幾個空白號才填滿 = (ContainerItem.container.width - flowLayout.text.x) / ContainerItem.container.customSize; //TODO:***自動換行
+                let 最後一行剩幾個空白號才填滿 = (containerItem.width - containerItem.flowLayout.x) / containerItem.customSize; //TODO:***自動換行
 
                 Backend.conversation("點擊到空白處" + "  ".repeat(最後一行剩幾個空白號才填滿));
                 createNewTaskButton();
@@ -492,6 +493,7 @@ Window {
     // 回覆用戶的文本
     component ContainerItem: Item {
         id: container
+        property alias flowLayout: flowLayout
         property var textModel: "引頸期盼地等待訊息..."
         // 💡 1. 修改高度：外層 container 必須是「固定高度」或錨定到底部，滾輪才會生效
         clip: true
@@ -548,7 +550,7 @@ Window {
             //anchors.left: parent.left
             //anchors.right: parent.right
             //implicitHeight: childrenRect.height
-            //height: childrenRect.height
+            height: childrenRect.height
             width: container.width
 
             spacing: 1
@@ -562,6 +564,10 @@ Window {
 
                 Text {
                     text: modelData // 這裡可以直接拿 modelData，完全不會報錯
+                    width: container.width
+                    wrapMode: Text.WrapAnywhere
+                    horizontalAlignment: Text.AlignLeft
+                    verticalAlignment: Text.AlignTop
                     color: Qt.rgba(0.68, 1, 0.18, 1.0)
                     font.family: container.customFont
                     font.pixelSize: container.customSize

@@ -3143,8 +3143,8 @@ if __name__ == "__main__":
     engine.addImportPath(str(DATA_BASE))
     # 將 Python 對象暴露給 QML
     engine.rootContext().setContextProperty("IC", ic)
-    engine.rootContext().setContextProperty("Backend", Backend) # QML使用時首字大寫
-    engine.rootContext().setContextProperty("Backend", Backend) # QML使用時首字大寫
+    backend = Backend()
+    engine.rootContext().setContextProperty("Backend", backend) # QML使用時首字大寫
 
 
     for p in Qml.QQmlEngine().importPathList():
