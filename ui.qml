@@ -360,8 +360,8 @@ Window {
                 checked: false
                 index: 0
             }
-            // TODO:*******讀取用戶按紐設定，所以幾乎不會出現"初始按鈕"的字
-            // path_all(users/button)
+            // path_all(users/button) // TODO:*******讀取用戶按紐設定，創建後要有基本功能
+
         }
 
         Connections {
