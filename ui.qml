@@ -7,6 +7,8 @@ import Qt5Compat.GraphicalEffects // 必須導入此模組來使用 Glow // Qt 6
 import QtQuick.Layouts
 
 Window {
+
+    // 1. 中央 任務欄（新增與移除任務） //點擊任務欄內的空處即新增按鈕(CamButton)，按下按鈕即重新命名，左右拉即移除，上下拉即重新調整任務順位 //drag時的高度
     id: root
     property int window_w: 480
     property int window_h: 360
@@ -116,7 +118,7 @@ Window {
         }
 
         onClicked: {
-            let 最後一行剩幾個空白號才填滿 = (containerItem.width - containerItem.flowLayout.x) / containerItem.customSize; //TODO:***自動換行
+            let 最後一行剩幾個空白號才填滿 = (containerItem.width - containerItem.flowLayout.x) / containerItem.customSize; // 自動換行
             if (control.checked) {
                 Backend.conversation("按下了" + mainText.text + "  ".repeat(最後一行剩幾個空白號才填滿));
             } else {
@@ -301,6 +303,7 @@ Window {
 
         // 【TaskBarItem】 座標 (0, 4) 且跨 4 列 -> 右側整條側邊欄
         TaskBarItem {
+            id: taskBar
             Layout.row: 0
             Layout.column: 4
             Layout.rowSpan: 5 // 縱跨 5 列 (0,1,2,3,4)
@@ -341,14 +344,12 @@ Window {
             Layout.columnSpan: 4 // 橫跨 4 欄 (0,1,2,3)
         }
     }
-
-    // 1. 中央 任務欄（新增與移除任務） //點擊任務欄內的空處即新增按鈕(CamButton)，按下按鈕即重新命名，左右拉即移除，上下拉即重新調整任務順位 //drag時的高度
     component TaskBarItem: Item {
-        id: taskBarWrapper
         Layout.fillWidth: true
         Layout.fillHeight: true
         width: parent ? parent.width : implicitWidth
         height: parent ? parent.height : implicitHeight
+        property alias taskListModel: taskListModel
 
         //新增樣式
         ListModel {
@@ -359,10 +360,27 @@ Window {
                 checked: false
                 index: 0
             }
-            // TODO:*******讀取用戶按紐設定
+            // TODO:*******讀取用戶按紐設定，所以幾乎不會出現"初始按鈕"的字
             // path_all(users/button)
         }
-        //顯示區
+
+        Connections {
+            target: Backend
+            function onUsersUpdated(users) {
+                if (users && users.length > 0) {
+                    taskListModel.clear();
+                    for (var i = 0; i < users.length; i++) {
+                        taskListModel.append(users[i]);
+                    }
+                }
+            }
+        }
+
+        Component.onCompleted: {
+            Backend.getUsers();
+        }
+
+        //顯示範圍
         Rectangle {
             width: parent.width
             anchors.fill: parent
@@ -387,7 +405,7 @@ Window {
             onClicked: mouse => {
                 // 💡 既然能走到這一層，代表內部的按鈕都沒有被點擊（點到空白處）
                 // 直接觸發新增任務！
-                let 最後一行剩幾個空白號才填滿 = (containerItem.width - containerItem.flowLayout.x) / containerItem.customSize; //TODO:***自動換行
+                let 最後一行剩幾個空白號才填滿 = (containerItem.width - containerItem.flowLayout.x) / containerItem.customSize; // 自動換行
 
                 Backend.conversation("點擊到空白處" + "  ".repeat(最後一行剩幾個空白號才填滿));
                 createNewTaskButton();
@@ -411,39 +429,38 @@ Window {
 
                     MouseArea {
                         id: dragArea
-                        property Item buttonItem: parent
                         anchors.fill: parent
                         acceptedButtons: Qt.LeftButton
                         propagateComposedEvents: true // 讓已存在的按鈕點擊事件可以穿透
 
-                        drag.target: buttonItem
+                        drag.target: currentButton
                         drag.axis: Drag.XAndYAxis // 允許左右與上下拖動
                         Drag.hotSpot.x: width / 2
                         Drag.hotSpot.y: height / 2
                         property real startY: 0
 
                         onClicked: mouse => {
-                            handleButtonInteraction(buttonItem, buttonItem.itemIndex);
+                            handleButtonInteraction(currentButton, currentButton.itemIndex);
                             // ⚠️ 關鍵：阻止點擊事件傳給底層的空白處，防止一邊點按鈕一邊新增任務
                             mouse.accepted = true;
                         }
                         onPressed: mouse => {
                             taskRepeater.Layout.fillWidth = false;
-                            startY = buttonItem.y;
+                            startY = currentButton.y;
                         }
                         onReleased: mouse => {
                             taskRepeater.Layout.fillWidth = true;
-                            var startIndex = Math.floor((startY + buttonItem.height / 2) / (button_h + 3)); // spacing 3
-                            var toIndex = Math.floor((buttonItem.y + buttonItem.height / 2) / (button_h + 3)); // spacing 3
-                            if (Math.abs(buttonItem.x) > 30) {
+                            var startIndex = Math.floor((startY + currentButton.height / 2) / (button_h + 3)); // spacing 3
+                            var toIndex = Math.floor((currentButton.y + currentButton.height / 2) / (button_h + 3)); // spacing 3
+                            if (Math.abs(currentButton.x) > 30) {
                                 taskListModel.remove(startIndex);
-                            } else if (toIndex !== buttonItem.itemIndex) {
-                                taskListModel.move(buttonItem.itemIndex, toIndex, 1);
-                                buttonItem.Drag.drop();
+                            } else if (toIndex !== currentButton.itemIndex) {
+                                taskListModel.move(currentButton.itemIndex, toIndex, 1);
+                                currentButton.Drag.drop();
                             } else {
                                 yAnimation.start();
                             }
-                            buttonItem.x = 0;
+                            currentButton.x = 0;
                         }
                     }
                 }
@@ -571,7 +588,6 @@ Window {
                     color: Qt.rgba(0.68, 1, 0.18, 1.0)
                     font.family: container.customFont
                     font.pixelSize: container.customSize
-                    //TODO:**** 這裡換行。和Backend連動
 
                     MouseArea {
                         onClicked: mouse => {
@@ -808,22 +824,22 @@ Window {
             buttonText: "關閉"
 
             onClicked: mouse => {
-                // # TODO:**** Gather TaskBarItem model data and send to backend for saving
-                //var users = [];
-                //for (var i = 0; i < taskListModel.count; i++) {
-                //    var item = taskListModel.get(i);
-                //    users.push({
-                //        "taskName": item.taskName,
-                //        "checked": item.checked,
-                //        "index": item.index
-                //    });
-                //}
-                //// Call backend to save user task buttons, then quit
-                //try {
-                //    Backend.saveUsers(users);
-                //} catch (e) {
-                //    console.log("保存使用者按鈕時發生錯誤:", e);
-                //}
+                // TODO:******** Gather TaskBarItem model data and send to backend for saving
+                var users = [];
+                for (var i = 0; i < taskBar.taskListModel.count; i++) {
+                    var item = taskBar.taskListModel.get(i);
+                    users.push({
+                        "taskName": item.taskName,
+                        "checked": item.checked,
+                        "index": item.index
+                    });
+                }
+                // Call backend to save user task buttons, then quit
+                try {
+                    Backend.saveUsers(users);
+                } catch (e) {
+                    console.log("保存使用者按鈕時發生錯誤:", e);
+                }
                 Qt.quit();
             }
         }

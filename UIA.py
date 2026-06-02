@@ -32,7 +32,8 @@ from OpenGL.GLU import *
 from OpenGL.GL import *
 import psutil
 from PySide6.QtGui import QSurfaceFormat,QGuiApplication  
-from PySide6.QtCore import QObject, Slot, QTimer ,Qt
+from PySide6.QtCore import QObject, Slot, QTimer, Qt
+from PySide6.QtQml import QJSValue
 from geopy.geocoders import Nominatim
 import subprocess
 from Noesis import Noesis
@@ -225,7 +226,9 @@ def make_folder(folder_name, class_name=None, content_classes=None):
     在 base_path 下創建資料夾 folder_name（如果不存在）和腳本含內容
     inspect.getsource(Class )，複製原始碼
     """
-    folder_path = base_path / str(folder_name)
+    folder_path = Path(folder_name)
+    if not folder_path.is_absolute():
+        folder_path = base_path / folder_path
     回覆(f"確保有資料夾{folder_path}")
     folder_path.mkdir(parents=True, exist_ok=True)  # 確保父資料夾也創建
     if class_name:
@@ -265,20 +268,41 @@ def make_json_content(file_path, file_name,  key, value):
 
 def make_json_content(file_path, file_name, content):
     """
-    在 base_path 下建立或更新 file_path 文件之下並建立或更新 file_name.json，之內建立或更新內容 key:value
-    key 只能不可變且可哈希的類型，可以tuple(list)、字串、數字、元組
+    在 base_path 下建立或更新 file_path 文件之下並建立或更新 file_name.json。
+    dict 預設為覆蓋更新；list 也預設覆蓋；其他類型則 append。
     """
     path = make_folder(file_path) / (file_name + ".json")
-    if path.exists():  # 有檔案
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            data =[]
+    if isinstance(content, dict):
+        if path.exists():
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except (FileNotFoundError, json.JSONDecodeError):
+                data = {}
+        else:
+            data = {}
+        safe_content = {}
+        for k, v in content.items():
+            if isinstance(k, tuple):
+                safe_content[str(k)] = v
+            else:
+                safe_content[k] = v
+        data.update(safe_content)
+    elif isinstance(content, list):
+        data = content
     else:
-        data =[]
-    data.append(content)
-    # 寫入（原子寫入比較安全）避免「寫到一半斷電檔案壞掉」。
+        if path.exists():
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except (FileNotFoundError, json.JSONDecodeError):
+                data = []
+        else:
+            data = []
+        if not isinstance(data, list):
+            data = [data]
+        data.append(content)
+        
     temp_path = path.with_suffix(".tmp")
     with open(temp_path , "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
@@ -286,13 +310,16 @@ def make_json_content(file_path, file_name, content):
 
 def read_json_content(file_path, file_name,  key):
     """讀取失敗時回傳[]，成功回傳 key(None=全部) 的內容"""
-    path = base_path/file_path / f"{file_name}.json"
+    file_path = Path(file_path)
+    if not file_path.is_absolute():
+        file_path = base_path / file_path
+    path = file_path / f"{file_name}.json"
     if path.exists():  # 有檔案
         try:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if key is None:
-                    return list(data.values()) # 全部[key:value]，Json{} 規定一定要有 Key
+                    return data if isinstance(data, list) else list(data.values())
                 elif isinstance(data, dict):
                     return data.get(key, []) # {不同key:value}
                 elif isinstance(data, list):
@@ -2992,18 +3019,32 @@ class Backend(QObject):
         self.history = "" # 用來存歷史對話
         self._initialized = True
 
-    #@Slot()
-    #def getUsers(self):
-    #    # TODO:*****以用戶設定 創建個人介面，先用按鈕
-    #    a=read_json_content(TEMPLATE_DIRS["User"],"task_buttons")
-    #    for i in len(a.keys()):
-    #        self.usersUpdated.emit(a.keys(),a.values())
+    def _normalize_qml_value(self, value):
+        """Convert QJSValue/QVariant-like objects into JSON-serializable Python values."""
+        if isinstance(value, QJSValue):
+            value = value.toVariant()
+        if isinstance(value, dict):
+            return {k: self._normalize_qml_value(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [self._normalize_qml_value(v) for v in value]
+        return value
 
-    
-    # 讀取 TODO:*******讀取用戶按紐設定。path_all(users/button)
-    #@Slot('QVariant')
-    #def saveUsers(self, setting):
-    #    make_json_content(TEMPLATE_DIRS["User"],"task_buttons",setting)
+    @Slot()
+    def getUsers(self):
+        # 以用戶設定創建個人介面
+        users = read_json_content(TEMPLATE_DIRS["User"], "task_buttons", None)
+        if isinstance(users, list):
+            self.usersUpdated.emit(users)
+        elif isinstance(users, dict):
+            self.usersUpdated.emit(list(users.values()))
+        else:
+            self.usersUpdated.emit([])
+
+    # 讀取用戶按紐設定。path_all(users/button)
+    @Slot('QVariant')
+    def saveUsers(self, setting):
+        normalized = self._normalize_qml_value(setting)
+        make_json_content(TEMPLATE_DIRS["User"], "task_buttons", normalized)
         
     @Slot()
     def getImages(self):
