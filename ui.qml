@@ -116,10 +116,11 @@ Window {
         }
 
         onClicked: {
+            let 最後一行剩幾個空白號才填滿 = (container.width - parent.x) / container.customSize; //TODO:***自動換行
             if (control.checked) {
-                Backend.conversation("按下了" + mainText.text);
+                Backend.conversation("按下了" + mainText.text + "  ".repeat(最後一行剩幾個空白號才填滿));
             } else {
-                Backend.conversation("取消了" + mainText.text);
+                Backend.conversation("取消了" + mainText.text + "  ".repeat(最後一行剩幾個空白號才填滿));
             }
         }
         // 純平背景，不需要任何外框陰影
@@ -357,6 +358,8 @@ Window {
                 checked: false
                 index: 0
             }
+            // TODO:*******讀取用戶按紐設定
+            // path_all(users/button)
         }
         //顯示區
         Rectangle {
@@ -383,7 +386,9 @@ Window {
             onClicked: mouse => {
                 // 💡 既然能走到這一層，代表內部的按鈕都沒有被點擊（點到空白處）
                 // 直接觸發新增任務！
-                Backend.conversation("點擊到空白處");
+                let 最後一行剩幾個空白號才填滿 = (ContainerItem.container.width - flowLayout.text.x) / ContainerItem.container.customSize; //TODO:***自動換行
+
+                Backend.conversation("點擊到空白處" + "  ".repeat(最後一行剩幾個空白號才填滿));
                 createNewTaskButton();
             }
         }
@@ -484,7 +489,7 @@ Window {
         }
     }
 
-    // 回覆用戶的文本 TODO:***目前一行高
+    // 回覆用戶的文本
     component ContainerItem: Item {
         id: container
         property var textModel: "引頸期盼地等待訊息..."
@@ -516,8 +521,11 @@ Window {
         // 接收 Python 後端更新
         Connections {
             target: Backend
+
             function onResponseUpdated(all_text) {
-                container.textModel = all_text;
+                // 結尾加上換行符號並分割 ，避開重疊
+                all_text = all_text + " @#@ ";
+                container.textModel = all_text.split(" @#@ ");
 
                 // 💡 核心修改：等待 QML 將新文字排版完畢後，自動滾動到最底部
                 Qt.callLater(function () {
@@ -540,6 +548,7 @@ Window {
             //anchors.left: parent.left
             //anchors.right: parent.right
             //implicitHeight: childrenRect.height
+            //height: childrenRect.height
             width: container.width
 
             spacing: 1
@@ -549,11 +558,14 @@ Window {
 
             Repeater {
                 model: container.textModel
+                width: parent.width
+
                 Text {
                     text: modelData // 這裡可以直接拿 modelData，完全不會報錯
                     color: Qt.rgba(0.68, 1, 0.18, 1.0)
                     font.family: container.customFont
                     font.pixelSize: container.customSize
+                    //TODO:**** 這裡換行。和Backend連動
 
                     MouseArea {
                         onClicked: mouse => {
@@ -562,8 +574,6 @@ Window {
                             Backend.getImages(modelData); // 傳文字給後端
                         }
                     }
-
-                    // TODO:***填補最後一行的剩餘長度，達成換行
 
                     // 特效層位移
                     transform: Translate {
@@ -792,6 +802,22 @@ Window {
             buttonText: "關閉"
 
             onClicked: mouse => {
+                // # TODO:**** Gather TaskBarItem model data and send to backend for saving
+                //var users = [];
+                //for (var i = 0; i < taskListModel.count; i++) {
+                //    var item = taskListModel.get(i);
+                //    users.push({
+                //        "taskName": item.taskName,
+                //        "checked": item.checked,
+                //        "index": item.index
+                //    });
+                //}
+                //// Call backend to save user task buttons, then quit
+                //try {
+                //    Backend.saveUsers(users);
+                //} catch (e) {
+                //    console.log("保存使用者按鈕時發生錯誤:", e);
+                //}
                 Qt.quit();
             }
         }
