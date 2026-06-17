@@ -3021,13 +3021,15 @@ class Backend(QObject):
 
     def _normalize_qml_value(self, value):
         """Convert QJSValue/QVariant-like objects into JSON-serializable Python values.
-        # 為什麼#sym:getUsers 讀取的要碰#sym:saveUsers 儲存的!?你自殺了?而且創建後的按鈕竟然沒有基本功能!頭尾拖曳有問題，點擊無顯示回覆有問題
         """
         if isinstance(value, QJSValue):
+            回覆("_normalize_qml_value QJSValue")
             value = value.toVariant()
         if isinstance(value, dict):
+            回覆("_normalize_qml_value dict")
             return {k: self._normalize_qml_value(v) for k, v in value.items()}
         if isinstance(value, list):
+            回覆("_normalize_qml_value list")
             return [self._normalize_qml_value(v) for v in value]
         return value
 
@@ -3036,11 +3038,8 @@ class Backend(QObject):
         # 以用戶設定創建個人介面
         users = read_json_content(TEMPLATE_DIRS["User"], "task_buttons", None)
         if isinstance(users, list):
+            回覆("必定走這條getUsers list，因為list不需要找keys")
             self.usersUpdated.emit(users)
-        elif isinstance(users, dict):
-            self.usersUpdated.emit(list(users.values()))
-        else:
-            self.usersUpdated.emit([])
 
     # 將用戶現在介面設定的按紐，儲存進task_buttons.json。path_all(users/button)
     @Slot('QVariant')

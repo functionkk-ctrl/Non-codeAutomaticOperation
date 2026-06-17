@@ -108,6 +108,7 @@ Window {
         // 宣告一個屬性別名，指向內部 mainText 的 text 屬性
         property alias buttonText: mainText.text
         property real maxFontSize: 28
+        property int index: -1
         z: 9
 
         opacity: root.x < 50 ? 0 : 1
@@ -406,7 +407,6 @@ Window {
                 // 💡 既然能走到這一層，代表內部的按鈕都沒有被點擊（點到空白處）
                 // 直接觸發新增任務！
                 let 最後一行剩幾個空白號才填滿 = (containerItem.width - containerItem.flowLayout.x) / containerItem.customSize; // 自動換行
-
                 Backend.conversation("點擊到空白處" + "  ".repeat(最後一行剩幾個空白號才填滿));
                 createNewTaskButton();
             }
@@ -423,25 +423,26 @@ Window {
                     id: currentButton
                     buttonText: model.taskName
                     checked: model.checked
-                    property int itemIndex: index
+                    index: model.index
                     Drag.active: dragArea.drag.active
                     Drag.source: currentButton
+                    Drag.hotSpot.x: width / 2
+                    Drag.hotSpot.y: height / 2
 
                     MouseArea {
                         id: dragArea
                         anchors.fill: parent
                         acceptedButtons: Qt.LeftButton
-                        propagateComposedEvents: true // 讓已存在的按鈕點擊事件可以穿透
+                        propagateComposedEvents: true // 垃圾行:讓已存在的按鈕點擊事件可以穿透
 
                         drag.target: currentButton
-                        drag.axis: Drag.XAndYAxis // 允許左右與上下拖動
-                        Drag.hotSpot.x: width / 2
-                        Drag.hotSpot.y: height / 2
+                        //drag.axis: Drag.XAndYAxis // 允許左右與上下拖動
                         property real startY: 0
 
                         onClicked: mouse => {
-                            handleButtonInteraction(currentButton, currentButton.itemIndex);
-                            // ⚠️ 關鍵：阻止點擊事件傳給底層的空白處，防止一邊點按鈕一邊新增任務
+                            currentButton.clicked(); // 點擊事件傳給外層的 CamButton
+                            handleButtonInteraction(currentButton, currentButton.index);
+                            // ⚠️ 垃圾行:阻止點擊事件傳給底層的空白處，防止一邊點按鈕一邊新增任務
                             mouse.accepted = true;
                         }
                         onPressed: mouse => {
@@ -449,18 +450,20 @@ Window {
                             startY = currentButton.y;
                         }
                         onReleased: mouse => {
+                            // TODO:其實按鈕的clicked無實際功能，但還是出錯了，只能是其他地方導致。 ***插隊異常延遲 ***重新命名異常觸發 ***新增按鈕異常觸發 ***重新排序後異常初始化 ***按下異常觸發替換順序
                             taskRepeater.Layout.fillWidth = true;
                             var startIndex = Math.floor((startY + currentButton.height / 2) / (button_h + 3)); // spacing 3
                             var toIndex = Math.floor((currentButton.y + currentButton.height / 2) / (button_h + 3)); // spacing 3
                             if (Math.abs(currentButton.x) > 30) {
                                 taskListModel.remove(startIndex);
-                            } else if (toIndex !== currentButton.itemIndex) {
-                                taskListModel.move(currentButton.itemIndex, toIndex, 1);
+                            } else if (toIndex !== currentButton.index) {
+                                taskListModel.move(currentButton.index, toIndex, 1);
                                 currentButton.Drag.drop();
                             } else {
                                 yAnimation.start();
                             }
                             currentButton.x = 0;
+                            currentButton.index = toIndex;
                         }
                     }
                 }
@@ -491,7 +494,6 @@ Window {
                 inputTextArea.text = "";
             } else {
                 // 如果文字欄位沒字 ➡️ 執行按鈕原本的動作（例如切換選取狀態）
-                targetButton.checked = !targetButton.checked;
                 taskListModel.set(itemIndex, {
                     "taskName": targetButton.buttonText,
                     "checked": !targetButton.checked
@@ -502,7 +504,7 @@ Window {
         NumberAnimation on y {
             id: yAnimation
             running: false
-            to: buttonItem.itemIndex * (button_h + 10)
+            to: currentButton.index * (button_h + 10)
             duration: 200
         }
     }
