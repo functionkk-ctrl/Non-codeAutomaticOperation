@@ -1,42 +1,51 @@
+import win32api
+import win32con
+import win32gui
+from PySide6.QtGui import QSurfaceFormat, QGuiApplication
+from PySide6.QtCore import QObject, Signal, Property
+from firebase_admin import credentials, auth
+import requests
+import inspect
+import PySide6.QtQml as Qml
+from bs4 import BeautifulSoup
+from Noesis import Noesis
+import subprocess
+from geopy.geocoders import Nominatim
+from PySide6.QtQml import QJSValue
+from PySide6.QtCore import QObject, Slot, QTimer, Qt
+import psutil
+from OpenGL.GL import *
+from OpenGL.GLU import *
+from PIL import ImageGrab
+import cv2
+import pytesseract
+import pyautogui
+import operator
+import numpy as np
+import time
+import re
+import math
+from difflib import SequenceMatcher
+import threading
+from datetime import datetime
+import sys
+from pathlib import Path
+from PySide6.QtWidgets import QApplication
+from PySide6.QtQml import QQmlApplicationEngine
+import PySide6
+from pynput import mouse, keyboard
+from pywinauto.application import Application
+from firebase_admin import credentials, firestore, db
+import firebase_admin
+from geographiclib.geodesic import Geodesic
+import mediapipe as mp
+import shutil
+import json
 import os
 os.environ["QT_QUICK_CONTROLS_STYLE"] = "Basic"
-os.environ["QT_PA_PLATFORM"] = "windows:dpiawareness=0" # 強制讓 Qt 放棄 DPI 控制權
+os.environ["QT_PA_PLATFORM"] = "windows:dpiawareness=0"  # 強制讓 Qt 放棄 DPI 控制權
 os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
-os.environ["QT_SCALE_FACTOR_ROUNDING_POLICY"] = "PassThrough" # 避免Qt二次修改DPI(?)
-import json
-import shutil
-import mediapipe as mp
-from geographiclib.geodesic import Geodesic
-import firebase_admin
-from firebase_admin import credentials, firestore, db
-from pywinauto.application import Application
-from pynput import mouse, keyboard
-import PySide6
-from PySide6.QtQml import QQmlApplicationEngine
-from PySide6.QtWidgets import QApplication
-from pathlib import Path
-import sys
-from datetime import datetime
-import threading
-from difflib import SequenceMatcher
-import math
-import re
-import time
-import numpy as np
-import operator
-import pyautogui
-import pytesseract
-import cv2
-from PIL import ImageGrab
-from OpenGL.GLU import *
-from OpenGL.GL import *
-import psutil
-from PySide6.QtGui import QSurfaceFormat,QGuiApplication  
-from PySide6.QtCore import QObject, Slot, QTimer, Qt
-from PySide6.QtQml import QJSValue
-from geopy.geocoders import Nominatim
-import subprocess
-from Noesis import Noesis
+os.environ["QT_SCALE_FACTOR_ROUNDING_POLICY"] = "PassThrough"  # 避免Qt二次修改DPI(?)
 
 # Android
 # from plyer import gps
@@ -87,26 +96,26 @@ else:
     DATA_BASE = Path(__file__).resolve().parent
 base_path = Path.home() / ".UIA"      # 可寫
 TEMPLATE_DIRS = {
-    "live_capture": base_path/ 'Live_capture',
-    "User": base_path/ "User",  # 用戶隱私
-    "communication": base_path/ "Communication",  # 用戶交流的訊息
-    "speak": base_path/ "Speak",  # 交流的回覆
-    "Noesis": base_path/ "Noesis",  # Noesis 吸收的知識
+    "live_capture": base_path / 'Live_capture',
+    "User": base_path / "User",  # 用戶隱私
+    "communication": base_path / "Communication",  # 用戶交流的訊息
+    "speak": base_path / "Speak",  # 交流的回覆
+    "Noesis": base_path / "Noesis",  # Noesis 吸收的知識
 }
 背景節點 = {
-    "字": TEMPLATE_DIRS["Noesis"]/ '字',
-    "數學": TEMPLATE_DIRS["Noesis"]/ "數學",  # 用戶隱私
-    "作用力": TEMPLATE_DIRS["Noesis"]/ "作用力",  # 用戶交流的訊息
-    "時間": TEMPLATE_DIRS["Noesis"]/ "時間",  # 交流的回覆
-    "對話技巧": TEMPLATE_DIRS["Noesis"]/ "對話技巧",  # Noesis 吸收的知識
-    "操作技巧": TEMPLATE_DIRS["Noesis"]/ "操作技巧",  # Noesis 吸收的知識
-    "易經": TEMPLATE_DIRS["Noesis"]/ "易經",  # Noesis 吸收的知識
+    "字": TEMPLATE_DIRS["Noesis"] / '字',
+    "數學": TEMPLATE_DIRS["Noesis"] / "數學",  # 用戶隱私
+    "作用力": TEMPLATE_DIRS["Noesis"] / "作用力",  # 用戶交流的訊息
+    "時間": TEMPLATE_DIRS["Noesis"] / "時間",  # 交流的回覆
+    "對話技巧": TEMPLATE_DIRS["Noesis"] / "對話技巧",  # Noesis 吸收的知識
+    "操作技巧": TEMPLATE_DIRS["Noesis"] / "操作技巧",  # Noesis 吸收的知識
+    "易經": TEMPLATE_DIRS["Noesis"] / "易經",  # Noesis 吸收的知識
 }
 
 MATCH_THRESHOLD = 0.85
-LANGS = 'chi_tra+eng' 
+LANGS = 'chi_tra+eng'
 custom_config = '--psm 6'  # 假設影像是單一文字塊，可提升速度與準確度
-DEBUG = True    
+DEBUG = True
 bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
 # --- 共用工具 ---
 alive_event = threading.Event()
@@ -116,7 +125,8 @@ if not firebase_admin._apps:
         "databaseURL": "https://console.firebase.google.com/u/1/project/uia-a-3c57f/database?fb_gclid=Cj0KCQjwn4qWBhCvARIsAFNAMigLRmhzV2i4mMqLSaBwKTlaQ37VHiYDnZqI-MS2gxBCVVFUR9SXTH4aAi5rEALw_wcB"
     })
 
-def path_all(paths, target=None,exclude=None,time=None,use_orb=False):
+
+def path_all(paths, target=None, exclude=None, time=None, use_orb=False):
     """
     預設排序為時間，由舊到新
     yield root(完整目錄), dirs(下一層的全部資料夾名), files(這層全部檔案含檔名)
@@ -128,26 +138,31 @@ def path_all(paths, target=None,exclude=None,time=None,use_orb=False):
     paths, target, exclude =[],[]，all(...)同時都有target，any(...)任一有exclude
     """
     # 統一處理單一字串或清單
-    search_paths = [Path(p) for p in (paths if isinstance(paths, list) else [paths])]
-    #print(f"search_paths:{search_paths}")
-    target = [str(t) for t in (target if isinstance(target, list) else [target])] if target else []
-    exclude = [str(e) for e in (exclude if isinstance(exclude, list) else [exclude])] if exclude else []
+    search_paths = [Path(p)
+                    for p in (paths if isinstance(paths, list) else [paths])]
+    # print(f"search_paths:{search_paths}")
+    target = [str(t) for t in (target if isinstance(
+        target, list) else [target])] if target else []
+    exclude = [str(e) for e in (exclude if isinstance(
+        exclude, list) else [exclude])] if exclude else []
 
     def is_hidden(filepath):
         try:
             attrs = ctypes.windll.kernel32.GetFileAttributesW(str(filepath))
             return attrs & 0x02 if attrs != -1 else False
-        except: return False
-    
+        except:
+            return False
+
     found_any = False
 
     for base in search_paths:
-        if not base.exists(): continue
-        
+        if not base.exists():
+            continue
+
         # 遍歷所有子目錄 (不純的搜尋開始)
         # 使用 rglob("*") 模擬 os.walk 的深度遍歷，但轉為 Path 物件
         sub_paths = sorted(base.rglob("*"), key=lambda p: p.stat().st_ctime)
-        
+
         # 這裡模擬 os.walk 結構：找出所有的「目錄」作為 root
         roots = [p for p in sub_paths if p.is_dir()]
         # 加入 base 本身作為第一個 root
@@ -156,30 +171,30 @@ def path_all(paths, target=None,exclude=None,time=None,use_orb=False):
         for root in roots:
             # 獲取當前層級的資料夾與檔案名稱
             current_all = list(root.iterdir())
-            if "不要隱藏" in exclude :
-                dirs = sorted([d.name for d in current_all if d.is_dir() and not is_hidden(d)], 
-                    key=lambda n: (root/n).stat().st_ctime)
-                files = sorted([f.name for f in current_all if f.is_file() and not is_hidden(f)], 
-                    key=lambda n: (root/n).stat().st_ctime)
+            if "不要隱藏" in exclude:
+                dirs = sorted([d.name for d in current_all if d.is_dir() and not is_hidden(d)],
+                              key=lambda n: (root/n).stat().st_ctime)
+                files = sorted([f.name for f in current_all if f.is_file() and not is_hidden(f)],
+                               key=lambda n: (root/n).stat().st_ctime)
             else:
-                dirs = sorted([d.name for d in current_all if d.is_dir()], 
-                    key=lambda n: (root/n).stat().st_ctime)
-                files = sorted([f.name for f in current_all if f.is_file()], 
-                    key=lambda n: (root/n).stat().st_ctime)
-                #print(f"(dirs, files):{(dirs, files)}")
-                #print(f"C(dirs, files):{C(dirs, files)}")
+                dirs = sorted([d.name for d in current_all if d.is_dir()],
+                              key=lambda n: (root/n).stat().st_ctime)
+                files = sorted([f.name for f in current_all if f.is_file()],
+                               key=lambda n: (root/n).stat().st_ctime)
+                # print(f"(dirs, files):{(dirs, files)}")
+                # print(f"C(dirs, files):{C(dirs, files)}")
 
-                #print('C(dirs, files).dtype:', C(dirs, files).dtype)  # 預期 dtype=object
+                # print('C(dirs, files).dtype:', C(dirs, files).dtype)  # 預期 dtype=object
                 # 相容陣列範例
-                a = np.array([[1,2],[3,4]])
-                #print('C(a,a).shape, dtype ->', C(a,a).shape, C(a,a).dtype)  # 預期 (2,2,2) 或類似堆疊結果
-                
+                a = np.array([[1, 2], [3, 4]])
+                # print('C(a,a).shape, dtype ->', C(a,a).shape, C(a,a).dtype)  # 預期 (2,2,2) 或類似堆疊結果
+
             get_ctime = [(root/f).stat() for f in files]
             # --- 目標檢索邏輯 ---
             # 1. 排除 (Exclude): 任一匹配即跳過is_hidden
             if exclude and any(e in (str(root) + "".join(files)) for e in exclude):
                 continue
-            
+
             # 2. 目標 (Target) 匹配：支援字串 find 與 ORB 比對
             if target:
                 # 檢查是否「所有」target 條件都滿足
@@ -187,23 +202,26 @@ def path_all(paths, target=None,exclude=None,time=None,use_orb=False):
                 for t in target:
                     # 使用 substring 檢查：只要 target 在任何資料夾或檔案名稱裡就視為命中
                     text_match = [name for name in dirs + files if t in name]
-                    #print(f"text_match:{text_match}") #*****
+                    # print(f"text_match:{text_match}") #*****
                     # 如果字串沒中，且開啟 ORB，則比對圖片相似度
                     orb_match = False
                     no_text_match = len(text_match) == 0
                     if no_text_match and use_orb and t.endswith(('.png', '.jpg')):
-                        orb_match = [全能ORB(t, root/f, similar=0.9) for f in files if f.endswith(('.png', '.jpg'))]
-                    any_match = (not no_text_match) or (orb_match is not False and orb_match)
+                        orb_match = [全能ORB(t, root/f, similar=0.9)
+                                     for f in files if f.endswith(('.png', '.jpg'))]
+                    any_match = (not no_text_match) or (
+                        orb_match is not False and orb_match)
                     if not any_match:
                         match_all_targets = False
                         break
                 if match_all_targets:
-                    matched_files = [f for f in files if any(t in f for t in target)]
+                    matched_files = [f for f in files if any(
+                        t in f for t in target)]
                     found_any = True
-                    #print(f"target:{target}")
-                    #print(f"files:{files}")
-                    #print(f"matched_files:{matched_files}")
-                    return root, dirs, matched_files, get_ctime
+                    # print(f"target:{target}")
+                    # print(f"files:{files}")
+                    # print(f"matched_files:{matched_files}")
+                    return [root, dirs, matched_files, get_ctime]
             elif time is not None:
                 # 找同時間（誤差0.5秒內）的檔案
                 matched_files = [
@@ -211,16 +229,16 @@ def path_all(paths, target=None,exclude=None,time=None,use_orb=False):
                     if math.abs((root / f).stat().st_ctime - time) <= 0.5
                 ]
                 if matched_files:
-                    return root, dirs, matched_files, get_ctime
+                    return [root, dirs, matched_files, get_ctime]
                     found_any = True
             else:
                 # 無 target 則全產出
-                return root, dirs, files, get_ctime
+                return [root, dirs, files, get_ctime]
                 found_any = True
         if not found_any:
             return None
 
-import inspect
+
 def make_folder(folder_name, class_name=None, content_classes=None):
     """
     在 base_path 下創建資料夾 folder_name（如果不存在）和腳本含內容
@@ -237,7 +255,8 @@ def make_folder(folder_name, class_name=None, content_classes=None):
         # 如果檔案不存在，直接寫入 class 定義
         if not file_path.exists():
             # 這裡可以把你的 asdf 統一算法模板寫進去
-            source_code = "\n\n".join([inspect.getsource(cls) for cls in content_classes])
+            source_code = "\n\n".join(
+                [inspect.getsource(cls) for cls in content_classes])
             # 加入該節點的專屬初始化代碼
             instance_code = f"\n\n# 當前節點：{class_name}\nnode = {class_name}()\n"
             file_path.write_text(source_code + instance_code, encoding='utf-8')
@@ -262,9 +281,10 @@ def make_json_content(file_path, file_name,  key, value):
     data[key].append(value)
     # 寫入（原子寫入比較安全）避免「寫到一半斷電檔案壞掉」。
     temp_path = path.with_suffix(".tmp")
-    with open(temp_path , "w", encoding="utf-8") as f:
+    with open(temp_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
     temp_path.replace(path)
+
 
 def make_json_content(file_path, file_name, content):
     """
@@ -302,11 +322,12 @@ def make_json_content(file_path, file_name, content):
         if not isinstance(data, list):
             data = [data]
         data.append(content)
-        
+
     temp_path = path.with_suffix(".tmp")
-    with open(temp_path , "w", encoding="utf-8") as f:
+    with open(temp_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
     temp_path.replace(path)
+
 
 def read_json_content(file_path, file_name,  key):
     """讀取失敗時回傳[]，成功回傳 key(None=全部) 的內容"""
@@ -321,21 +342,22 @@ def read_json_content(file_path, file_name,  key):
                 if key is None:
                     return data if isinstance(data, list) else list(data.values())
                 elif isinstance(data, dict):
-                    return data.get(key, []) # {不同key:value}
+                    return data.get(key, [])  # {不同key:value}
                 elif isinstance(data, list):
-                    return data[key] # [不同key:value]
-        except (FileNotFoundError, json.JSONDecodeError): # 錯誤時中斷
+                    return data[key]  # [不同key:value]
+        except (FileNotFoundError, json.JSONDecodeError):  # 錯誤時中斷
             回覆(f"⚠️ 讀取失敗: {file_path}，可能是檔案不存在或格式錯誤。")
             return []
     else:
         回覆(f"⚠️ 讀取失敗: {file_path}，可能是檔案不存在或格式錯誤。")
         return []
 
+
 def 回覆(*args):
     # 將所有傳進來的參數（不論是數字還是字串）都轉成字串，並用空格串接
     ss = " ".join(str(arg) for arg in args)
     if ss.strip():  # 確保內容不為空
-        MAX_LEN = 1000 
+        MAX_LEN = 1000
         if len(ss) > MAX_LEN:
             ss = ss[:MAX_LEN] + "..."
         print(ss)
@@ -343,9 +365,8 @@ def 回覆(*args):
     else:
         print("請輸入有效的回覆內容")
         Backend().conversation(msg="請輸入有效的回覆內容")
-  
-import requests
-from bs4 import BeautifulSoup
+
+
 def fill_accurate_images(keyword, word_dir):
     """
     針對爬到的詞，去維基百科抓取最準確的定義圖片
@@ -365,8 +386,9 @@ def fill_accurate_images(keyword, word_dir):
             if "thumbnail" in pages[pg_id]:
                 img_url = pages[pg_id]["thumbnail"]["source"]
                 img_data = requests.get(img_url).content
-                img_filename=全能ORB(img_data,path=word_dir/ "圖片_SIFT" ,npy="a")
-                os.rename(img_filename,f"{keyword}_orig.jpg")
+                img_filename = 全能ORB(
+                    img_data, path=word_dir / "圖片_SIFT", npy="a")
+                os.rename(img_filename, f"{keyword}_orig.jpg")
                 回覆(f"✅ 已從維基百科抓取並儲存精確圖片: {keyword}_orig.jpg")
                 return True
     except:
@@ -375,12 +397,14 @@ def fill_accurate_images(keyword, word_dir):
     return False
 
 # TODO:*** 新增分頁 輸入網址
-def asbc_stealth_search(keyword,home_url,search_url,payload):
+
+
+def asbc_stealth_search(keyword, home_url, search_url, payload):
     # 1. 初始化 Session (模擬瀏覽器開啟後的狀態)
     # TODO:*** 最簡便的使用方式
     session = requests.Session()
     # home_url = "https://asbc.iis.sinica.edu.tw/"
-    session.get(home_url, timeout=10) 
+    session.get(home_url, timeout=10)
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Referer': home_url
@@ -400,42 +424,47 @@ def asbc_stealth_search(keyword,home_url,search_url,payload):
     }
     try:
         # 4. 直接發送 POST 請求 (不開啟網頁)
-        response = session.post(search_url, data=payload, headers=headers, timeout=10)
-        response.encoding = 'utf-8' # 強制編碼避免亂碼
+        response = session.post(search_url, data=payload,
+                                headers=headers, timeout=10)
+        response.encoding = 'utf-8'  # 強制編碼避免亂碼
 
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
-            results = soup.select('.result_item') 
-            data_list = [item.text.strip() for item in results] # 爬蟲抓到的字
-            word_dir = make_folder(TEMPLATE_DIRS["Noesis"]/keyword) 
+            results = soup.select('.result_item')
+            data_list = [item.text.strip() for item in results]  # 爬蟲抓到的字
+            word_dir = make_folder(TEMPLATE_DIRS["Noesis"]/keyword)
             save_path = word_dir / "text.npy"
             np.save(str(save_path), np.array(data_list, dtype=object))
             回覆(f"✅ 已將爬蟲結果轉存為: {save_path}")
             categories = ["同義", "反義", "干涉它為新義", "主從義", "SIFT"]
-            for a in categories: make_folder(word_dir/a)
+            for a in categories:
+                make_folder(word_dir/a)
 
             # 1. 找到圖片標籤 (假設 class 名稱為 'result_img')
-            img_tags = soup.select('.result_img img') 
-            img_folder = word_dir / "SIFT" # 定義圖片存放路徑
+            img_tags = soup.select('.result_img img')
+            img_folder = word_dir / "SIFT"  # 定義圖片存放路徑
             for i, img in enumerate(img_tags):
                 img_url = img.get('src')
-                if not img_url: continue
+                if not img_url:
+                    continue
                 # 處理相對路徑網址
-                if img_url.startswith('//'): img_url = 'https:' + img_url
+                if img_url.startswith('//'):
+                    img_url = 'https:' + img_url
                 # 2. 下載圖片並儲存
                 try:
                     img_data = requests.get(img_url, timeout=5).content
-                    img_filename=全能ORB(img_data,path=img_folder,npy="a")
-                    os.rename(img_filename,f"image_{i}")
+                    img_filename = 全能ORB(img_data, path=img_folder, npy="a")
+                    os.rename(img_filename, f"image_{i}")
                     回覆(f"圖片已儲存: {img_filename}")
                 except:
                     print(f"圖片 {img_url} 下載失敗")
-                    fill_accurate_images(keyword,word_dir=word_dir)
+                    fill_accurate_images(keyword, word_dir=word_dir)
             return data_list
     except Exception as e:
         回覆(f"⚠️ 隱藏請求失敗: {e}")
         return []
-    
+
+
 def 看字():
     """ 
     獨立的 OCR 執行緒，確保每秒穩定執行
@@ -444,7 +473,7 @@ def 看字():
     儲存為資料夾
     """
     invalid_chars = re.compile(r'[\/\\\:\*\?\"\<\>\|]')
-    資料夾最長字數=30
+    資料夾最長字數 = 30
     while not alive_event.is_set():
         start_time = time.time()
         try:
@@ -452,14 +481,16 @@ def 看字():
             回覆("分析文章中...")
             # 最高強度的相似度比對，當場撈出最新 X, Y 坐標
             # 10:text, 5:left, 6:top, 7:width, 8:height, 9:conf
-            text_pts_data=C(0,1,2,3,4)(C.split_row(10,5,6,7,8,9)(data))
-            matrix  = find_array(text_pts_data,C(5)>60 )
-            if len(matrix)>0:
+            text_pts_data = C(0, 1, 2, 3, 4)(
+                C.split_row(10, 5, 6, 7, 8, 9)(data))
+            matrix = find_array(text_pts_data, C(5) > 60)
+            if matrix.size > 0:
                 回覆("找到字")
             else:
                 回覆("找不到字")
-            folder_name=find_array(matrix,(C(0)!= invalid_chars) & (C(5)>60), (C(1),C(2)) )
-            folder_name_text=C(0)(folder_name)[:資料夾最長字數]
+            folder_name = find_array(
+                matrix, (C(0) != invalid_chars) & (C(5) > 60), (C(1), C(2)))
+            folder_name_text = C(0)(folder_name)[:資料夾最長字數]
             # 4. 如果有讀到有效的字，就建立資料夾
             for fnt in folder_name_text:
                 make_folder(TEMPLATE_DIRS["live_capture"]/fnt)
@@ -468,39 +499,42 @@ def 看字():
             else:
                 回覆("找不到文字")
             # 5. 後台除錯專用 (使用 print 隔離，絕不呼叫 回覆() 灌爆主線)
-            print(f"[OCR] 辨識成功 | 總字數: {len(fnt)} | 耗時: {time.time() - start_time:.3f}s")
+            print(
+                f"[OCR] 辨識成功 | 總字數: {len(fnt)} | 耗時: {time.time() - start_time:.3f}s")
         except Exception as e:
             print(f"[OCR_ERROR] 發生異常: {e}")
         # 6. 動態精確配時 (確保每秒執行一次)
         time.sleep(max(0, 1.0 - (time.time() - start_time)))
 
+
 def text_make_background(path=None):
     """解析圖片的文字並分類進靜態資料夾中"""
     if path is None:
-        path=make_folder(TEMPLATE_DIRS["Noesis"/"字"]) # 可以精確地調整路徑
+        path = make_folder(TEMPLATE_DIRS["Noesis"/"字"])  # 可以精確地調整路徑
     img = get_screenshot()
     text = pytesseract.image_to_string(img, lang=LANGS, config=custom_config)
-    ocr_lines = np.array([line.strip() for line in text.split('\n') if line.strip()]) # 合併成連續的字和標點符號
-    # ocr_lines = np.array([line[1][0] for res in essay for line in res] ) 
+    ocr_lines = np.array([line.strip() for line in text.split(
+        '\n') if line.strip()])  # 合併成連續的字和標點符號
+    # ocr_lines = np.array([line[1][0] for res in essay for line in res] )
     import string
-    all_punc = list(string.punctuation) + ["，", "。", "、", "；", "：", "？", "！"] # punc 表點符號的縮寫
+    all_punc = list(string.punctuation) + \
+        ["，", "。", "、", "；", "：", "？", "！"]  # punc 表點符號的縮寫
     pronouns = [
-        "i", "me", "my", "mine", "myself", 
+        "i", "me", "my", "mine", "myself",
         "you", "your", "yours", "yourself", "yourselves",
-        "he", "him", "his", "himself", 
-        "she", "her", "hers", "herself", 
-        "it", "its", "itself", 
-        "we", "us", "our", "ours", "ourselves", 
+        "he", "him", "his", "himself",
+        "she", "her", "hers", "herself",
+        "it", "its", "itself",
+        "we", "us", "our", "ours", "ourselves",
         "they", "them", "their", "theirs", "themselves",
-        "this", "that", "these", "those"
-        ,
+        "this", "that", "these", "those",
         "我", "你", "您", "他", "她", "它", "牠", "祂",
         "我們", "你們", "您們", "他們", "她們", "它們", "牠們", "祂們",
         "自己", "自個兒", "人家", "別人",
         "這", "那", "這裡", "那裡", "這兒", "那兒", "這個", "那個",
-        "先生","帥哥","小姐","美女",
+        "先生", "帥哥", "小姐", "美女",
     ]
-    副詞=[
+    副詞 = [
         # 1. 劇烈、巨大變化
         "Dramatically",    # 戲劇性地
         "Drastically",     # 猛烈地
@@ -536,8 +570,7 @@ def text_make_background(path=None):
         "start", "show", "hear", "play", "run", "move", "like", "live", "believe", "hold",
         "bring", "happen", "write", "provide", "sit", "stand", "lose", "pay", "meet", "include",
         "continue", "set", "learn", "change", "lead", "understand", "watch", "follow", "stop", "create",
-        "speak", "read", "allow", "add", "spend", "grow", "open", "walk", "win", "offer"
-        ,
+        "speak", "read", "allow", "add", "spend", "grow", "open", "walk", "win", "offer",
         "是", "有", "做", "說", "得到", "製造", "去", "知道", "拿", "看",
         "來", "想", "瞧", "想要", "給", "使用", "尋找", "告訴", "詢問", "工作",
         "似乎", "感覺", "嘗試", "離開", "稱呼", "保持", "讓", "開始", "幫助", "談話",
@@ -548,83 +581,81 @@ def text_make_background(path=None):
     }
     數量詞 = [
         # --- 抽象數量 (Quantifiers) ---
-        "all", "most", "many", "much", "some", "any", "a few", "few", 
+        "all", "most", "many", "much", "some", "any", "a few", "few",
         "a little", "little", "several", "each", "every", "plenty of", "enough",
         # --- 單位量詞 (Units/Measure Words) ---
-        "a piece of", "a slice of", "a loaf of", "a bar of", "a sheet of", 
-        "a pack of", "a box of", "a pair of", "a set of", "a bottle of", 
-        "a cup of", "a glass of", "a bowl of", "a plate of", "a can of", 
+        "a piece of", "a slice of", "a loaf of", "a bar of", "a sheet of",
+        "a pack of", "a box of", "a pair of", "a set of", "a bottle of",
+        "a cup of", "a glass of", "a bowl of", "a plate of", "a can of",
         "a jar of", "a spoon of", "a serving of", "a bunch of",
         # --- 群體量詞 (Collective Nouns) ---
-        "a group of", "a crowd of", "a team of", "a flock of", "a herd of", 
+        "a group of", "a crowd of", "a team of", "a flock of", "a herd of",
         "a school of", "a swarm of",
         # --- 中文特有量詞之英文對應 ---
-        "general unit", "polite unit for people", "long/thin objects", 
-        "flat objects", "objects with handles", "bound objects", 
-        "machines/movies", "appliances/vehicles", "courses/light", "letters"
-        ,
+        "general unit", "polite unit for people", "long/thin objects",
+        "flat objects", "objects with handles", "bound objects",
+        "machines/movies", "appliances/vehicles", "courses/light", "letters",
         # --- 抽象數量 ---
-        "全部", "大部分", "很多 (可數)", "很多 (不可數)", "一些", "任何/一些", "幾個", "很少 (幾乎沒有)", 
+        "全部", "大部分", "很多 (可數)", "很多 (不可數)", "一些", "任何/一些", "幾個", "很少 (幾乎沒有)",
         "一點點", "很少 (幾乎沒有)", "幾個/數個", "每個", "每個/所有", "很多/充足", "足夠",
         # --- 單位量詞 ---
-        "一張/一塊/一份", "一片 (薄片)", "一條 (麵包)", "一條 (肥皂/巧克力)", "一張 (紙/床單)", 
-        "一包/一捆", "一盒/一箱", "一雙/一副", "一套/一組", "一瓶", 
-        "一杯 (熱飲)", "一杯 (冷飲)", "一碗", "一盤", "一罐 (鋁罐)", 
+        "一張/一塊/一份", "一片 (薄片)", "一條 (麵包)", "一條 (肥皂/巧克力)", "一張 (紙/床單)",
+        "一包/一捆", "一盒/一箱", "一雙/一副", "一套/一組", "一瓶",
+        "一杯 (熱飲)", "一杯 (冷飲)", "一碗", "一盤", "一罐 (鋁罐)",
         "一罐 (玻璃罐)", "一匙", "一份 (餐點)", "一束/一串",
         # --- 群體量詞 ---
-        "一群 (人/物)", "一群 (擁擠的人)", "一隊", "一群 (鳥/羊)", "一群 (牛/象)", 
+        "一群 (人/物)", "一群 (擁擠的人)", "一隊", "一群 (鳥/羊)", "一群 (牛/象)",
         "一群 (魚)", "一群 (昆蟲)",
         # --- 中文特有量詞 ---
         "個", "位", "支/把", "張", "把", "本", "部", "臺", "道", "封"
     ]
     介詞 = [
         # --- 空間位置 (Space) ---
-        "in", "on", "at", "under", "below", "above", "over", "beside", 
-        "next to", "between", "among", "behind", "in front of", "near", 
+        "in", "on", "at", "under", "below", "above", "over", "beside",
+        "next to", "between", "among", "behind", "in front of", "near",
         "opposite", "inside", "outside",
         # --- 時間關係 (Time) ---
-        "at", "in", "on", "before", "after", "during", "since", "for", 
+        "at", "in", "on", "before", "after", "during", "since", "for",
         "until", "from...to", "within", "throughout",
         # --- 方向與移動 (Movement) ---
-        "to", "into", "onto", "out of", "off", "up", "down", "across", 
+        "to", "into", "onto", "out of", "off", "up", "down", "across",
         "through", "along", "past", "towards", "around",
         # --- 邏輯、關係與其他 (Other) ---
-        "of", "with", "without", "by", "for", "about", "against", "like", 
-        "as", "besides", "except", "instead of", "despite", "including"
-        ,
+        "of", "with", "without", "by", "for", "about", "against", "like",
+        "as", "besides", "except", "instead of", "despite", "including",
         # --- 空間位置 ---
-        "在...裡面", "在...上面", "在 (特定地點)", "在...下方", "在...之下", "在...上方", "跨越...之上", "在...旁邊", 
-        "在...隔壁", "在...之間 (兩者)", "在...之中 (三者以上)", "在...後面", "在...前面", "靠近", 
+        "在...裡面", "在...上面", "在 (特定地點)", "在...下方", "在...之下", "在...上方", "跨越...之上", "在...旁邊",
+        "在...隔壁", "在...之間 (兩者)", "在...之中 (三者以上)", "在...後面", "在...前面", "靠近",
         "在...對面", "在...內部", "在...外部",
         # --- 時間關係 ---
-        "在 (精確時間)", "在 (時段/月份/年份)", "在 (日期/星期)", "在...之前", "在...之後", "在...期間", "自從", "持續 (一段時間)", 
+        "在 (精確時間)", "在 (時段/月份/年份)", "在 (日期/星期)", "在...之前", "在...之後", "在...期間", "自從", "持續 (一段時間)",
         "直到", "從...到", "在...之內", "貫穿/整個 (時期)",
         # --- 方向與移動 ---
-        "往/向", "進入", "到...之上", "離開/從...出來", "從...掉落/離開", "向上", "向下", "橫越", 
+        "往/向", "進入", "到...之上", "離開/從...出來", "從...掉落/離開", "向上", "向下", "橫越",
         "穿過", "沿著", "經過", "朝向", "環繞/大約",
         # --- 邏輯、關係與其他 ---
-        "的/屬於", "和...一起/用", "沒有/缺乏", "藉由/在...旁邊", "為了/給", "關於", "反對/靠著", "像...一樣", 
+        "的/屬於", "和...一起/用", "沒有/缺乏", "藉由/在...旁邊", "為了/給", "關於", "反對/靠著", "像...一樣",
         "作為", "除此之外 (包含)", "除了...之外 (排除)", "代替", "儘管", "包含"
     ]
-    粗略提問={
-        "誰":"人物詢問對象、身份、角色",
-        ["哪個","哪位"]:"特定人物或物件從範圍中",
-        "選擇什麼":["事物","內容詢問名稱、資訊、定義"],
-        "哪裡":"地點詢問位置、區域",
-        "何時":"時間詢問日期、時段、順序",
-        ["為何","為什麼"]:"原因詢問動機、成因、目的",
-        ["如何","怎麼"]:"方法，詢問流程、處理方式",
-        ["多少","數量"]:"詢問數目、程度",
-        ["哪一種","分類"]:"詢問種類、類型是否判定要求是/否答案",
-        "誰的":"所有權詢問歸屬",
-        "用什麼":"工具詢問手段、媒介結果",
-        "是什麼結果":"詢問輸出",
-        "什麼":"未指定類別的泛用資訊提問。",
+    粗略提問 = {
+        "誰": "人物詢問對象、身份、角色",
+        ["哪個", "哪位"]: "特定人物或物件從範圍中",
+        "選擇什麼": ["事物", "內容詢問名稱、資訊、定義"],
+        "哪裡": "地點詢問位置、區域",
+        "何時": "時間詢問日期、時段、順序",
+        ["為何", "為什麼"]: "原因詢問動機、成因、目的",
+        ["如何", "怎麼"]: "方法，詢問流程、處理方式",
+        ["多少", "數量"]: "詢問數目、程度",
+        ["哪一種", "分類"]: "詢問種類、類型是否判定要求是/否答案",
+        "誰的": "所有權詢問歸屬",
+        "用什麼": "工具詢問手段、媒介結果",
+        "是什麼結果": "詢問輸出",
+        "什麼": "未指定類別的泛用資訊提問。",
     }
     list_姓氏_中文 = [
-        "陳", "林", "黃", "張", "李", "王", "吳", "劉", "蔡", "楊", 
-        "許", "鄭", "謝", "洪", "郭", "邱", "曾", "廖", "賴", "徐", 
-        "周", "葉", "蘇", "莊", "呂", "江", "何", "蕭", "羅", "高", 
+        "陳", "林", "黃", "張", "李", "王", "吳", "劉", "蔡", "楊",
+        "許", "鄭", "謝", "洪", "郭", "邱", "曾", "廖", "賴", "徐",
+        "周", "葉", "蘇", "莊", "呂", "江", "何", "蕭", "羅", "高",
         "潘", "簡", "朱", "鍾", "游", "彭", "詹", "胡", "施", "沈"
     ]
     # 英文常見姓氏（Common Surnames）
@@ -634,176 +665,193 @@ def text_make_background(path=None):
         "Lee", "Perez", "Thompson", "White", "Harris", "Sanchez", "Clark", "Ramirez", "Lewis", "Robinson",
         "Walker", "Young", "Allen", "King", "Wright", "Scott", "Torres", "Nguyen", "Hill", "Flores"
     ]
-    def 取詞(ss):
-        if isinstance(ss, str):ss=[ss]
-        for s in ss:
-            p=path_all(path,s)
-            if next(p):
-                s=C(1)(p)
-    形容詞,名詞=[],[]
-    取詞(["形容詞","名詞"])
-    從對主的向量 = { "相似詞","反義詞"} # (詞)意義，找到主從詞(的顯示)，增加主是正向、減少主是負向
-    Positive_Ops = ["增加", "提升", "擴大","有助於","有益於"]
-    Negative_Ops = ["減少", "降低", "萎縮","減弱","忘記"]
-    glues = { 
-        "等價": ["是", "為", "is", "be", "定義"], 
-        "並列": ["還", "和", "與","且", "and", "狀", "類"], 
-        "排斥": ["不", "非", "質", "反", "對立"], 
-        "干涉": ["使", "讓", "變成", "become", "干涉"], 
-        "主從": ["有", "的", "of", "have", "屬" # 前為主
-            ,"belong to","屬於","附屬"], # 後為主
-    }
-    等價_mask=find_array(ocr_lines,(C(0) .isin( glues["等價"])))  
-    並列_mask=find_array(ocr_lines,(C(0) .isin( glues["並列"]))) 
-    排斥_mask=find_array(ocr_lines,(C(0) .isin( glues["排斥"]))) 
-    干涉_mask=find_array(ocr_lines,(C(0) .isin( glues["干涉"]))) 
-    主從_mask=find_array(ocr_lines,(C(0) .isin( glues["主從"]))) 
-    主從正向_mask=find_array(ocr_lines,(C(0) .isin( Positive_Ops))) 
-    主從負向_mask=find_array(ocr_lines,(C(0) .isin( Negative_Ops))) 
-    動詞_mask=find_array(ocr_lines,(C(0) .isin( 動詞)))
-    # TODO:***** 解題
-    出題第幾行開始=find_array(ocr_lines,(C(0) .isin( "出題幾行"))) 
-    出題幾行=find_array(ocr_lines,((C(0).roll(1).isin("出題")) and (C(0).roll(-1).isin("行"))))
-    # 出題囉=find_array(ocr_lines,C(0).get_mask- 出題第幾行開始<出題幾行) 
-    出題囉=find_array(ocr_lines,C(0).get_segments_clean(出題幾行,出題第幾行開始)) 
-    if next(C(1)(path_all(path,C(0)(出題囉)/"主"))): # 詞/主
-        找到主=C(0,1)(path_all(path,C(0)(出題囉)/"主")) # path/.../(從)詞/主,找到主(詞)
-        上=找到主[1] 
-        下=find_array(找到主,C(0).roll(-1).isin( "主"))
-    問題類型_粗_mask=find_array(ocr_lines,(C(0) in 粗略提問)) 
-    #問題類型_粗=C(粗略提問[ocr_lines[問題類型_粗_mask]] , ocr_lines)
-    問題類型_粗=C(find_array(問題類型_粗_mask,C(0).isin(粗略提問)) , ocr_lines)
-    問題類型_細=find_array(ocr_lines,(C(0) != 粗略提問) ) 
-    # 提問中的名詞
-        # 新詞用火水土得其義，其餘者金木得其行，義義空間上的時間上相近用火木得其關聯，動機用水差得其機率
-    解題(出題=出題囉,上=上,下=下,問題類型=問題類型_細,介詞=介詞,名詞=名詞) # 異步分析型提問，是最快矯正回答者的方式。 任何主題導向準確求解形式的問題類型，舉例如何知道提問是甚麼問題類型
 
-    def make(a,b,f):
+    def 取詞(ss):
+        if isinstance(ss, str):
+            ss = [ss]
+        for s in ss:
+            p = path_all(path, s)
+            if next(p):
+                s = C(1)(p)
+    形容詞, 名詞 = [], []
+    取詞(["形容詞", "名詞"])
+    從對主的向量 = {"相似詞", "反義詞"}  # (詞)意義，找到主從詞(的顯示)，增加主是正向、減少主是負向
+    Positive_Ops = ["增加", "提升", "擴大", "有助於", "有益於"]
+    Negative_Ops = ["減少", "降低", "萎縮", "減弱", "忘記"]
+    glues = {
+        "等價": ["是", "為", "is", "be", "定義"],
+        "並列": ["還", "和", "與", "且", "and", "狀", "類"],
+        "排斥": ["不", "非", "質", "反", "對立"],
+        "干涉": ["使", "讓", "變成", "become", "干涉"],
+        "主從": ["有", "的", "of", "have", "屬"  # 前為主
+               , "belong to", "屬於", "附屬"],  # 後為主
+    }
+    等價_mask = find_array(ocr_lines, (C(0) .isin(glues["等價"])))
+    並列_mask = find_array(ocr_lines, (C(0) .isin(glues["並列"])))
+    排斥_mask = find_array(ocr_lines, (C(0) .isin(glues["排斥"])))
+    干涉_mask = find_array(ocr_lines, (C(0) .isin(glues["干涉"])))
+    主從_mask = find_array(ocr_lines, (C(0) .isin(glues["主從"])))
+    主從正向_mask = find_array(ocr_lines, (C(0) .isin(Positive_Ops)))
+    主從負向_mask = find_array(ocr_lines, (C(0) .isin(Negative_Ops)))
+    動詞_mask = find_array(ocr_lines, (C(0) .isin(動詞)))
+    # TODO:***** 解題
+    出題第幾行開始 = find_array(ocr_lines, (C(0) .isin("出題幾行")))
+    出題幾行 = find_array(ocr_lines, ((C(0).roll(1).isin("出題"))
+                      and (C(0).roll(-1).isin("行"))))
+    # 出題囉=find_array(ocr_lines,C(0).get_mask- 出題第幾行開始<出題幾行)
+    出題囉 = find_array(ocr_lines, C(0).get_segments_clean(出題幾行, 出題第幾行開始))
+    if next(C(1)(path_all(path, C(0)(出題囉)/"主"))):  # 詞/主
+        找到主 = C(0, 1)(path_all(path, C(0)(出題囉)/"主"))  # path/.../(從)詞/主,找到主(詞)
+        上 = 找到主[1]
+        下 = find_array(找到主, C(0).roll(-1).isin("主"))
+    問題類型_粗_mask = find_array(ocr_lines, (C(0) in 粗略提問))
+    # 問題類型_粗=C(粗略提問[ocr_lines[問題類型_粗_mask]] , ocr_lines)
+    問題類型_粗 = C(find_array(問題類型_粗_mask, C(0).isin(粗略提問)), ocr_lines)
+    問題類型_細 = find_array(ocr_lines, (C(0) != 粗略提問))
+    # 提問中的名詞
+    # 新詞用火水土得其義，其餘者金木得其行，義義空間上的時間上相近用火木得其關聯，動機用水差得其機率
+    # 異步分析型提問，是最快矯正回答者的方式。 任何主題導向準確求解形式的問題類型，舉例如何知道提問是甚麼問題類型
+    解題(出題=出題囉, 上=上, 下=下, 問題類型=問題類型_細, 介詞=介詞, 名詞=名詞)
+
+    def make(a, b, f):
         if a != path:
-            make_folder(path/a/f/b) # make_folder 內置處理已建立則用同路徑
+            make_folder(path/a/f/b)  # make_folder 內置處理已建立則用同路徑
         else:
-            make_folder(path/f/b) # make_folder 內置處理已建立則用同路徑
+            make_folder(path/f/b)  # make_folder 內置處理已建立則用同路徑
     # 動詞+副詞、動詞 形容詞 化or性、形容詞+名詞、形容詞 動詞。TODO:** 形 副 趨勢動詞(6)有負負得正 作用，並非疊加
     # 形容詞的絕對位置:形 的 名、動 得 形、形 化。
-    動詞=ocr_lines[動詞_mask]
-    形容_mask1=find_array(動詞,(C(0).roll(-1) == "得").roll(-1)) 
-    形容_mask2=find_array(ocr_lines,(C(0) in ["的","化"]).roll(1))
-    形容=C(形容_mask1,形容_mask2)
-    make(path,形容,"形容詞")
+    動詞 = ocr_lines[動詞_mask]
+    形容_mask1 = find_array(動詞, (C(0).roll(-1) == "得").roll(-1))
+    形容_mask2 = find_array(ocr_lines, (C(0) in ["的", "化"]).roll(1))
+    形容 = C(形容_mask1, 形容_mask2)
+    make(path, 形容, "形容詞")
     # 名詞的絕對位置:數量名、的名、介名介
-    名_mask=find_array(ocr_lines,(C(0) =="的"+介詞+數量詞).roll(-1))
-    make(path,ocr_lines[名_mask],"名詞")
+    名_mask = find_array(ocr_lines, (C(0) == "的"+介詞+數量詞).roll(-1))
+    make(path, ocr_lines[名_mask], "名詞")
     # 句法：詞1主、詞1從
-    等價=ocr_lines[等價_mask]
-    意義_前者,意義_後者=find_array(等價,C(0).roll(1)),find_array(等價,C(0).roll(-1))
-    make(意義_前者,意義_後者,"意義")
+    等價 = ocr_lines[等價_mask]
+    意義_前者, 意義_後者 = find_array(等價, C(0).roll(1)), find_array(等價, C(0).roll(-1))
+    make(意義_前者, 意義_後者, "意義")
     # 句法：a2b、(a2b)2(c2d) 第一種2在誇號內 第二種在誇號外
-    第一種=find_array(並列_mask,C(0).isin(並列_mask))
-    第二種_mask=find_array(並列_mask,C(0)!=第一種)
-    if 第一種.get_mask < 第二種_mask: # 
-        並列_前者 =第一種
+    第一種 = find_array(並列_mask, C(0).isin(並列_mask))
+    第二種_mask = find_array(並列_mask, C(0) != 第一種)
+    if 第一種.get_mask < 第二種_mask:
+        並列_前者 = 第一種
     if 第一種.get_mask > 第二種_mask:
-        並列_後者 =第一種
-    make(並列_mask[並列_前者],並列_mask[並列_後者],"並列")
+        並列_後者 = 第一種
+    make(並列_mask[並列_前者], 並列_mask[並列_後者], "並列")
     # 句法:不_
-    被排斥_後者=C(0)(排斥_mask).roll(-1)
-    make(排斥_mask,被排斥_後者,"排斥")
+    被排斥_後者 = C(0)(排斥_mask).roll(-1)
+    make(排斥_mask, 被排斥_後者, "排斥")
     # 句法:,_是_,。分配"是"的前後， 前者a太短(代名詞、"")則"追朔前者"；後者b 則都是到下一個標點符號的段落。 # TODO:*** 第二順位
-    干涉_代名詞=find_array(干涉_mask,(C(0).roll(1).isin([""],pronouns,all_punc)))
-    干涉_前後者=find_array(C(干涉_代名詞,干涉_mask),(C(0).diff.diff==0) & (C(1).roll(1) == C(0))) 
+    干涉_代名詞 = find_array(干涉_mask, (C(0).roll(1).isin([""], pronouns, all_punc)))
+    干涉_前後者 = find_array(C(干涉_代名詞, 干涉_mask), (C(
+        0).diff.diff == 0) & (C(1).roll(1) == C(0)))
     # 干涉_前者=find_array(干涉_代名詞,(C(0).diff.diff==0))
-    # 干涉_後者=find_array(干涉_mask,C(0).roll(1).get_mask == 干涉_前者) 
+    # 干涉_後者=find_array(干涉_mask,C(0).roll(1).get_mask == 干涉_前者)
     # make(干涉_mask[干涉_前者],干涉_mask[干涉_後者],"干涉")
-    make(干涉_前後者[0,:],干涉_前後者[1,:],"干涉") 
+    make(干涉_前後者[0, :], 干涉_前後者[1, :], "干涉")
     # 句法:詞4a結果。 # TODO:*** 第一順位
-    主從_後為主=find_array(主從_mask,C(0)in ["belong to","屬於","附屬"])
-    主從_後主=find_array(主從_後為主,C(0).roll(1))
-    make(find_array(主從_後主,C(0).roll(-1)),find_array(主從_後主,C(0).roll(1)),"主/中")
-    make(find_array(主從_後主,C(0).roll(1)),find_array(主從_後主,C(0).roll(-1)),"從/中")
+    主從_後為主 = find_array(主從_mask, C(0) in ["belong to", "屬於", "附屬"])
+    主從_後主 = find_array(主從_後為主, C(0).roll(1))
+    make(find_array(主從_後主, C(0).roll(-1)),
+         find_array(主從_後主, C(0).roll(1)), "主/中")
+    make(find_array(主從_後主, C(0).roll(1)),
+         find_array(主從_後主, C(0).roll(-1)), "從/中")
 
-    主從_前為主=find_array(主從_mask,C(0) != ["belong to","屬於","附屬"])
-    主從_前主=find_array(主從_前為主,C(0).roll(1))
-    make(find_array(主從_前主,C(0).roll(1)),find_array(主從_前主,C(0).roll(-1)),"主/中")
-    make(find_array(主從_前主,C(0).roll(-1)),find_array(主從_前主,C(0).roll(1)),"從/中")
+    主從_前為主 = find_array(主從_mask, C(0) != ["belong to", "屬於", "附屬"])
+    主從_前主 = find_array(主從_前為主, C(0).roll(1))
+    make(find_array(主從_前主, C(0).roll(1)),
+         find_array(主從_前主, C(0).roll(-1)), "主/中")
+    make(find_array(主從_前主, C(0).roll(-1)),
+         find_array(主從_前主, C(0).roll(1)), "從/中")
     # 句法：影響詞 5 副詞、影響詞 5 名詞、影響詞 形容詞 5。 5=趨勢動詞
-    從是正向1=find_array(ocr_lines[主從正向_mask],C(0).roll(-1)in 名詞+副詞) # "影響詞" 趨勢動詞 副詞
-    從是正向2=find_array(ocr_lines[主從正向_mask],(C(0).roll(1) in 形容詞)) # "影響詞" 形容詞 趨勢動詞
-    從是負向1=find_array(ocr_lines[主從負向_mask],C(0).roll(-1)in 名詞)
-    從是負向2=find_array(ocr_lines[主從負向_mask],(C(0).roll(1) in 形容詞))
-    def 尋主(a,b):
-        主_p=path_all(path/a/"主")
+    從是正向1 = find_array(ocr_lines[主從正向_mask], C(
+        0).roll(-1) in 名詞+副詞)  # "影響詞" 趨勢動詞 副詞
+    從是正向2 = find_array(ocr_lines[主從正向_mask],
+                       (C(0).roll(1) in 形容詞))  # "影響詞" 形容詞 趨勢動詞
+    從是負向1 = find_array(ocr_lines[主從負向_mask], C(0).roll(-1) in 名詞)
+    從是負向2 = find_array(ocr_lines[主從負向_mask], (C(0).roll(1) in 形容詞))
+
+    def 尋主(a, b):
+        主_p = path_all(path/a/"主")
         if next(主_p):
-            出現的主=C(1)(find_array(主_p,C(0) in b)) 
+            出現的主 = C(1)(find_array(主_p, C(0) in b))
             for 主 in 出現的主:
-                從_p=path_all(path/主/"從"/"中"/a)
+                從_p = path_all(path/主/"從"/"中"/a)
                 if next(從_p):
                     os.remove(path/主/"從"/"中"/a)
-                    return path/主/"從" # 從 未分方向，通知主
+                    return path/主/"從"  # 從 未分方向，通知主
     # make(影響詞,趨勢動詞,"正負向") # 尋主(趨勢動詞,影響詞) # base/a主/方向/從
-    make(C(0).從是正向1.roll(1),從是正向1,尋主(從是正向1,C(0).從是正向1.roll(1))/"正向") 
-    make(C(0).從是負向1.roll(1),從是負向1,尋主(從是負向1,C(0).從是負向1.roll(1))/"負向")
-    make(C(0).從是正向2.roll(2),從是正向2,尋主(從是正向2,C(0).從是正向2.roll(2))/"正向")
-    make(C(0).從是負向2.roll(2),從是負向2,尋主(從是負向2,C(0).從是負向2.roll(2))/"負向")
-    
-def 解題(出題,介詞,名詞,
-    金=None,水=None,木=None,火=None,土=None,
-    y=0,m=0,d=0,h=0
-    ): 
+    make(C(0).從是正向1.roll(1), 從是正向1, 尋主(從是正向1, C(0).從是正向1.roll(1))/"正向")
+    make(C(0).從是負向1.roll(1), 從是負向1, 尋主(從是負向1, C(0).從是負向1.roll(1))/"負向")
+    make(C(0).從是正向2.roll(2), 從是正向2, 尋主(從是正向2, C(0).從是正向2.roll(2))/"正向")
+    make(C(0).從是負向2.roll(2), 從是負向2, 尋主(從是負向2, C(0).從是負向2.roll(2))/"負向")
+
+
+def 解題(出題, 介詞, 名詞,
+       金=None, 水=None, 木=None, 火=None, 土=None,
+       y=0, m=0, d=0, h=0
+       ):
     連接詞 = {
-        ["和", "跟", "與", "既", "及", "而", "又", "一面⋯⋯一面⋯⋯"], # 並列關係
-        ["或", "或者", "還是"], # 選擇關係
-        ["但是", "不過", "雖然", "然而"], # 轉折關係
-        ["因為", "因此", "所以", "由於", "以致"], # 因果關係
-        ["不但", "不僅", "而且", "何況", "並", "且"], # 遞進關係
-        ["不管", "只要", "除非"], # 條件關係
-        ["先⋯⋯再⋯⋯最後⋯⋯"] # 順成時間關係
+        ["和", "跟", "與", "既", "及", "而", "又", "一面⋯⋯一面⋯⋯"],  # 並列關係
+        ["或", "或者", "還是"],  # 選擇關係
+        ["但是", "不過", "雖然", "然而"],  # 轉折關係
+        ["因為", "因此", "所以", "由於", "以致"],  # 因果關係
+        ["不但", "不僅", "而且", "何況", "並", "且"],  # 遞進關係
+        ["不管", "只要", "除非"],  # 條件關係
+        ["先⋯⋯再⋯⋯最後⋯⋯"]  # 順成時間關係
         ,
-        { # 對等連接詞_FANBOYS
-            "因為/為了", # For
-            "和/而且", # And
-            "也不", # Nor
-            "但是", # But
-            "或者", # Or
-            "然而/但是", # Yet
-            "所以" # So
+        {  # 對等連接詞_FANBOYS
+            "因為/為了",  # For
+            "和/而且",  # And
+            "也不",  # Nor
+            "但是",  # But
+            "或者",  # Or
+            "然而/但是",  # Yet
+            "所以"  # So
         },
-        { # 相關連接詞
-            "A 和 B 兩者皆是", # Both A and B
-            "不僅 A 還有 B", # Not only A but also B
-            "不是 A 就是 B", # Either A or B
-            "既不是 A 也不是 B", # Neither A nor B
-            "不論是 A 還是 B" # Whether A or B
+        {  # 相關連接詞
+            "A 和 B 兩者皆是",  # Both A and B
+            "不僅 A 還有 B",  # Not only A but also B
+            "不是 A 就是 B",  # Either A or B
+            "既不是 A 也不是 B",  # Neither A nor B
+            "不論是 A 還是 B"  # Whether A or B
         },
-        { # 從屬連接詞
-            ["when", "while", "before", "after", "as soon as", "since"], # 時間
-            ["because", "as", "since", "so that", "in order that"], # 原因目的
-            ["if", "unless", "as long as"], # 條件
-            ["although", "though", "even if"] # 讓步
+        {  # 從屬連接詞
+            ["when", "while", "before", "after", "as soon as", "since"],  # 時間
+            ["because", "as", "since", "so that", "in order that"],  # 原因目的
+            ["if", "unless", "as long as"],  # 條件
+            ["although", "though", "even if"]  # 讓步
         }
     }
+
     def 相似詞(a):
-        尋主=C([0,1])(path_all(TEMPLATE_DIRS["Noesis"]/a,"主"))
-        同向=C(1)(path_all(尋主[0]/尋主[1]/"從",a))
+        尋主 = C([0, 1])(path_all(TEMPLATE_DIRS["Noesis"]/a, "主"))
+        同向 = C(1)(path_all(尋主[0]/尋主[1]/"從", a))
         return 同向
+
     def 不在場(a):
-        從正負=C(1)(path_all(TEMPLATE_DIRS["Noesis"]/a/"從",["正向","負向"])) # 從/+-
+        從正負 = C(1)(
+            path_all(TEMPLATE_DIRS["Noesis"]/a/"從", ["正向", "負向"]))  # 從/+-
         return 從正負
 
-    if isinstance(出題,str):
+    if isinstance(出題, str):
         #  in [""] 會用到的詞        # ，.roll(1) in [""] 料理對象        # ，path_all(在場的詞,從) 找不在場的
         # TODO:*** 獲取出現的全部共同主(義義空間)，子義義在主之下的差異(例如屁連著眼=gemini屁眼)
-            # 異步分析型構句
+        # 異步分析型構句
         """
         # 先抓人名 或物品 ，在找共同的主，計算差異，看子異異(人名或物品)的從(隱含異異)受到的影響。先對獲益，後對流轉。
             # 沈秋 和貓，共同主為江湖，沈秋(轉換)總帶著一隻獨眼黑貓(獲益)。 (流轉)到七年前  沈秋樸通少年 官兵剿民(流轉) (轉換方式)兩死一傷貓 (獲益)求教於老劍客 (動機)老劍客說復仇
         """
-        標點符號= find_array(出題,(C(0) in all_punc))
-        劫_mask= find_array(出題,(C(0) in 相似詞("姓氏與名字")) ) # 包含各語言的姓氏，名字，代名詞我以外的均要往更前面找，找不到則是後面會提
-        土_mask= find_array(出題,(C(0) in 名詞) ) # 獲益 名詞
-        金_mask= find_array(出題,(C(0) in 相似詞("動名詞")) ) # 動機 動名詞
-        水_mask= find_array(出題,(C(0) in 連接詞).roll(-1) ) # 過程 連接詞
-        木_mask= find_array(出題,(C(0).isin(C(0)(出題)) ).roll(-1) ) # 有規律 出現時長高
-        火_mask= find_array(出題,(C(0) in 介詞).roll(-1) ) # 轉換 介詞
+        標點符號 = find_array(出題, (C(0) in all_punc))
+        # 包含各語言的姓氏，名字，代名詞我以外的均要往更前面找，找不到則是後面會提
+        劫_mask = find_array(出題, (C(0) in 相似詞("姓氏與名字")))
+        土_mask = find_array(出題, (C(0) in 名詞))  # 獲益 名詞
+        金_mask = find_array(出題, (C(0) in 相似詞("動名詞")))  # 動機 動名詞
+        水_mask = find_array(出題, (C(0) in 連接詞).roll(-1))  # 過程 連接詞
+        木_mask = find_array(出題, (C(0).isin(C(0)(出題))).roll(-1))  # 有規律 出現時長高
+        火_mask = find_array(出題, (C(0) in 介詞).roll(-1))  # 轉換 介詞
         # TODO:*** 無索引只有找到，那就用噴塗法，找到的顏色，間格都是這個顏色，共五種顏色
         # 表面打磨去除"無意義詞"  多次細微噴塗"類型有 人名 獲益 動機 過程 有規律的 轉換的相關詞 的間隔" 霧化界線"五類型" 拋光"目標主題" ?
         # 找到的代名詞為上一位
@@ -811,63 +859,71 @@ def 解題(出題,介詞,名詞,
         C.get_segments_clean(cond_w,cond_a)(array)。
         cond_a >cond_w的每一組 的連續段落
         """
-        土=(出題[土_mask:-1] , find_array(劫_mask,(C(0)<土_mask)) and (C(0).roll(-1)>土_mask)) # TODO*****
-        金=(出題[金_mask:-1] , find_array(劫_mask,(C(0)<金_mask)) and (C(0).roll(-1)>金_mask))
-        水=(出題[水_mask:-1] , find_array(劫_mask,(C(0)<水_mask)) and (C(0).roll(-1)>水_mask))
-        木=(出題[木_mask:-1] , find_array(劫_mask,(C(0)<木_mask)) and (C(0).roll(-1)>木_mask))
-        火=(出題[火_mask:-1] , find_array(劫_mask,(C(0)<火_mask)) and (C(0).roll(-1)>火_mask))
+        土 = (出題[土_mask:-1], find_array(劫_mask, (C(0) < 土_mask))
+             and (C(0).roll(-1) > 土_mask))  # TODO*****
+        金 = (出題[金_mask:-1], find_array(劫_mask, (C(0) < 金_mask))
+             and (C(0).roll(-1) > 金_mask))
+        水 = (出題[水_mask:-1], find_array(劫_mask, (C(0) < 水_mask))
+             and (C(0).roll(-1) > 水_mask))
+        木 = (出題[木_mask:-1], find_array(劫_mask, (C(0) < 木_mask))
+             and (C(0).roll(-1) > 木_mask))
+        火 = (出題[火_mask:-1], find_array(劫_mask, (C(0) < 火_mask))
+             and (C(0).roll(-1) > 火_mask))
         # TODO:**詞無相關詞
-    else: 
+    else:
         回覆("出題不符合格式")
     # 中性 傳遞，吸引 吸收，排斥 抵銷
     math_dist = {
-        "加":{"大小正負關係":None,"小數":None,"加減乘除":"中"},
-        "減":{"大小正負關係":None,"小數":None,"加減乘除":"吸"},
-        "乘":{"大小正負關係":None,"小數":None,"加減乘除":"查表後中"},
-        "除":{"大小正負關係":None,"小數":None,"加減乘除":"(查表(1/1~1/9)移除分母後相乘分子)"}
+        "加": {"大小正負關係": None, "小數": None, "加減乘除": "中"},
+        "減": {"大小正負關係": None, "小數": None, "加減乘除": "吸"},
+        "乘": {"大小正負關係": None, "小數": None, "加減乘除": "查表後中"},
+        "除": {"大小正負關係": None, "小數": None, "加減乘除": "(查表(1/1~1/9)移除分母後相乘分子)"}
     }
     作用力_dist = {
-        "起伏":"前後差異",
-        "加速度":"二次前後差異",
-        "雙方利益關係":"分子分母對調得到雙方的交換率",
-        "意義上的意義":"不同意義相乘得到作用結果",
+        "起伏": "前後差異",
+        "加速度": "二次前後差異",
+        "雙方利益關係": "分子分母對調得到雙方的交換率",
+        "意義上的意義": "不同意義相乘得到作用結果",
     }
     # 人倫
-        # 為何有趣?大吸(提高流量經過低壓通道)與通用(子意義在意義上必然重疊)
+    # 為何有趣?大吸(提高流量經過低壓通道)與通用(子意義在意義上必然重疊)
     有趣對話技巧提升ist = {
-        "初步":"接力回應＋情緒認可＋故事延伸，用開放式提問把對話推向下一層，並自然留下「下次再聊」的鉤子",
-        "話題":"過渡句 接住",
-        "延伸話題":"引入相關故事或分享經歷:短、真、有連結，結尾留空，不搶話",
-        "開放式提問":"問「感受 / 想法 / 選擇原因」",
-        "自然換話題":"用 情緒或價值 當橋",
-        "續聊":"暗示下次相遇 / 延續:輕、不承諾、不壓迫",
-        "被理解":"有趣不是外在提升是內在被打開",
-        "被挑動":"有趣不是結果提升過程中的心動",
-        "被延伸":"有趣不是熱鬧提升有回應感",
+        "初步": "接力回應＋情緒認可＋故事延伸，用開放式提問把對話推向下一層，並自然留下「下次再聊」的鉤子",
+        "話題": "過渡句 接住",
+        "延伸話題": "引入相關故事或分享經歷:短、真、有連結，結尾留空，不搶話",
+        "開放式提問": "問「感受 / 想法 / 選擇原因」",
+        "自然換話題": "用 情緒或價值 當橋",
+        "續聊": "暗示下次相遇 / 延續:輕、不承諾、不壓迫",
+        "被理解": "有趣不是外在提升是內在被打開",
+        "被挑動": "有趣不是結果提升過程中的心動",
+        "被延伸": "有趣不是熱鬧提升有回應感",
     }
     # 有?分散成，經過編碼
-        # 認真實的，新的卜卦
+    # 認真實的，新的卜卦
     會死AI的卜卦_dist = {
-        "人倫":{f"{金}":"金",f"{水}":"水",f"{木}":"木",f"{火}":"火",f"{土}":"土"}, # 以value(性質)編碼，以key(關係)排序
-        "天干地支":{ 
+        # 以value(性質)編碼，以key(關係)排序
+        "人倫": {f"{金}": "金", f"{水}": "水", f"{木}": "木", f"{火}": "火", f"{土}": "土"},
+        "天干地支": {
             "天干": {
-                "甲": f"+{木}", "乙": f"-{木}", 
-                "丙": f"+{火}", "丁": f"-{火}", 
-                "戊": f"+{土}", "己": f"-{土}", 
-                "庚": f"+{金}", "辛": f"-{金}", 
+                "甲": f"+{木}", "乙": f"-{木}",
+                "丙": f"+{火}", "丁": f"-{火}",
+                "戊": f"+{土}", "己": f"-{土}",
+                "庚": f"+{金}", "辛": f"-{金}",
                 "壬": f"+{水}", "癸": f"-{水}"
             },
             "地支": {
-                "子": f"-{水}", "丑": f"-{土}", 
-                "寅": f"+{木}", "卯": f"-{木}", 
-                "辰": f"+{土}", "巳": f"+{火}", 
-                "午": f"-{火}", "未": f"-{土}", 
-                "申": f"+{金}", "酉": f"-{金}", 
+                "子": f"-{水}", "丑": f"-{土}",
+                "寅": f"+{木}", "卯": f"-{木}",
+                "辰": f"+{土}", "巳": f"+{火}",
+                "午": f"-{火}", "未": f"-{土}",
+                "申": f"+{金}", "酉": f"-{金}",
                 "戌": f"+{土}", "亥": f"+{水}"
             }
-        }, # 五行盛衰，循環 時間軸
-        "方位": {f"{金}":"西",f"{木}":"東",f"{火}":"南",f"{水}":"北",f"{土}":"中"}, #　第幾象限
+        },  # 五行盛衰，循環 時間軸
+        # 　第幾象限
+        "方位": {f"{金}": "西", f"{木}": "東", f"{火}": "南", f"{水}": "北", f"{土}": "中"},
     }
+
     def T(Y, M, D, H):
         G, Z = "甲乙丙丁戊己庚辛壬癸", "子丑寅卯辰巳午未申酉戌亥"
         # 修正：1、2月視為前一年的13、14月
@@ -875,19 +931,19 @@ def 解題(出題,介詞,名詞,
         # 儒略日/偏移量計算
         j = 365*y + y//4 - y//100 + y//400 + int(30.6*(m+1)) + D - 15
         # 年柱：(Y-4)%10 / (Y-4)%12
-        gy, zy = (Y-4)%10, (Y-4)%12
+        gy, zy = (Y-4) % 10, (Y-4) % 12
         # 月柱：公式修正 (月干與年干有關)
         gm = (gy * 2 + M + 2) % 10
-        zm = (M + 1) % 12 # 寅月為正月，對應 M=1 -> zm=2(寅)
+        zm = (M + 1) % 12  # 寅月為正月，對應 M=1 -> zm=2(寅)
         # 日柱：修正原代碼的 gd 錯誤
-        gd, zd = (j+9)%10, (j+1)%12
+        gd, zd = (j+9) % 10, (j+1) % 12
         # 時柱：時干與日干有關
-        zh = ((H+1)//2)%12
+        zh = ((H+1)//2) % 12
         gh = (gd * 2 + zh) % 10
         # 返回 性質編碼後的結果
-        return (f"{G[gy]}",f"{Z[zy]}"), (f"{G[gm]}",f"{Z[zm]}"), (f"{G[gd]}",f"{Z[zd]}"), (f"{G[gh]}",f"{Z[zh]}")
-    Y,M,D,H=T(y,m,d,h)
-    result=[
+        return (f"{G[gy]}", f"{Z[zy]}"), (f"{G[gm]}", f"{Z[zm]}"), (f"{G[gd]}", f"{Z[zd]}"), (f"{G[gh]}", f"{Z[zh]}")
+    Y, M, D, H = T(y, m, d, h)
+    result = [
         會死AI的卜卦_dist["天干地支"]["天干"][Y.ground(0)],
         會死AI的卜卦_dist["天干地支"]["地支"][Y.ground(1)],
         會死AI的卜卦_dist["天干地支"]["天干"][M.ground(0)],
@@ -897,9 +953,11 @@ def 解題(出題,介詞,名詞,
         會死AI的卜卦_dist["天干地支"]["天干"][H.ground(0)],
         會死AI的卜卦_dist["天干地支"]["地支"][H.ground(1)],
     ]
-    write_array(result,(C(0).roll(-1)<<C(0).roll(-1)+1 ,C(0).roll(-2)<<C(0).roll(-2)-1)) 
-    
-def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_ratio=None,npy=None):
+    write_array(result, (C(0).roll(-1) << C(0).roll(-1) +
+                1, C(0).roll(-2) << C(0).roll(-2)-1))
+
+
+def 全能ORB(a, color=None, b=None, path=None, ratio=0.75, similar=None, similar_ratio=None, npy=None):
     """
     a : 該圖，return 特徵點,描述子
         npy:npy，圖片轉NPY。"a"，a=NPY的kp,des
@@ -915,13 +973,13 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
     npy:["a","b"]，NPY直接比對
         similar_ratio:回傳相似度
     """
-    if npy is not None and ["a","b"] in npy:
-        kp1, desA =  np.load(C(0)(a)),  np.load(C(1)(a))
-        kp2, desB =  np.load(C(0)(b)),  np.load(C(1)(b))
+    if npy is not None and ["a", "b"] in npy:
+        kp1, desA = np.load(C(0)(a)),  np.load(C(1)(a))
+        kp2, desB = np.load(C(0)(b)),  np.load(C(1)(b))
         # 輸入後，儲存(新向量)、傳遞(向量不變)、抵銷(向量互撞)
         result_des = np.zeros_like(desA)
-        kp_dataA=C(kp1, desA)
-        kp_dataB=C(kp2, desB)
+        kp_dataA = C(kp1, desA)
+        kp_dataB = C(kp2, desB)
         result_kp = kp_dataA.copy()
 
         # 2. 計算點對點的餘弦相似度 (Cosine Similarity)
@@ -929,11 +987,13 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
         normA = np.linalg.norm(desA, axis=1)
         normB = np.linalg.norm(desB, axis=1)
         # 避免除以零（防止空向量撞擊出錯）
-        similarity = np.sum(desA *  desB, axis=1) / (normA * normB + 1e-8) # 每個特徵點的描述子對撞
+        similarity = np.sum(desA * desB, axis=1) / \
+            (normA * normB + 1e-8)  # 每個特徵點的描述子對撞
 
         # 3. 定義邏輯分流遮罩 (Masks)
         cancel_mask = similarity > 0.9                     # 相似度極高 -> 抵銷
-        store_mask = (similarity <= 0.9) & (similarity > 0.4) # 中等相似度 -> 儲存(融合)
+        store_mask = (similarity <= 0.9) & (
+            similarity > 0.4)  # 中等相似度 -> 儲存(融合)
         pass_mask = similarity <= 0.4                      # 相似度極低 -> 傳遞(穿透)
 
         # --- 執行物理邏輯運算 ---
@@ -943,59 +1003,65 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
 
         # B. 儲存 (Store): 向量相加，產生新演化特徵
         result_des[store_mask] = desA[store_mask] + desB[store_mask]
-        result_kp[store_mask, 4] = kp_dataA[store_mask, 4] + kp_dataB[store_mask, 4] # 強度疊加
+        result_kp[store_mask, 4] = kp_dataA[store_mask, 4] + \
+            kp_dataB[store_mask, 4]  # 強度疊加
 
         # C. 傳遞 (Pass): 向量不變，資訊原樣穿透
         result_des[pass_mask] = desA[pass_mask]
-        result_kp[pass_mask, 4] = kp_dataA[pass_mask, 4] # 強度維持
+        result_kp[pass_mask, 4] = kp_dataA[pass_mask, 4]  # 強度維持
 
         if path is None:
             path = C(0)(path_all(base_path, a))
-        des_path =path/ f"{a.name}_des.npy"  # 使用 e (傳入的對象) 而非 a
-        kp_path =path/ f"{a.name}_kp.npy"
+        des_path = path / f"{a.name}_des.npy"  # 使用 e (傳入的對象) 而非 a
+        kp_path = path / f"{a.name}_kp.npy"
         # --- 儲存成NPY檔案 ---
-        y=np.save(des_path, result_des)
-        x=np.save(kp_path, result_kp)
-        if similar_ratio  is not None:
-            return np.mean(similarity) # 相似度
-        for aa in y,x: return aa
-    
-    def im2_orb(b,png="_相似拓樸結構"):
+        y = np.save(des_path, result_des)
+        x = np.save(kp_path, result_kp)
+        if similar_ratio is not None:
+            return np.mean(similarity)  # 相似度
+        for aa in y, x:
+            return aa
+
+    def im2_orb(b, png="_相似拓樸結構"):
         if npy is not None and "b" in npy:
-            kp2, desB =  np.load(C(0)(b)),  np.load(C(1)(b))
+            kp2, desB = np.load(C(0)(b)),  np.load(C(1)(b))
         else:
-            img2 = cv2.imread(b) 
+            img2 = cv2.imread(b)
             if img2 is None:
                 raise ValueError(f"讀取圖檔失敗: {b}")
             kp2, desB = sift.detectAndCompute(img2, None)
-            
+
         matches = bf.knnMatch(desA, desB, k=2)
         if desA is None or desB is None:
             return False if similar is not None else None
-        
+
         # 將距離資料轉為矩陣:# 欄位定義：C(0): m.dist, C(1): n.dist, C(2): queryIdx, C(3): trainIdx
-        m_data = np.array([[m.distance, n.distance, m.queryIdx, m.trainIdx] for m, n in matches])
+        m_data = np.array(
+            [[m.distance, n.distance, m.queryIdx, m.trainIdx] for m, n in matches])
         # [取代 if]：用 find_array 執行 Ratio Test 篩選
+        回覆(f"m_data:{m_data}")  # *** 失效，有圖a和b，卻沒有列印出此行
         good_data = find_array(m_data, C(0) < (ratio * C(1)))
         # [取代 sorted]：利用 numpy 排序後再次使用索引取值 (或直接在 Expr 擴充 sort)
         # 這裡才是真正的「用 find_array 執行結果」
-        good_matches = good_data[np.argsort(good_data[:, 0])] 
-            # good_matches = []
-            # good_matches = [m for m, n in matches if m.distance < ratio * n.distance]
-            # good_matches = sorted(good_matches, key=lambda x: x.distance)
+        good_matches = good_data[np.argsort(good_data[:, 0])]
+        # good_matches = []
+        # good_matches = [m for m, n in matches if m.distance < ratio * n.distance]
+        # good_matches = sorted(good_matches, key=lambda x: x.distance)
         # 4. 回傳與 opencv 相容的結構 (或直接給 src_pts, dst_pts 用於 findHomography)
-        src_pts = np.float32([kp1[int(i)].pt for i in good_matches[:, 2]]).reshape(-1, 1, 2)
-        dst_pts = np.float32([kp2[int(i)].pt for i in good_matches[:, 3]]).reshape(-1, 1, 2)
-            # src_pts = np.float32(
-                # [kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
-            # dst_pts = np.float32(
-                # [kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+        src_pts = np.float32(
+            [kp1[int(i)].pt for i in good_matches[:, 2]]).reshape(-1, 1, 2)
+        dst_pts = np.float32(
+            [kp2[int(i)].pt for i in good_matches[:, 3]]).reshape(-1, 1, 2)
+        # src_pts = np.float32(
+        # [kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+        # dst_pts = np.float32(
+        # [kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
 
         H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
         if similar_ratio:
             return mask.sum() / len(good_matches) * 100
         if similar is not None:
-            if len(good_matches) < 4: 
+            if good_matches.size < 4:
                 return False
             if H is None or mask is None:
                 return False
@@ -1008,31 +1074,35 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
             good_matches, None,  # TODO: 完全相同的拓樸結構
             matchColor=(0, 255, 0),
             singlePointColor=(255, 0, 0),
-            matchesMask=matchesMask,    
+            matchesMask=matchesMask,
             flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
         )
-        pngX=path/f"{png}.png"
+        pngX = path/f"{png}.png"
         cv2.imwrite(pngX, img_matches)
         return pngX
-    
+
     if path is None:
         # row[0] 只存（Index 0）比起[:,0]整個 path_all 轉成 np.array，記憶體佔用會小很多。
         path = C(0)(path_all(base_path, a))
-    sift = cv2.SIFT_create(nfeatures=4200, contrastThreshold=0.03, edgeThreshold=10)
-    img1 =cv2.imread(a)
+    sift = cv2.SIFT_create(
+        nfeatures=4200, contrastThreshold=0.03, edgeThreshold=10)
+    img1 = cv2.imdecode(np.fromfile(a, dtype=np.uint8), cv2.IMREAD_COLOR)
+    # 回覆(f"img1:{img1}")
     if img1 is None:
         raise ValueError(f"讀取圖檔失敗: {a}")
     if npy is not None and "a" in npy:
-        kp1, desA =  np.load(C(0)(a)),  np.load(C(1)(a))
+        kp1, desA = np.load(C(0)(a)),  np.load(C(1)(a))
     else:
         kp1, desA = sift.detectAndCompute(img1, None)
-    if color=="color":
+        # 回覆(f"kp1, desA:{kp1, desA}")
+    if color is not None and str(color) == "color":
         hsv = cv2.cvtColor(img1, cv2.COLOR_BGR2HSV)
         feature_nodes = []
         if "npy" in npy:
-            kp_data = np.array([[p.pt[0], p.pt[1], p.size, p.angle, p.response, p.octave] for p in kp1], dtype=np.float32)
-            np.save(f"{a.name}_des.npy", desA) 
-            np.save(f"{a.name}_kp.npy", kp_data) # 儲存成NPY檔案
+            kp_data = np.array([[p.pt[0], p.pt[1], p.size, p.angle,
+                               p.response, p.octave] for p in kp1], dtype=np.float32)
+            np.save(f"{a.name}_des.npy", desA)
+            np.save(f"{a.name}_kp.npy", kp_data)  # 儲存成NPY檔案
             return kp_data
         for i, k in enumerate(kp1):
             x, y = int(k.pt[0]), int(k.pt[1])
@@ -1044,12 +1114,12 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
                 "pos": (x_norm, y_norm),
                 "descriptor": tuple(desA[i]),
                 "color": (int(h), int(s), int(v))
-            }) 
+            })
             # 幾何位置、局部外觀、顏色
             # TODO: ***時序、動作、動機(意義)
-                # 實拍檔案的創建時間
-                # 拓譜結構的邊的移動過程
-                # GOOGLE的機器人驗證的反向方法，看圖說故事
+            # 實拍檔案的創建時間
+            # 拓譜結構的邊的移動過程
+            # GOOGLE的機器人驗證的反向方法，看圖說故事
         return feature_nodes
     if not b:
         return kp1, desA
@@ -1072,32 +1142,37 @@ def 全能ORB(a,color=None, b=None, path=None, ratio=0.75, similar=None,similar_
                 color=(0, 255, 0), thickness=2, circle_radius=2),
             mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2)
         )
-        cv2.imwrite(path + "_人體拓樸.png", 
-        )
+        cv2.imwrite(path + "_人體拓樸.png",
+                    )
         return path
     elif isinstance(b, str):
-        for _,f in path_all(TEMPLATE_DIRS["attributes"],b):
-            im2_orb(f,"_目標")
+        for _, f in path_all(TEMPLATE_DIRS["attributes"], b):
+            im2_orb(f, "_目標")
     else:
         im2_orb(b)
         # P.S. cv2.imread 0 灰 1彩 -1全
 
 #  DSL（Domain-Specific Language，領域特定語言）
+
+
 class C:
     """
     條件分析器
     array[:,判斷中...] 或 array[判斷中...]
     每一條 (條件)括號起來
     """
+
     def __init__(self, *func_or_args):
         if len(func_or_args) == 1:
             print("dict處理中...")
             func_or_arg = func_or_args[0]
             if isinstance(func_or_arg, int):
-                self.func = lambda x: np.asarray(x)[:, func_or_arg] if np.asarray(x).ndim > 1 else np.asarray(x)
+                self.func = lambda x: np.asarray(x)[:, func_or_arg] if np.asarray(
+                    x).ndim > 1 else np.asarray(x)
             elif isinstance(func_or_arg, (list, tuple, np.ndarray)) and all(isinstance(v, int) for v in func_or_arg):
                 args = tuple(func_or_arg)
-                self.func = lambda x, args=args: np.asarray(x)[:, list(args)] if np.asarray(x).ndim > 1 else np.asarray(x)
+                self.func = lambda x, args=args: np.asarray(x)[:, list(
+                    args)] if np.asarray(x).ndim > 1 else np.asarray(x)
             elif callable(func_or_arg):
                 self.func = func_or_arg
             else:
@@ -1106,10 +1181,12 @@ class C:
             print("func_or_args!=1")
             if all(isinstance(v, int) for v in func_or_args):
                 args = tuple(func_or_args)
-                self.func = lambda x, args=args: np.asarray(x)[:, list(args)] if np.asarray(x).ndim > 1 else np.asarray(x)
+                self.func = lambda x, args=args: np.asarray(x)[:, list(
+                    args)] if np.asarray(x).ndim > 1 else np.asarray(x)
             else:
                 # 多個非整數參數仍透過 __new__ 直接轉成 numpy 陣列
-                raise TypeError("C(...) only accepts multiple integer indices or a single callable/data argument")
+                raise TypeError(
+                    "C(...) only accepts multiple integer indices or a single callable/data argument")
 
     def __new__(cls, *func_or_args):
         # 如果傳入多於一個位置參數，且不是全部整數索引，就直接回傳沿 axis=0 堆疊的 numpy 陣列
@@ -1121,7 +1198,8 @@ class C:
             same_dtype = all(a.dtype == arrs[0].dtype for a in arrs)
             if same_shape and same_dtype:
                 try:
-                    return np.stack(arrs, axis=0)
+                    # return np.stack(arrs, axis=0)
+                    return np.column_stack(arrs, axis=0)
                 except Exception:
                     return np.array(arrs, dtype=object)
             else:
@@ -1130,7 +1208,9 @@ class C:
         return super().__new__(cls)
 
     # 基礎數學與邏輯運算子重載 (自動支援 常數 或 其他 C 物件 混合運算)
-    def _val(self, other, x): return other.func(x) if isinstance(other, C) else other
+    def _val(self, other, x): return other.func(
+        x) if isinstance(other, C) else other
+
     def _safe_compare(self, other, op):
         def parse_value(v):
             if isinstance(v, str):
@@ -1158,7 +1238,8 @@ class C:
                     b_arr = np.broadcast_to(b_arr, a_arr.shape)
                 except Exception:
                     if b_arr.size == 1:
-                        b_arr = np.full(a_arr.shape, b_arr.item(), dtype=object)
+                        b_arr = np.full(
+                            a_arr.shape, b_arr.item(), dtype=object)
                 flat_a = a_arr.ravel()
                 flat_b = b_arr.ravel()
                 out = np.zeros(flat_a.shape, dtype=bool)
@@ -1171,49 +1252,69 @@ class C:
                         out[idx] = False
                 return out.reshape(a_arr.shape)
         return C(compare)
-    def __add__(self, other): return C(lambda x: self.func(x) + self._val(other, x))
-    def __gt__(self, other):  return self._safe_compare(other, operator.gt)
-    def __lt__(self, other):  return self._safe_compare(other, operator.lt)
-    def __eq__(self, other):  return self._safe_compare(other, operator.eq)
-    def __and__(self, other): return C(lambda x: self.func(x) & self._val(other, x))
-    def __or__(self, other):  return C(lambda x: self.func(x) | self._val(other, x))
-    
+
+    def __add__(self, other): return C(
+        lambda x: self.func(x) + self._val(other, x))
+
+    def __gt__(self, other): return self._safe_compare(other, operator.gt)
+    def __lt__(self, other): return self._safe_compare(other, operator.lt)
+    def __eq__(self, other): return self._safe_compare(other, operator.eq)
+
+    def __and__(self, other): return C(
+        lambda x: self.func(x) & self._val(other, x))
+
+    def __or__(self, other): return C(
+        lambda x: self.func(x) | self._val(other, x))
+
     def __ne__(self, other):
-        if isinstance(other, (list, np.ndarray)): return C(lambda x: ~np.isin(self.func(x), other))
+        if isinstance(other, (list, np.ndarray)):
+            return C(lambda x: ~np.isin(self.func(x), other))
         return C(lambda x: self.func(x) != self._val(other, x))
-        
-    def __truediv__(self, other): 
+
+    def __truediv__(self, other):
         return C(lambda x: self.func(x) / np.where(self._val(other, x) == 0, 1, self._val(other, x)))
-    def __floordiv__(self, other): 
+
+    def __floordiv__(self, other):
         return C(lambda x: self.func(x) // np.where(self._val(other, x) == 0, 1, self._val(other, x)))
 
     # 擴充標準條件判斷
-    def isin(self, values):   return C(lambda x: np.isin(self.func(x), values))
-    def between(self, a, b):  return C(lambda x: (self.func(x) >= a) & (self.func(x) <= b))
+    def isin(self, values): return C(lambda x: np.isin(self.func(x), values))
+
+    def between(self, a, b): return C(lambda x: (
+        self.func(x) >= a) & (self.func(x) <= b))
 
     # 進階波形與數據特徵分析
-    #def argsort(self):        return lambda x: np.argsort(self.func(x).ravel())
-    def diff(self):           return C(lambda x: np.diff(self.func(x), axis=0, prepend=self.func(x)[:1]))
-    def norm(self):           return C(lambda x: np.linalg.norm(self.func(x), axis=1, keepdims=True) if x.ndim > 1 else np.abs(self.func(x)))
-    def is_up(self):          return C(lambda x: np.diff(self.func(x), axis=0, prepend=self.func(x)[:1]) > 0)
-    def is_down(self):        return C(lambda x: np.diff(self.func(x), axis=0, prepend=self.func(x)[:1]) < 0)
-    def roll(self, i):        return C(lambda x: np.roll(self.func(x), i, axis=0))
-    def tile(self, reps):     return C(lambda x: np.tile(self.func(x), reps))
+    # def argsort(self):        return lambda x: np.argsort(self.func(x).ravel())
+    def diff(self): return C(lambda x: np.diff(
+        self.func(x), axis=0, prepend=self.func(x)[:1]))
+
+    def norm(self): return C(lambda x: np.linalg.norm(self.func(x),
+                                                      axis=1, keepdims=True) if x.ndim > 1 else np.abs(self.func(x)))
+
+    def is_up(self): return C(lambda x: np.diff(
+        self.func(x), axis=0, prepend=self.func(x)[:1]) > 0)
+    def is_down(self): return C(lambda x: np.diff(
+        self.func(x), axis=0, prepend=self.func(x)[:1]) < 0)
+
+    def roll(self, i): return C(lambda x: np.roll(self.func(x), i, axis=0))
+    def tile(self, reps): return C(lambda x: np.tile(self.func(x), reps))
 
     def is_peak(self):
         def peak_logic(x):
             d = np.diff(self.func(x), axis=0, prepend=self.func(x)[:1])
-            nxt = np.append(np.diff(self.func(x), axis=0) < 0, np.array([[False]]), axis=0)
+            nxt = np.append(np.diff(self.func(x), axis=0) <
+                            0, np.array([[False]]), axis=0)
             return (d > 0) & nxt
         return C(peak_logic)
 
     def is_valley(self):
         def valley_logic(x):
             d = np.diff(self.func(x), axis=0, prepend=self.func(x)[:1])
-            nxt = np.append(np.diff(self.func(x), axis=0) > 0, np.array([[False]]), axis=0)
+            nxt = np.append(np.diff(self.func(x), axis=0) >
+                            0, np.array([[False]]), axis=0)
             return (d < 0) & nxt
         return C(valley_logic)
-    
+
     def unify(self):
         def unify_logic(x):
             val = self.func(x)
@@ -1235,20 +1336,20 @@ class C:
                     res.append(chunk.tolist())
             return res
         return C(neighbor)
-    
-    @staticmethod 
+
+    @staticmethod
     def get_segments_clean(cond_w, cond_a):
         """
         C.get_segments_clean(cond_w,cond_a)(array)。
         cond_a >cond_w的每一組 的連續段落
         """
         ins = np.searchsorted(cond_a, cond_w, side='right')
-        v = ins < len(cond_a)
+        v = ins < cond_a.size
         return C(lambda x, res=cond_a[ins[v]] - cond_w[v]: res)
-        # return C(lambda x, w=np.flatnonzero(w_cond.func(x)), a=np.flatnonzero(a_cond.func(x)): 
+        # return C(lambda x, w=np.flatnonzero(w_cond.func(x)), a=np.flatnonzero(a_cond.func(x)):
         #         a[np.searchsorted(a, w, side='right')[np.searchsorted(a, w, side='right') < len(a)]] - w[np.searchsorted(a, w, side='right') < len(a)])
 
-    @staticmethod 
+    @staticmethod
     def split_row(*args):
         """
         矩陣中的部分第一維合併
@@ -1269,9 +1370,9 @@ class C:
             # 2+ dim: standard row selection
             return xa[list(args), :]
         return C(selector)
-        
 
     # Gemini自殺式說法:延遲求值觸發點 # 講人話:延遲拿矩陣，可以一次性輸入單dict和多list
+
     def __call__(self, *array):
         """
         合併多個矩陣
@@ -1308,7 +1409,7 @@ class C:
 
 
 # 全新對應的過濾函數
-def find_array(array, cond,*sort_cols):
+def find_array(array, cond, *sort_cols):
     """
     # 列出符合條件的那些一列，一整筆值
     # cond= True/False 的布林索引陣列，也是整合後的條件，所以在外面先整理好多個條件在丟進來，不需要寫def get_mask!
@@ -1339,7 +1440,8 @@ def find_array(array, cond,*sort_cols):
             arr1 = np.array(elems, dtype=object)
             array_copy = arr1.reshape(1, -1)
         else:
-            lengths = [len(e) if hasattr(e, '__len__') and not isinstance(e, (str, bytes)) else 1 for e in elems]
+            lengths = [len(e) if hasattr(e, '__len__') and not isinstance(
+                e, (str, bytes)) else 1 for e in elems]
             max_len = max(lengths)
             cols = len(elems)
             mat = np.empty((max_len, cols), dtype=object)
@@ -1356,16 +1458,17 @@ def find_array(array, cond,*sort_cols):
     # 若傳入為一維陣列，統一升維為 (1, N)
     if getattr(array_copy, 'ndim', 1) == 1:
         array_copy = array_copy.reshape(1, -1)
-    if not isinstance(cond, C): 
+    if not isinstance(cond, C):
         raise ValueError(f"cond 必須是全新的 C 類別物件，而非 {type(cond)}")
-    #return array_copy[cond.func(array_copy)] # 判斷絕對正常! # 值[布林(條件)]
+    # return array_copy[cond.func(array_copy)] # 判斷絕對正常! # 值[布林(條件)]
     # 1. 取得過濾條件的原始布林遮罩 (大小與原始大矩陣一致)
     mask = cond.func(array_copy)
     # 2. 如果使用者有指定排序欄位
     if sort_cols and len(array_copy) > 0:
         # 🔥 核心修正：所有的排序特徵，一律使用「原始大矩陣 array_copy」來計算！
         # 這樣一來，不論是 diff()、is_peak() 還是基本的欄位，算出來的長度都跟原始大矩陣完美對齊。
-        keys = [c.func(array_copy) if isinstance(c, C) else C(c).func(array_copy) for c in sort_cols]
+        keys = [c.func(array_copy) if isinstance(c, C) else C(
+            c).func(array_copy) for c in sort_cols]
         # 3. 取得「原始大矩陣」物理排序後的整數索引
         sort_indices = np.lexsort(keys[::-1])
         # 4. 用排序索引去重組「大矩陣」與「布林遮罩」，讓兩者同步對齊
@@ -1375,6 +1478,8 @@ def find_array(array, cond,*sort_cols):
     return array_copy[mask]
 
 # 1. 安全全局外掛：只掛載 << 代替等號，絕對不碰 |，完美保護 find_array
+
+
 def _ext_lshift(self, other):
     try:
         col_index = self.func.__closure__[0].cell_contents
@@ -1384,9 +1489,12 @@ def _ext_lshift(self, other):
         except:
             col_index = 0
     return (col_index, other)
+
+
 C.__lshift__ = _ext_lshift  # 只有 << 被啟用，find_array 的條件整合（&, |）穩如泰山！
 
-def write_array(array,*modifications_tuple):
+
+def write_array(array, *modifications_tuple):
     """
     , 多個欄位
     << 算式
@@ -1397,46 +1505,51 @@ def write_array(array,*modifications_tuple):
         )
     """
     # 2. 處理資料合併好的種類 (Dict 轉 NumPy)
-    if isinstance(array, dict): 
+    if isinstance(array, dict):
         array = np.array(list(array.values()), dtype=object)
 
     # 2. 遍歷傳入的多個修改組合包 (透過 *modifications 接收，用逗號隔開即可)
     for mod in modifications_tuple:
         if not isinstance(mod, tuple) or len(mod) != 2:
             raise ValueError("每個修改項目必須由 C(col) << 算式 組成")
-            
+
         col, expression = mod
         # 3. 泛用性強化：如果右邊是普通的常數/矩陣，自動包裝成 C 物件以便求值
         if not isinstance(expression, C):
             expression = C(expression)
-            
+
         # 4. 執行計算與寫入
         calculated_value = expression.func(array)
-        
+
         # 5. 形狀安全對齊：如果計算結果是單一欄位且跟原陣列高度一致，精準寫入
         if isinstance(calculated_value, np.ndarray) and calculated_value.ndim > 1 and calculated_value.shape[1] == 1:
             array[:, [col]] = calculated_value
         else:
             # 否則拉平寫入，啟動 NumPy 原生廣播
-            array[:, col] = calculated_value.ravel() if hasattr(calculated_value, 'ravel') else calculated_value
-            
+            array[:, col] = calculated_value.ravel() if hasattr(
+                calculated_value, 'ravel') else calculated_value
+
     return array
-         
+
 
 # 優化代碼方式:可能是看堆積在哪處，內部的編譯器讀取代碼文字，然後我丟進矩陣分析，得到重複的自定義變數(含def class) 功能(條件 樣式) 註解紀錄耗時
 
 
 def hide_file_windows(file_path):
     FILE_ATTRIBUTE_HIDDEN = 0x02
-    ret = ctypes.windll.kernel32.SetFileAttributesW(str(file_path), FILE_ATTRIBUTE_HIDDEN)
+    ret = ctypes.windll.kernel32.SetFileAttributesW(
+        str(file_path), FILE_ATTRIBUTE_HIDDEN)
     if not ret:
         raise ctypes.WinError()
 
+
 def unhide_file_windows(file_path):
     FILE_ATTRIBUTE_NORMAL = 0x80
-    ret = ctypes.windll.kernel32.SetFileAttributesW(str(file_path), FILE_ATTRIBUTE_NORMAL)
+    ret = ctypes.windll.kernel32.SetFileAttributesW(
+        str(file_path), FILE_ATTRIBUTE_NORMAL)
     if not ret:
         raise ctypes.WinError()
+
 
 def watchdog():
     while True:
@@ -1445,91 +1558,115 @@ def watchdog():
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             cv2.imwrite(f"debug_{ts}.png", get_screenshot())
             回覆(f"[Watchdog] 主線程可能卡死，已保存 debug_{ts}.png")
-        alive_event.clear() # 重置，等待下一波心跳
+        alive_event.clear()  # 重置，等待下一波心跳
 
 # 在 engine.load 之前定義一個物理心跳
+
+
 def send_heartbeat():
     alive_event.set()
     # 這裡可以順便觸發 Noesis 的低壓掃描
-    # 編織關係() # 編織關係 
+    # 編織關係() # 編織關係
 
-def get_screenshot(color= cv2.COLOR_RGB2BGR,size=1,Langs=None):
+
+def get_screenshot(color=cv2.COLOR_RGB2BGR, size=1, Langs=None):
     """
     截取全屏並轉成OpenCV圖像  RGB → BGR ，給語言字典LANGS就給分析出的文字
     color 色彩格式，size 縮放大小，Langs語言字典
     """
-    imgs = cv2.cvtColor(np.array(ImageGrab.grab()), color) 
-    img_large = cv2.resize(imgs, (0, 0), fx=size, fy=size, interpolation=cv2.INTER_CUBIC)
+    imgs = cv2.cvtColor(np.array(ImageGrab.grab()), color)
+    img_large = cv2.resize(imgs, (0, 0), fx=size, fy=size,
+                           interpolation=cv2.INTER_CUBIC)
     if Langs == LANGS:
-        data = pytesseract.image_to_data(img_large, lang=Langs, output_type=pytesseract.Output.DICT)
+        data = pytesseract.image_to_data(
+            img_large, lang=Langs, output_type=pytesseract.Output.DICT)
         return data
     return img_large
-     
-def selected(keyword,sort=1,num=1,classA=None):
+
+
+def selected(keyword, sort=1, num=1, classA=None):
     """找字"""
     dir = TEMPLATE_DIRS["live_capture"]
     if isinstance(keyword, list):
         kw = [str(k).lower().strip() for k in keyword]
     else:
         kw = [str(keyword).lower().strip()]
-    data=None
-    screen_img = get_screenshot() 
+    data = None
+    screen_img = get_screenshot()
     # 2. 現場跑一次放大 2 倍的 OCR，建立獨立的文字數據源
-    img_large = cv2.resize(screen_img, (0, 0), fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
-    data = pytesseract.image_to_data(img_large, lang=LANGS, output_type=pytesseract.Output.DICT)
-    final_pts = [] 
-    #{ 39
-    #'level':   [1, 2, 3, 4, 5, 5],       # 階層 (網頁/段落/行/字)
-    #'page_num': [1, 1, 1, 1, 1, 1],      # 頁碼
-    #'block_num':[1, 1, 1, 1, 1, 1],      # 區塊編號
-    #'par_num':  [1, 1, 1, 1, 1, 1],      # 段落編號
-    #'line_num': [1, 1, 1, 1, 1, 1],      # 行編號
-    #'word_num': [0, 0, 0, 0, 1, 2],      # 字編號
-    #'left':     [0, 20, 20, 20, 20, 80],  # 左上角 X 座標
-    #'top':      [0, 15, 15, 15, 15, 15],  # 左上角 Y 座標
-    #'width':    [200, 150, 150, 150, 50, 60], # 寬度
-    #'height':   [100, 30, 30, 30, 30, 30], # 高度
-    #'conf':     [-1, -1, -1, -1, 95, 88], # 辨識信心度 (-1 代表空行或區塊開頭)
-    #'text':     ['', '', '', '', 'hello', 'world'] # 辨識出的文字
-    #}
-    回覆(f"找字中...{np.array(list(data.values()))[list((10,5,6,7,8,9)),:]}") # OK
-    #回覆(f"找字中...{np.array(list(data.values()))[:,list((10,5,6,7,8,9))]}") #
+    img_large = cv2.resize(screen_img, (0, 0), fx=2, fy=2,
+                           interpolation=cv2.INTER_CUBIC)
+    data = pytesseract.image_to_data(
+        img_large, lang=LANGS, output_type=pytesseract.Output.DICT)
+    final_pts = []
+    # { 39
+    # 'level':   [1, 2, 3, 4, 5, 5],       # 階層 (網頁/段落/行/字)
+    # 'page_num': [1, 1, 1, 1, 1, 1],      # 頁碼
+    # 'block_num':[1, 1, 1, 1, 1, 1],      # 區塊編號
+    # 'par_num':  [1, 1, 1, 1, 1, 1],      # 段落編號
+    # 'line_num': [1, 1, 1, 1, 1, 1],      # 行編號
+    # 'word_num': [0, 0, 0, 0, 1, 2],      # 字編號
+    # 'left':     [0, 20, 20, 20, 20, 80],  # 左上角 X 座標
+    # 'top':      [0, 15, 15, 15, 15, 15],  # 左上角 Y 座標
+    # 'width':    [200, 150, 150, 150, 50, 60], # 寬度
+    # 'height':   [100, 30, 30, 30, 30, 30], # 高度
+    # 'conf':     [-1, -1, -1, -1, 95, 88], # 辨識信心度 (-1 代表空行或區塊開頭)
+    # 'text':     ['', '', '', '', 'hello', 'world'] # 辨識出的文字
+    # }
+    找字中 = np.array(list(data.values()))[list((10, 5, 6, 7, 8, 9)), :]
+    # 回覆(f"找字中...{np.array(list(data.values()))[:,list((10,5,6,7,8,9))]}") #
+    回覆(f"找字中...:{找字中}")  # OK
+    # 找到的字=找字中
+    回覆(f"找到的字:{find_array(找字中,(C(5)  > 50) & (C(0)==kw) ) }，和 text_pts 不同則為異常")
     # 最高強度的相似度比對，當場撈出最新 X, Y 坐標
-    # 10:text, 5:left, 6:top, 7:width, 8:height, 9:conf    
-    #C(0,1,2,3,4)(C.split_row(10,5,6,7,8,9))(data) IndexError: too many indices for array: array is 0-dimensional, but 2 were indexed
-    #C(0,1,2,3,4)(C.split_row(10,5,6,7,8,9)(data)) IndexError: too many indices for array: array is 0-dimensional, but 2 were indexed
-    text_pts_data=C(0,1,2,3,4,5)(C.split_row(10,5,6,7,8,9)(data)) #TODO:*****
+    # 10:text, 5:left, 6:top, 7:width, 8:height, 9:conf
+    # C(0,1,2,3,4)(C.split_row(10,5,6,7,8,9))(data) IndexError: too many indices for array: array is 0-dimensional, but 2 were indexed
+    # C(0,1,2,3,4)(C.split_row(10,5,6,7,8,9)(data)) IndexError: too many indices for array: array is 0-dimensional, but 2 were indexed
+    text_pts_data = C(0, 1, 2, 3, 4, 5)(
+        C.split_row(10, 5, 6, 7, 8, 9)(data))  # TODO:*****
     print(f"text_pts_data C(10,5,6,7,8,9):{text_pts_data}")
-    print(f"find_array(text_pts_data,C(5)>50) :{find_array(text_pts_data,C(5)>50)}")
+    print(
+        f"find_array(text_pts_data,C(5)>50) :{find_array(text_pts_data,C(5)>50)}")
     print(f"kw :{kw}")
-    print(f"find_array(text_pts_data,C(0)==kw) :{find_array(text_pts_data,C(0)==kw)}")
-    #print(f"text_pts_data>50:{find_array(text_pts_data.astype(int),C(5) >50)}")
-    text_pts  = find_array(text_pts_data,(C(5)  > 50) & (C(0).isin(kw)) ) 
+    print(
+        f"1505L:find_array(text_pts_data,C(0)==kw) :{find_array(text_pts_data,C(0)== kw)}")
+    # print(f"1506L:find_array(text_pts_data,C(0)==kw) :{find_array(text_pts_data,C(0) in list(kw))}")
+    print(f"text_pts_data>50:{find_array(text_pts_data.astype(int),C(5) >50)}")
+    text_pts = find_array(text_pts_data, (C(5) > 50) & (C(0) == kw))
     print(f"text_pts:{text_pts}")
-    if len(text_pts)>0:
+    if text_pts.size > 0:
         write_array(text_pts,
-            C(1)<<((C(1) + (C(3)//2)) //2),
-            C(2)<<((C(2) + (C(4)//2)) //2)
-            )
-        回覆("找到字")
-        final_pts.extend(C.split_row(1,2)(text_pts))
+                    C(1) << ((C(1) + (C(3)//2)) // 2),
+                    C(2) << ((C(2) + (C(4)//2)) // 2)
+                    )
+        回覆(f"找到字:{C(0,1)(text_pts)}")
+        final_pts.extend(C.split_row(1, 2)(text_pts))
     else:
         回覆("找不到字")
 
-    回覆("找圖中...") 
-    start_time = time.time()  
-    #回覆(dir,str(kw)) # C:\Users\USER\.UIA\Live_capture ['一']
-    #回覆(dir/str(kw[0])) # C:\Users\USER\.UIA\Live_capture\一
-    #回覆(path_all(dir,target=str(kw[0]))) # 
-    #回覆(C.split_row(0)(path_all(dir,target=str(kw[0])))) #  [[WindowsPath('C:/Users/USER/.UIA/Live_capture') list([])     list(['一.png', "['一\x80'].png"])   list([os.stat_result(st_mode=33206, st_ino=17169973579498184, st_dev=17326617433796151764, st_nlink=1, st_uid=0, st_gid=0, st_size=1309500, st_atime=1779864286, st_mtime=1779864286, st_ctime=1779863988), os.stat_result(st_mode=33206, st_ino=97108866965520376, st_dev=17326617433796151764, st_nlink=1, st_uid=0, st_gid=0, st_size=1546652, st_atime=1779889582, st_mtime=1779889582, st_ctime=1779889582)])]]
-    #快取圖=C(0,2)(path_all(dir,target=str(kw[0]))) # TODO:***** [list(['一.png', "['一\x80'].png"])]
+    回覆("找圖中...")
+    start_time = time.time()
+    # 回覆(dir,str(kw)) # C:\Users\USER\.UIA\Live_capture ['一']
+    # 回覆(dir/str(kw[0])) # C:\Users\USER\.UIA\Live_capture\一
+    # 回覆(path_all(dir,target=str(kw[0]))) #
+    # 回覆(C.split_row(0)(path_all(dir,target=str(kw[0])))) #  [[WindowsPath('C:/Users/USER/.UIA/Live_capture') list([])     list(['一.png', "['一\x80'].png"])   list([os.stat_result(st_mode=33206, st_ino=17169973579498184, st_dev=17326617433796151764, st_nlink=1, st_uid=0, st_gid=0, st_size=1309500, st_atime=1779864286, st_mtime=1779864286, st_ctime=1779863988), os.stat_result(st_mode=33206, st_ino=97108866965520376, st_dev=17326617433796151764, st_nlink=1, st_uid=0, st_gid=0, st_size=1546652, st_atime=1779889582, st_mtime=1779889582, st_ctime=1779889582)])]]
+    # 快取圖=C(0,2)(path_all(dir,target=str(kw[0]))) # TODO:***** [list(['一.png', "['一\x80'].png"])]
     # [WindowsPath('C:/Users/USER/.UIA/Live_capture')]
-    快取圖=C.split_row(0,2)(path_all(dir,target=kw))
+    快取圖 = list(C.split_row(0, 2)(path_all(dir, target=kw)))
     # 複製圖片
-    if any(快取圖):
-        回覆(f"找到 快取圖:{快取圖}")
-        img_pts = write_array(快取圖, 全能ORB( C(0)/C(1), screen_img, ratio=0.9))  # 轉換成座標 特徵點位置 # 去掉 不明顯相似的
-        if next(img_pts):
+    if len(快取圖[1]) > 0:
+        # 回覆(f"list(C(0)(快取圖)):{list(C(0)(快取圖))}") # C()無效
+        回覆(f"快取圖:{快取圖}")
+        回覆(f"快取圖.path:{ 快取圖[0]}")  # 失效，沒有陣列， for p in 快取圖[0]
+        回覆(f"快取圖.f:{[ f for f in  快取圖[1] ]}")
+        # f"{快取圖[0]}\\{f}" = 快取圖[0]/f
+        回覆(f"p/f:{[f"{快取圖[0]}\\{f}" for f in 快取圖[1]]}")
+
+        # for p in 快取圖[0]: # 失效
+        img_pts = [全能ORB(快取圖[0]/f, screen_img, ratio=0.9)
+                   for f in 快取圖[1]]  # 轉換成座標 特徵點位置 # 去掉 不明顯相似的
+        if len(img_pts) > 0:
+            # 回覆(f"img_pts:{img_pts}")
             final_pts.extend(C(0)(img_pts))
         else:
             回覆("圖片找不到相似的")
@@ -1541,7 +1678,13 @@ def selected(keyword,sort=1,num=1,classA=None):
         TargetExtractor().select_polygon_roi(name=kw)
         return None
     else:
-        final_pts.sort(key=lambda p: (p[0], p[1]))
+        # 回覆(f"final_pts:{final_pts}")
+        # final_pts.sort(key=lambda p: (p[0], p[1])) # NO， *** 可能是參考圖有很多是無效的
+        # NO， *** 可能是參考圖有很多是無效的
+        final_pts.sort(key=lambda p: (p[0].pt[0], p[0].pt[1]))
+        回覆(f"final_pts_kp:{[p[0] for p in final_pts]}")
+        回覆(f"final_pts_des:{np.array([p[1] for p in final_pts])}")
+
         if sort == "奇數":
             final_pts = final_pts[::2]
         elif sort == "偶數":
@@ -1553,12 +1696,11 @@ def selected(keyword,sort=1,num=1,classA=None):
         # 處理 num(正數取前 num，負數取倒數 abs(num)）
         if num != 1:
             final_pts = final_pts[:num] if num > 0 else final_pts[num:]
-    回覆(final_pts)
-    return final_pts
-                
-              
+    回覆(f"final_pts_kp:{[p[0] for p in final_pts]}")
+    return final_pts  # *** 失效，還不確定有沒有正確處理，接收到的座標(已經是螢幕上的座標)
 
-#def 地點分配():
+
+# def 地點分配():
 #    # *** classA 似乎在這一行開始不通用了，使用到 Geocoding
 #    # *** firebase 用戶儲存的起點地址 addrStart
 #    def UID():
@@ -1643,19 +1785,18 @@ def selected(keyword,sort=1,num=1,classA=None):
 #            if info["distance"] >= FAR_DISTANCE
 #        ]
 #        manifest = [manifest_near, manifest_far]
-        # *** goods 排列在有限空間，計算manifest難度 排序
-        # 4️⃣ 上傳 Firebase
-        # manifest 上傳給firebase，manifest中最難的給最早請求的用戶 # *** firebase 分發給用戶，用戶如何獲取 manifest
+    # *** goods 排列在有限空間，計算manifest難度 排序
+    # 4️⃣ 上傳 Firebase
+    # manifest 上傳給firebase，manifest中最難的給最早請求的用戶 # *** firebase 分發給用戶，用戶如何獲取 manifest
 
-        # firestore.client().document("manifest").add(manifest)
+    # firestore.client().document("manifest").add(manifest)
 
-        # *** 繪製路線圖並記錄指南針方向，旋轉地圖時路線圖與地圖的指南針向量 矯正
-        # *** 指南針計算(一維)
-        # Routing API給最佳真實路線
+    # *** 繪製路線圖並記錄指南針方向，旋轉地圖時路線圖與地圖的指南針向量 矯正
+    # *** 指南針計算(一維)
+    # Routing API給最佳真實路線
 
 
-
-def click(pos): 
+def click(pos):
     if pos is None:
         回覆("❌ 錯誤：找不到目標座標，無法點擊")
         return
@@ -1664,27 +1805,26 @@ def click(pos):
     pyautogui.moveTo(*pos, duration=0.2)
     pyautogui.click()
     time.sleep(0.1)
-    
-from firebase_admin import credentials, auth
 
-def OverridingTechniques(cover_png=None,png_root=None,using=False):
+
+def OverridingTechniques(cover_png=None, png_root=None, using=False):
     # 資料夾結構儲存:[語意輪廓(root) , 操作傾向(files.name/無操作) ,dirs(條件、目的、結果)]
     # 觸發使用:
-        # 低啟動門檻: 資源(工具)、操作傾向(重複性高、耗時短)、語意的目的(系統簡單)
-        # 高競爭壓制其餘選擇(影響範圍): 操作傾向(時程不重疊性)、資源和屬性ORB(資源空氣(可量化/注意力、金錢、社交資源)、空間位置)
-        # 高匹配率(可使用工具): 語意的資源(外貿、影響力(不可量化/社交、權威、群體效應))、 操作傾向、目的(相似度)、用戶的詳細資訊(情緒、體力可消耗) 
-        # 強執行慣性(未來性:自動連續、連鎖效應、累積價值)
-            # 語意的條件、結果、成與敗、不適合情境
-        # Noesis如何用被覆蓋的技巧、用戶如何直觀地用被覆蓋的技巧
-    def sorted_data(f,a):
-        return sorted([ read_json_content(r,ff,a) for ff in f])
+    # 低啟動門檻: 資源(工具)、操作傾向(重複性高、耗時短)、語意的目的(系統簡單)
+    # 高競爭壓制其餘選擇(影響範圍): 操作傾向(時程不重疊性)、資源和屬性ORB(資源空氣(可量化/注意力、金錢、社交資源)、空間位置)
+    # 高匹配率(可使用工具): 語意的資源(外貿、影響力(不可量化/社交、權威、群體效應))、 操作傾向、目的(相似度)、用戶的詳細資訊(情緒、體力可消耗)
+    # 強執行慣性(未來性:自動連續、連鎖效應、累積價值)
+    # 語意的條件、結果、成與敗、不適合情境
+    # Noesis如何用被覆蓋的技巧、用戶如何直觀地用被覆蓋的技巧
+    def sorted_data(f, a):
+        return sorted([read_json_content(r, ff, a) for ff in f])
 
     if using:
         def UID():
             cred = credentials.Certificate("path/to/serviceAccountKey.json")
             firebase_admin.initialize_app(cred)
             # 2. 驗證從前端傳來的 ID Token
-            id_token= input("請輸入ID: ").strip()
+            id_token = input("請輸入ID: ").strip()
             try:
                 decoded_token = auth.verify_id_token(id_token)
                 uid = decoded_token['uid']
@@ -1692,41 +1832,50 @@ def OverridingTechniques(cover_png=None,png_root=None,using=False):
             except Exception as e:
                 回覆("驗證失敗：", e)
 
-        if UID(): # TODO:**驗證是否為用戶?
-            found1=path_all(TEMPLATE_DIRS["User"],"被覆蓋的技巧")
+        if UID():  # TODO:**驗證是否為用戶?
+            found1 = path_all(TEMPLATE_DIRS["User"], "被覆蓋的技巧")
             # 在用戶說 技巧(直覺)甚麼之前，就先判斷出，並處理，不要馬後炮
-            attributes=path_all(TEMPLATE_DIRS["attributes"])
-            communication=path_all(TEMPLATE_DIRS["communication"])
+            attributes = path_all(TEMPLATE_DIRS["attributes"])
+            communication = path_all(TEMPLATE_DIRS["communication"])
             # 1. 邏輯死胡同的「突然沉默」 (The Cognitive Gap)
-                # 對話節奏從「碎碎念」變成「停頓」。資訊密度的「驟降」。
-                # 名詞頻率。  
+            # 對話節奏從「碎碎念」變成「停頓」。資訊密度的「驟降」。
+            # 名詞頻率。
             if next(attributes) and next(communication):
-                for r,d,f in attributes:
-                    comm_sorted = sorted(communication, key=lambda x: x[2].stat().st_ctime)
-                    nouns_f = [a for a in comm_sorted for b in attributes if 全能ORB(a[2],b[2],similar=0.9)] # TODO:***要檢查詞性
-                    prons_f = [a for a in comm_sorted for b in attributes if 全能ORB(a[2],b[2],similar=0.9)] # TODO:***要檢查詞性
-                    if not nouns_f or not prons_f: continue
-                    n = np.array(sorted([r/ f.stat().st_ctime for r,_,f in nouns_f])) # 名詞時間戳
-                    p = np.array(sorted([r/ f.stat().st_ctime for r,_,f in prons_f])) # 代名詞時間戳
+                for r, d, f in attributes:
+                    comm_sorted = sorted(
+                        communication, key=lambda x: x[2].stat().st_ctime)
+                    nouns_f = [a for a in comm_sorted for b in attributes if 全能ORB(
+                        a[2], b[2], similar=0.9)]  # TODO:***要檢查詞性
+                    prons_f = [a for a in comm_sorted for b in attributes if 全能ORB(
+                        a[2], b[2], similar=0.9)]  # TODO:***要檢查詞性
+                    if not nouns_f or not prons_f:
+                        continue
+                    n = np.array(
+                        sorted([r / f.stat().st_ctime for r, _, f in nouns_f]))  # 名詞時間戳
+                    p = np.array(
+                        sorted([r / f.stat().st_ctime for r, _, f in prons_f]))  # 代名詞時間戳
 
-                    對話節奏變慢索引=np.argmin(np.abs(np.diff(n)))# 靠近最新的對話，對話節奏中變慢的時間段
+                    # 靠近最新的對話，對話節奏中變慢的時間段
+                    對話節奏變慢索引 = np.argmin(np.abs(np.diff(n)))
                     重點時間點 = nouns_f[對話節奏變慢索引]
             # 2. 語氣從「發散」轉為「收斂」 (Focus Narrowing)
                 # 問題的層級突然從「廣度」縮減到「深度」。語法結構的「破碎化」 語言區還沒跟上，只能先用代名詞「佔位」。
                 # 上下文的資訊熵
-                    資訊熵偏移 = np.mean(p) / (np.mean(n) + 1e-5) 
+                    資訊熵偏移 = np.mean(p) / (np.mean(n) + 1e-5)
                     # 計算代名詞與名詞權重比的「突變程度」
                     資訊熵偏移 = p / (n + 1e-5)
                     # 閾值 = 全域平均值 + 兩倍標準差 (統計學上的異常跳變)
                     threshold = np.mean(資訊熵偏移) + 2 * np.std(資訊熵偏移)
-                    if 資訊熵偏移[-1] > threshold and len(f) > 對話節奏變慢索引: # 偵測到收斂訊號
+                    if 資訊熵偏移[-1] > threshold and len(f) > 對話節奏變慢索引:  # 偵測到收斂訊號
                         # 這就是「語言區跟不上直覺」的瞬間
                         # 抓取這個跳變點之後的第一個名詞
                         target_idx = np.argmax(n[對話節奏變慢索引+1:]) + 對話節奏變慢索引 + 1
                         # 直覺標的應該是具體的檔案物件（或包裹成列表）
-                        直覺標的 = [nouns_f[target_idx][1]] 
+                        直覺標的 = [nouns_f[target_idx][1]]
                         for a in 直覺標的:
-                            shutil.copy2(make_folder(TEMPLATE_DIRS["User"]/"直覺要用的"),a) # TODO:** 直覺前兆觸發！抓到的『東西』
+                            # TODO:** 直覺前兆觸發！抓到的『東西』
+                            shutil.copy2(make_folder(
+                                TEMPLATE_DIRS["User"]/"直覺要用的"), a)
             # 3. 主詞與語態的「確定性偏移」 (Certainty Shift)
                 # 語氣變得短促且篤定。語氣的「重音轉移」從「詢問/討論」變成「宣告」。
                 # 延遲一段時間後，使用絕對肯定詞 「沉默」之後出現的第一個「名詞」視為直覺的導向標的。
@@ -1734,90 +1883,106 @@ def OverridingTechniques(cover_png=None,png_root=None,using=False):
                         直覺導向標的 = nouns_f[對話節奏變慢索引 + 1]
                         # 輸出抓到的直覺本體（檔案名稱通常代表該詞）
                         for a in 直覺導向標的:
-                            shutil.copy2(make_folder(TEMPLATE_DIRS["User"]/"直覺要用的"),a) # TODO:** 捕捉到直覺實體
+                            # TODO:** 捕捉到直覺實體
+                            shutil.copy2(make_folder(
+                                TEMPLATE_DIRS["User"]/"直覺要用的"), a)
         else:
-            found1=path_all(TEMPLATE_DIRS["Noesis"],"被覆蓋的技巧")
-            found2=path_all(TEMPLATE_DIRS["Noesis"]/"直覺要用的")
+            found1 = path_all(TEMPLATE_DIRS["Noesis"], "被覆蓋的技巧")
+            found2 = path_all(TEMPLATE_DIRS["Noesis"]/"直覺要用的")
         if next(found1) and next(found2):
-            sorce=1
-            直覺=found2[1]
-            for r,f in found1:
-                # 低啟動門檻: 
+            sorce = 1
+            直覺 = found2[1]
+            for r, f in found1:
+                # 低啟動門檻:
                 if "低啟動門檻" in 直覺:
-                    資源= sorted_data(f,"資源")
+                    資源 = sorted_data(f, "資源")
                     if next(資源):
-                        sorce*= float(len(資源) % 10) / 5.0 # 資源(工具)
-                    操作傾向= sorted_data(f,"操作傾向")
+                        sorce *= float(len(資源) % 10) / 5.0  # 資源(工具)
+                    操作傾向 = sorted_data(f, "操作傾向")
                     if next(操作傾向):
-                        sorce*=np.log1p(len(操作傾向)) # 操作傾向(重複性高、耗時短)
-                    目的= sorted_data(f,"目的")
+                        sorce *= np.log1p(len(操作傾向))  # 操作傾向(重複性高、耗時短)
+                    目的 = sorted_data(f, "目的")
                     if next(目的):
-                        sorce*= 1.0 / (np.sqrt(len(目的)) + 1.0) # 語意的目的(系統簡單)
+                        sorce *= 1.0 / (np.sqrt(len(目的)) + 1.0)  # 語意的目的(系統簡單)
                 # 高競爭壓制其餘選擇(影響範圍):
                 if "高競爭壓制其餘選擇" in 直覺:
-                    資源= sorted_data(f,"資源")
+                    資源 = sorted_data(f, "資源")
                     if next(資源):
-                        sorce*= np.linalg.norm(資源) if hasattr(資源, "__len__") else 1.5 # 操作傾向(時程不重疊性)
-                    操作傾向= sorted_data(f,"操作傾向")
+                        # 操作傾向(時程不重疊性)
+                        sorce *= np.linalg.norm(資源) if hasattr(資源,
+                                                               "__len__") else 1.5
+                    操作傾向 = sorted_data(f, "操作傾向")
                     if next(操作傾向):
-                        sorce *= np.count_nonzero(操作傾向) if isinstance(操作傾向, np.ndarray) else 1.2 # 操作傾向(時程不重疊性)
-                    目的= sorted_data(f,"目的")
+                        # 操作傾向(時程不重疊性)
+                        sorce *= np.count_nonzero(操作傾向) if isinstance(操作傾向,
+                                                                      np.ndarray) else 1.2
+                    目的 = sorted_data(f, "目的")
                     if next(目的):
-                        sorce *= np.mean(目的) if isinstance(目的, (list, np.ndarray)) else 1.1 # 資源和屬性ORB(資源空氣(可量化/注意力、金錢、社交資源)、空間位置)
+                        # 資源和屬性ORB(資源空氣(可量化/注意力、金錢、社交資源)、空間位置)
+                        sorce *= np.mean(目的) if isinstance(目的,
+                                                           (list, np.ndarray)) else 1.1
                 # 高匹配率(可使用工具):
                 if "高匹配率" in 直覺:
-                    資源= sorted_data(f,"資源")
+                    資源 = sorted_data(f, "資源")
                     if next(資源):
-                        sorce*= float(len(資源) % 10) / 5.0 # 語意的資源(外貿、影響力(不可量化/社交、權威、群體效應))
-                    操作傾向= sorted_data(f,"操作傾向")
+                        # 語意的資源(外貿、影響力(不可量化/社交、權威、群體效應))
+                        sorce *= float(len(資源) % 10) / 5.0
+                    操作傾向 = sorted_data(f, "操作傾向")
                     if next(操作傾向):
-                        sorce *= np.std(操作傾向) + 1.0 # 操作傾向
-                    目的= sorted_data(f,"目的")
+                        sorce *= np.std(操作傾向) + 1.0  # 操作傾向
+                    目的 = sorted_data(f, "目的")
                     if next(目的):
-                        sorce *= np.exp(np.clip(len(目的)/5.0, 0, 2)) # 目的(相似度)
-                    用戶的詳細資訊= sorted_data(f,"用戶的詳細資訊")
+                        sorce *= np.exp(np.clip(len(目的)/5.0, 0, 2))  # 目的(相似度)
+                    用戶的詳細資訊 = sorted_data(f, "用戶的詳細資訊")
                     if next(用戶的詳細資訊):
-                        sorce*=np.exp(用戶的詳細資訊) # 用戶的詳細資訊(情緒、體力可消耗)
+                        sorce *= np.exp(用戶的詳細資訊)  # 用戶的詳細資訊(情緒、體力可消耗)
                 # 強執行慣性(未來性):
                 if "強執行慣性" in 直覺:
-                    語意的條件= sorted_data(f,"語意的條件")
+                    語意的條件 = sorted_data(f, "語意的條件")
                     if next(語意的條件):
-                        sorce *= np.log1p(len(語意的條件)) # 自動連續
+                        sorce *= np.log1p(len(語意的條件))  # 自動連續
                     for tag in ["成與敗", "不適合情境"]:
                         資料 = sorted_data(f, tag)
                         if next(資料, None):
-                            sorce *= np.tanh(len(資料)) + 1.0 # 累積價值
-                    動作衝突= sorted_data(f,"動作衝突")
+                            sorce *= np.tanh(len(資料)) + 1.0  # 累積價值
+                    動作衝突 = sorted_data(f, "動作衝突")
                     if next(動作衝突):
-                        sorce *= (1.0 + (float(len(動作衝突)) / 10.0))  # 自動連續 # 借力使力，增益倍率 10%
-                    結果= sorted_data(f,"結果")
+                        sorce *= (1.0 + (float(len(動作衝突)) / 10.0)
+                                  )  # 自動連續 # 借力使力，增益倍率 10%
+                    結果 = sorted_data(f, "結果")
                     if next(結果):
-                        sorce *= np.prod(np.atleast_1d(結果)) # 連鎖效應
-                    目的= sorted_data(f,"目的")
+                        sorce *= np.prod(np.atleast_1d(結果))  # 連鎖效應
+                    目的 = sorted_data(f, "目的")
                     if next(目的):
-                        sorce *= np.prod(np.atleast_1d(目的)) # 連鎖效應
-            
+                        sorce *= np.prod(np.atleast_1d(目的))  # 連鎖效應
+
     # TODO:***誰更替圖片才符合 被覆蓋的技巧
     # TODO:***寫在哪裡才符合 更新狀態值
     if cover_png is not None and png_root is not None:
-        time_schedule=read_json_content(png_root,"time_schedule") # 目標,目標危險,目標進度,動作危險
-        content={ 
-            "資源": 全能ORB([row[2] for row in path_all(png_root,target="_ 必定使用的資源".png)]), # 條件
-            "成與敗": 全能ORB([row[2] for row in path_all(png_root,target="_ 成功與失敗的情境".png)]), # 條件
-            "不適合情境": 全能ORB([row[2] for row in path_all(png_root,target="_ 不適用的情境".png)]), # 條件
-            "動作衝突": 全能ORB([row[2] for row in path_all(png_root,target="_ 動作衝突或限制".png)]), # 條件
+        time_schedule = read_json_content(
+            png_root, "time_schedule")  # 目標,目標危險,目標進度,動作危險
+        content = {
+            # 條件
+            "資源": 全能ORB([row[2] for row in path_all(png_root, target="_ 必定使用的資源".png)]),
+            # 條件
+            "成與敗": 全能ORB([row[2] for row in path_all(png_root, target="_ 成功與失敗的情境".png)]),
+            # 條件
+            "不適合情境": 全能ORB([row[2] for row in path_all(png_root, target="_ 不適用的情境".png)]),
+            # 條件
+            "動作衝突": 全能ORB([row[2] for row in path_all(png_root, target="_ 動作衝突或限制".png)]),
             # row[2] 只存（Index 2）比起[:,2]整個 path_all 轉成 np.array，記憶體佔用會小很多。
-            "建立時間":(png_root/ cover_png).stat().st_ctime,
-            "目的":time_schedule[0],
-            "操作傾向":全能ORB(cover_png), 
-            "結果":time_schedule[2],
+            "建立時間": (png_root / cover_png).stat().st_ctime,
+            "目的": time_schedule[0],
+            "操作傾向": 全能ORB(cover_png),
+            "結果": time_schedule[2],
         }
         make_json_content(
-            file_path=png_root/make_folder(png_root), # 語意輪廓
-            file_name="被覆蓋的技巧", # json
-            content=content 
-        ) 
-        
+            file_path=png_root/make_folder(png_root),  # 語意輪廓
+            file_name="被覆蓋的技巧",  # json
+            content=content
+        )
+
+
 class StateMgr:
     __slots__ = ("_states",)
     """
@@ -1832,10 +1997,11 @@ class StateMgr:
         自己記得找不到的對像的狀態。
         重複新增狀態
     """
-    #　TODO:***同步創建資料夾後的腳本就是神經突觸，向上接收，向鄰居輸入輸出
-        # 先付給時間差，接觸，反應，吞噬，融合成共生，代謝非吸收物
-        # 先付給光，聚合物體，感光，視力，針孔鏡像，成像精細度，物體大小因精細度而看不見，自然無法對看不見的實體輸出入。
+    # 　TODO:***同步創建資料夾後的腳本就是神經突觸，向上接收，向鄰居輸入輸出
+    # 先付給時間差，接觸，反應，吞噬，融合成共生，代謝非吸收物
+    # 先付給光，聚合物體，感光，視力，針孔鏡像，成像精細度，物體大小因精細度而看不見，自然無法對看不見的實體輸出入。
     # 最底層心跳(執行)最快，向旁邊作用時獲取值質數時獲得事件因子(權力)，並演化向旁邊(事件因子比自己弱的)抓取當作下層，向上傳遞事件因子，但最底層沒有權力，故上層得到事件因子*0=0
+
     def __init__(self):
         self.node = set()
         self._states = {}
@@ -1846,11 +2012,12 @@ class StateMgr:
             for n in name:
                 self._states.setdefault(n, State(n))
             # 只有一個_states，直接 設定當前子狀態
-            if len(self._states) == 0:
+            if self._states.size == 0:
                 self.set(name[0])
         else:
             self._states.setdefault(name, State(name))
-        make_folder(TEMPLATE_DIRS["Noesis"]/"事件"/str(n),"StateMgr", content_classes=[StateMgr, State]) # 創建資料夾下的腳本
+        make_folder(TEMPLATE_DIRS["Noesis"]/"事件"/str(n), "StateMgr",
+                    content_classes=[StateMgr, State])  # 創建資料夾下的腳本
         return self
 
     def __getattr__(self, name):
@@ -1863,11 +2030,11 @@ class State:
     __slots__ = ("name", "_sub", "_release", "_trans", "current")
 
     def __init__(self, name):
-            self.name = name
-            self._sub = {}
-            self._release = []
-            self._trans = {} 
-            self.current = None
+        self.name = name
+        self._sub = {}
+        self._release = []
+        self._trans = {}
+        self.current = None
 
     # 添加子狀態
     def add(self, name):
@@ -1877,7 +2044,7 @@ class State:
         else:
             self._sub.setdefault(name, State(name))
         return self
-    
+
     # 移除子狀態
     def remove(self, name):
         # TODO:***同路徑刪除該腳本，代表斷開神經
@@ -1952,10 +2119,10 @@ class State:
             # 投票同意增加 neighbor(event) 、不同意增加 invariably
             # neighbor 上層的在下層中有
             ok = sum(1
-                for walker in self._walk()
-                for neighbor, (to_state, inv) in walker._trans_get(event, "all")
-                if neighbor in event
-                )
+                     for walker in self._walk()
+                     for neighbor, (to_state, inv) in walker._trans_get(event, "all")
+                     if neighbor in event
+                     )
             # invariably 上層的在下層中有
             not_not = sum(
                 1
@@ -1972,30 +2139,32 @@ class State:
             return self
         self.current = to_state
         return self
-import win32gui, win32con, win32api  
+
+
 class InputCommand(QObject):
     def __init__(self, monitor_data):
         super().__init__()
-        self.monitor = monitor_data 
+        self.monitor = monitor_data
         self.vars = {}
         self.current_window = None
         self.cache = {}
         self.extractor = True
         self.app = None
 
-    def 抓字(self,time=10):
+    def 抓字(self, time=10):
         ocr_thread = threading.Thread(target=看字, daemon=True)
         ocr_thread.start()
         # 2. 假設讓它跑 10 秒
         time.sleep(time)
         # 3. 觸發中斷：隨時在主程式任何地方呼叫此行，OCR 就會停止
-        alive_event.set() 
+        alive_event.set()
 
     def focus_window(self, title):
         title_pattern = fr'^{title}.*'
         try:
             # 使用 connect 獲取 app
-            target_win = Application(backend="uia").connect(title_re=title_pattern, timeout=5)
+            target_win = Application(backend="uia").connect(
+                title_re=title_pattern, timeout=5)
             # 關鍵修正：如果視窗被最小化，先還原
             if target_win.get_show_state() == 6:  # 6 代表最小化
                 target_win.restore()
@@ -2005,8 +2174,9 @@ class InputCommand(QObject):
             回覆(f"✅ 成功聚焦 [{title}]")
             return
         except Exception:
-            pass # 失敗了，進入暴力模式
+            pass  # 失敗了，進入暴力模式
         # 2. 暴力模式 (Win32 API)
+
         def _enum_cb(hwnd, results):
             if win32gui.IsWindowVisible(hwnd):
                 if title in win32gui.GetWindowText(hwnd):
@@ -2014,14 +2184,14 @@ class InputCommand(QObject):
         hwnds = []
         win32gui.EnumWindows(_enum_cb, hwnds)
         if hwnds:
-            hwnd = hwnds[0] # 抓第一個符合條件的
+            hwnd = hwnds[0]  # 抓第一個符合條件的
             try:
                 # 強制解除 Windows 的對焦鎖定 (Alt 鍵大法)
                 win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
                 win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
                 win32gui.SetForegroundWindow(hwnd)
                 self.current_window = title
-                回覆(f"🔨 暴力聚焦成功 [{title}]") # <--- 現在它該出現了
+                回覆(f"🔨 暴力聚焦成功 [{title}]")  # <--- 現在它該出現了
             except Exception as e:
                 回覆(f"❌ 暴力聚焦也失敗 [{title}]: {e}")
         else:
@@ -2074,42 +2244,42 @@ class InputCommand(QObject):
 
     def execute_line(self, lines):
         """接收已分行的指令，現在分段，同一行的位置做一整套動作"""
-        noesis = Noesis() 
-        backend=Backend()
+        noesis = Noesis()
+        backend = Backend()
         try:
-            line=str(lines).split(',',2)
-            window,paths,actions=str(line[0]),line[1],line[2]
+            line = str(lines).split(',', 2)
+            window, paths, actions = str(line[0]), line[1], line[2]
         except ValueError:
             回覆("⚠️ Invalid format. Please enter: WindowTitle, Path, Action")
-        if self.current_window == window :
+        if self.current_window == window:
             self.focus_window(window)
             time.sleep(0.2)
         elif str(window) in str(self.current_window):
             self.focus_window(window)
             time.sleep(0.2)
-            
+
         for action in actions:
-            i=0
-            sp=selected(paths)
+            i = 0
+            sp = selected(paths)
             if sp is None:
                 return
             回覆(f"目標位置:{sp}")
             while i < len(action):
                 # act = action[i]
-                回覆(f"act:{act}")
-                match act:
+                回覆(f"act:{action}")
+                match action:
                     case "第0123步": noesis.input()
-                    case "抓字": self.抓字 # TODO:**** 抓錄影中的文字
-                    case "第0步": text_make_background() # TODO:**** 抓錄影中的文字
+                    case "抓字": self.抓字  # TODO:**** 抓錄影中的文字
+                    case "第0步": text_make_background()  # TODO:**** 抓錄影中的文字
                     case "Noesis編織關係": noesis.編織關係()
                     case "Noesis輸入": noesis.輸入(action[i+1:])
                     # Unity
-                    case "點擊": click(ss)
-                    case "雙擊": pyautogui.doubleClick(ss)
-                    case "右鍵": pyautogui.rightClick(ss)
-                    case "中鍵": pyautogui.middleClick(ss)
-                    case "按下": pyautogui.mouseDown(ss)
-                    case "放開": pyautogui.mouseUp(ss)
+                    case "點擊": [click(ss) for ss in sp]
+                    case "雙擊": [pyautogui.doubleClick(ss) for ss in sp]
+                    case "右鍵": [pyautogui.rightClick(ss) for ss in sp]
+                    case "中鍵": [pyautogui.middleClick(ss) for ss in sp]
+                    case "按下": [pyautogui.mouseDown(ss) for ss in sp]
+                    case "放開": [pyautogui.mouseUp(ss) for ss in sp]
                     case "儲存": pyautogui.hotkey("ctrl", "s")
                     case "複製": pyautogui.hotkey("ctrl", "c")
                     case "貼上": pyautogui.hotkey("ctrl", "v")
@@ -2123,58 +2293,48 @@ class InputCommand(QObject):
                     case "滾上": pyautogui.scroll(300)
                     case "滾下": pyautogui.scroll(-300)
                     case "左滑":
-                        pyautogui.dragRel(-200,0, duration=0.5)
+                        pyautogui.dragRel(-200, 0, duration=0.5)
                     case "右滑":
-                        pyautogui.dragRel(
-                            200, 0, duration=0.5)
+                        pyautogui.dragRel(200, 0, duration=0.5)
                     # 計算出最左邊最上面的依序的第S位N個，selected(ss)，-3為倒數第三位
                     case act if re.fullmatch(r"第(-?\d+)位(\d+)個", act):
-                        m = re.fullmatch(
-                            r"第(-?\d+)位(\d+)個", act)
-                        selected(
-                            ss, int(m.group(1)), int(m.group(2)))
+                        m = re.fullmatch(r"第(-?\d+)位(\d+)個", act)
+                        [selected(ss, int(m.group(1)), int(m.group(2)))
+                         for ss in sp]
                     # 計算出最左邊最上面的依序的偶數個
                     case act if re.fullmatch(r"偶數(\d+)個", act):
                         m = re.fullmatch(r"偶數(\d+)個", act)
-                        selected(
-                            ss, "偶數", int(m.group(1)))
+                        [selected(ss, "偶數", int(m.group(1))) for ss in sp]
                     case act if re.fullmatch(r"奇數(\d+)個", act):
                         m = re.fullmatch(r"奇數(\d+)個", act)
-                        selected(
-                            ss, "奇數", int(m.group(1)))
+                        [selected(ss, "奇數", int(m.group(1))) for ss in sp]
                     case act if re.fullmatch(r"排序儲存的(\s+)", act):
-                        m = re.fullmatch(
-                            r"排序儲存的(\s+)", act)  # ***(對象)排序
+                        m = re.fullmatch(r"排序儲存的(\s+)", act)  # ***(對象)排序
                         a = []+m.group(1)
                         a.sort()
                     case act if re.fullmatch(r"輸入\s*(.+)", act):
                         s = re.fullmatch(r"輸入\s*(.+)", act)
-                        keyboard.write(
-                            s.group(1), delay=0.05)
+                        keyboard.write(s.group(1), delay=0.05)
                     case act if re.fullmatch(r"組合鍵\s*(.+)", act):
-                        m = re.fullmatch(
-                            r"組合鍵\s*(.+)", act)
-                        keys = m.group(
-                            1).split()  # 空格分開每個按鍵
+                        m = re.fullmatch(r"組合鍵\s*(.+)", act)
+                        keys = m.group(1).split()  # 空格分開每個按鍵
                         pyautogui.hotkey(*keys)
                     case act if re.fullmatch(r"等待(\d+(?:\.\d+)?)秒", act):
-                        m = re.fullmatch(
-                            r"等待(\d+(?:\.\d+)?)秒", act)
+                        m = re.fullmatch(r"等待(\d+(?:\.\d+)?)秒", act)
                         time.sleep(float(m.group(1)))
                     case act if re.fullmatch(r"距離\s*(.+)([<>=]+)(\d+\.?\d*)結束", act):
                         # 即時座標，距離 對象 有 多遠，未達成時繼續
-                        m = re.fullmatch(
-                            r"距離\s*(.+)([<>=]+)(\d+\.?\d*)", act)
-                        distance = math.dist(
-                            ss[0], m.group(1)[0])
-                        if eval(f"{distance:.2f}{m.group(2)}{float(m.group(3))}"):
-                            i += 2  # 跳到「下下個」act
-                            continue
-                        else:
-                            i += 1  # 正常往下
-                            continue
+                        m = re.fullmatch(r"距離\s*(.+)([<>=]+)(\d+\.?\d*)", act)
+                        for ss in sp:
+                            distance = math.dist(ss[0], m.group(1)[0])
+                            if eval(f"{distance:.2f}{m.group(2)}{float(m.group(3))}"):
+                                i += 2  # 跳到「下下個」act
+                                continue
+                            else:
+                                i += 1  # 正常往下
+                                continue
                     case "顯示該目標座標":
-                        回覆(f"📍 {ss}: {ss[0]}")
+                        回覆(f"📍 ss: {[ss for ss in sp]}")
                     case "顯示時間":
                         回覆(
                             f"🕒 現在時間：{time.strftime('%H:%M:%S')}")
@@ -2217,16 +2377,14 @@ class InputCommand(QObject):
                         continue
                     case "即時計算物體大小":
                         # *** 計算模式，需要OCR計算物體容積
-                        tar=TargetExtractor()
+                        tar = TargetExtractor()
                         tar.load_img_whz()
-                        pass
                     case "畫面生成模型":
-
-                        pass
+                        回覆("未實作")
                     # ***補充
                 i += 1  # 預設每次往下一個
-    
-        if len(paths)==0 :
+
+        if len(paths) == 0:
             # 找滑鼠附近的搜尋欄位圖片，輸入目標
             if selected("search.png") is not None:
                 keyboard.write(paths[0], delay=0.05)
@@ -2244,7 +2402,6 @@ class InputCommand(QObject):
                         回覆(f"沒辦法找到 {paths[0]}(畫面未變化）")
                     # 避免重疊記憶體引用s
                     prev_img = curr_img.copy()
-
 
 
 class Recorder:
@@ -2293,7 +2450,7 @@ class Recorder:
 
 
 class TargetExtractor:
-    def __init__(self,start=True,image=None):
+    def __init__(self, start=True, image=None):
         if start is False:
             回覆("找不到目標且自動確認未開啟，跳過選取點。 調整ORB_create>=500")
             return
@@ -2331,7 +2488,7 @@ class TargetExtractor:
         bgdModel = np.zeros((1, 65), np.float64)
         fgdModel = np.zeros((1, 65), np.float64)
         cv2.grabCut(self.image, mask, None, bgdModel,
-            fgdModel, 5, cv2.GC_INIT_WITH_MASK)
+                    fgdModel, 5, cv2.GC_INIT_WITH_MASK)
 
         # 調整mask，使得前景與可能前景視為前景
         mask2 = np.where((mask == cv2.GC_FGD) | (
@@ -2355,12 +2512,12 @@ class TargetExtractor:
         self.extracted = cv2.merge([b, g, r, alpha])
 
         # 儲存為透明PNG
-        png=make_folder(path)/f"{name}.png"
+        png = make_folder(path)/f"{name}.png"
         # png=make_folder(path)/f"{name}_s{time.time():.0f}.png"
         cv2.imwrite(png, self.extracted)
         回覆(f"✅ 已儲存 {png}")
 
-    def select_polygon_roi(self,name=None):
+    def select_polygon_roi(self, name=None):
         """
         可視化互動圈選多邊形 ROI
         - 左鍵：新增點
@@ -2380,7 +2537,7 @@ class TargetExtractor:
                 self.pts.append((x, y))
                 回覆(f"➕ 點({x},{y})")
             elif button == mouse.Button.right:
-                if len(self.pts) >= 3:
+                if self.pts.size >= 3:
                     self.done = True
                     回覆("✅ 結束圈選")
                 else:
@@ -2418,7 +2575,7 @@ class TargetExtractor:
                 cv2.polylines(frame, [np.array(self.pts)],
                               False, (0, 255, 0), 2)
             for p in self.pts:
-                self.image=cv2.circle(frame, p, 3, (0, 0, 255), -1)
+                self.image = cv2.circle(frame, p, 3, (0, 0, 255), -1)
             cv2.imshow("Draw ROI", frame)
             cv2.waitKey(10)
             if cv2.waitKey(20) & 0xFF == 27:
@@ -2426,13 +2583,12 @@ class TargetExtractor:
         if len(self.pts) >= 3:
             self.roi_mask = np.zeros(self.base.shape[:2], dtype=np.uint8)
             cv2.fillPoly(self.roi_mask, [np.array(self.pts)], 255)
-            cv2.destroyWindow("Draw ROI") # 關閉視窗
+            cv2.destroyWindow("Draw ROI")  # 關閉視窗
             self.filter_target(name=name)
-
-
 
     # *** 等待QML設定
     # *** Img+GPS 列出 圖像中占比大的一些相似物體 和長寬高，等待QML輸入要儲存的圖片名稱，進TEMPLATE_DIRS["live_capture"]資料夾。計算相似物品的 單一數量的 實際大小
+
     def Img_IMU_GPS():
         # 讀取設備，GPS得高度尺可以和地面參照，GPS平移得橫向尺在空中至少要移動20m，才可以參照
         # *** 先拓樸後幾何，穩定拓樸結構
@@ -2593,6 +2749,7 @@ class TargetExtractor:
         # *** save_path圖片 重新命名(固定格式有長寬高)，在判斷物體實際大小模式時，在TEMPLATE_DIRS["live_capture"]中找到(固定格式有長寬高)save_path圖片，全部找一次，找到則分析附在何物、計算該物實際大小
         # *** 進入 計算物體實際大小的 計算模式 *** 讀取存檔的圖片
         pass
+
     def compute_logic(self):
         frame = get_screenshot()
         # 全部物件
@@ -2610,7 +2767,7 @@ class TargetExtractor:
             if des_tpl is None:
                 continue
             matches = bf.match(des_tpl, des_frame)
-            if len(matches) < 5:
+            if matches.size < 5:
                 continue
             pts_frame = np.float32(
                 [kp_frame[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
@@ -2642,7 +2799,7 @@ class TargetExtractor:
             if des_tpl is None:
                 continue
             matches = bf.match(des_tpl, des_frame)
-            if len(matches) < 5:
+            if matches.size < 5:
                 continue
             pts_frame = np.float32(
                 [kp_frame[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
@@ -2983,32 +3140,36 @@ class EventMonitor:
                     evt["Cost"] = input(
                         f"{img}{stage}成本太高 時的應對作法：").strip() or evt.get("Cost")
 
-from PySide6.QtCore import QObject, Signal, Property
+
 # TODO:**回覆訊息為其下資料夾名稱，用戶點某個詞會看到該資料夾的圖片，像方便的小說(動態圖片，可調每次撥放幾張圖)
-        # QML (path_dir=root詞,path_dir的files圖片)
-        # 點擊回覆對話框中的詞，上方顯示圖片集循環撥放一部分
+      # QML (path_dir=root詞,path_dir的files圖片)
+      # 點擊回覆對話框中的詞，上方顯示圖片集循環撥放一部分
 # TODO:***使用好像有問題
+
+
 class Backend(QObject):
     """對話 shutil存進TEMPLATE_DIRS["speak"]，Backend getImages讀取TEMPLATE_DIRS["speak"]給QML就是 使用 對話"""
     pathChanged = Signal(str)
     imagesReady = Signal(list)  # 發送圖片列表給 QML
-    responseUpdated = Signal(str) # 統一回覆訊息
-    usersUpdated = Signal('QVariant') # Users個人介面設定，先用按鈕
-     
+    responseUpdated = Signal(str)  # 統一回覆訊息
+    usersUpdated = Signal('QVariant')  # Users個人介面設定，先用按鈕
+
     # 單例模式專用變數，用來儲存唯一的一個實例
     _instance = None
+
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             # 確保 __init__ 只會被完整初始化一次（避免重複調用 __init__ 導致屬性被清空）
             cls._instance._initialized = False
         return cls._instance
-    
+
     # 依然要有這行，QML 才能「看到」並「連動」
-    path_dir = Property(str, 
-        fget=lambda self: self._path_dir, 
-        fset=lambda self, v: (setattr(self, '_path_dir', v), self.pathChanged.emit(v)) if self._path_dir != v else None, 
-        notify=pathChanged)
+    path_dir = Property(str,
+                        fget=lambda self: self._path_dir,
+                        fset=lambda self, v: (setattr(self, '_path_dir', v), self.pathChanged.emit(
+                            v)) if self._path_dir != v else None,
+                        notify=pathChanged)
 
     def __init__(self):
         # 配合 __new__ 確保初始化邏輯只執行一次
@@ -3016,7 +3177,7 @@ class Backend(QObject):
             return
         super().__init__()
         self._path_dir = ""
-        self.history = "" # 用來存歷史對話
+        self.history = ""  # 用來存歷史對話
         self._initialized = True
 
     def _normalize_qml_value(self, value):
@@ -3046,14 +3207,14 @@ class Backend(QObject):
     def saveUsers(self, setting):
         normalized = self._normalize_qml_value(setting)
         make_json_content(TEMPLATE_DIRS["User"], "task_buttons", normalized)
-        
+
     @Slot()
     def getImages(self):
         """
         點擊 回話區的詞 顯示對應的快取圖片
         """
-        found=path_all(TEMPLATE_DIRS["speak"],".png")
-        all_imgs =[(r/imgs).as_uri() for r,_,imgs in found]
+        found = path_all(TEMPLATE_DIRS["speak"], ".png")
+        all_imgs = [(r/imgs).as_uri() for r, _, imgs in found]
         self.imagesReady.emit(all_imgs)
 
     @Slot(str)
@@ -3077,6 +3238,7 @@ class FourierTransform:
     換個維度玩：ft_finance = FourierTransform(金融訂單簿_b)
     輸入即輸出：新金融頻譜 = ft_finance(人的動作頻譜1, 地球頻譜2)
     """
+
     def __init__(self, bone_motion_b):
         # 1. 遊戲開機或系統啟動時，只執行這一次！
         # 把大魔王的骨骼頻譜「算好並永遠記在記憶體裡」，以後再也不重複算它！
@@ -3085,13 +3247,15 @@ class FourierTransform:
     def __call__(self, *args):
         # 2. 貫徹【輸入即輸出】！
         # 每一幀最新的即時資料 *args 衝進來時，電腦只算這組新資料的 FFT
-        spectrum_a = np.fft.fft(np.array([np.array(arg) for arg in args]), axis=-1)
-        
+        spectrum_a = np.fft.fft(
+            np.array([np.array(arg) for arg in args]), axis=-1)
+
         # 3. 直接拿「早就記好的 self.spectrum_b」進行強行碰撞，瞬間吐出結果！
         combined_spectrum = self.spectrum_b * np.abs(spectrum_a)
         return np.real(np.fft.ifft(combined_spectrum))
 
-# === 
+
+# ===
     # *** 光子發射時序以分段、電場以能階變色，光子測距和計算誤差矯正量
     #
     # 該視窗可以置頂於畫面?固定寬度會自動換行的輸入框?點擊輸入框實輸入?當視窗拖動到最左或最右邊，最小化視窗並固定Y座標?
@@ -3101,64 +3265,63 @@ class FourierTransform:
 視窗標題,目標的多重路徑,多重操作，:多重路徑、<>錄製。
 視窗標題,GPT:食指,全選:按下::視窗標題,GPT:肛門,位置深處:放開
 """
-import PySide6.QtQml as Qml
 if __name__ == "__main__":
     for a in TEMPLATE_DIRS.values():
         make_folder(a)
     for a in 背景節點.values():
         make_folder(a)
-       
+
     # 測試：搜尋「積極」
     # data = asbc_stealth_search(url)
     # 回覆(f"網路抓取結果: {data}")
-    #data = np.zeros((5, 11))
-    #data[:, 10] = 999 # [999. 999. 999. 999. 999.]
-    #a = np.array([
+    # data = np.zeros((5, 11))
+    # data[:, 10] = 999 # [999. 999. 999. 999. 999.]
+    # a = np.array([
     #    [0, 10, 20, 30, 40],
     #    [2, 11, 20, 30, 41],
     #    [2, 12, 20, 30, 42]
-    #], dtype=int)
-    #print(f"a:{a}")
-    #print(f"a:{        write_array(a, 
-    #    (C(1) << (C(1) + (C(3) // 2)) // 2), 
+    # ], dtype=int)
+    # print(f"a:{a}")
+    # print(f"a:{        write_array(a,
+    #    (C(1) << (C(1) + (C(3) // 2)) // 2),
     #    (C(2) << (C(2) + (C(4) // 2)) // 2))    }")
-    #print(f"a2 >11: {find_array(a,C(2)>11)}")
-    #print(f"a4 .isin: {find_array(a,C(4).isin(42))}")
-    #print(f"a2 >11 & a4 .isin: {find_array(a,C(2)>11) & find_array(a,C(4).isin(42))}")
+    # print(f"a2 >11: {find_array(a,C(2)>11)}")
+    # print(f"a4 .isin: {find_array(a,C(4).isin(42))}")
+    # print(f"a2 >11 & a4 .isin: {find_array(a,C(2)>11) & find_array(a,C(4).isin(42))}")
     #
-    #print(f"arrayA+B:{C(0)(a,a)}")
-    #print(f"arrayA+B:{np.stack([a,a], axis=0)}")
-    #d=C(a,a)
-    #print(f"arrayA+B:{d}") # C內部修正到和這一樣 np.stack([a,a], axis=0)
-    #print(f"arrayA[[A,B],:] :{a[[0,2],:]}")
-    #print(f"arrayA[[A,B],:] :{C.split_row(0,2)(a)}") # C內部修正到和這一樣 a[[0,2],:]
-    #print(f"arrayA+B [[A,B],:]:{C.split_row(0,1)(a,a)}")
-    
+    # print(f"arrayA+B:{C(0)(a,a)}")
+    # print(f"arrayA+B:{np.stack([a,a], axis=0)}")
+    # d=C(a,a)
+    # print(f"arrayA+B:{d}") # C內部修正到和這一樣 np.stack([a,a], axis=0)
+    # print(f"arrayA[[A,B],:] :{a[[0,2],:]}")
+    # print(f"arrayA[[A,B],:] :{C.split_row(0,2)(a)}") # C內部修正到和這一樣 a[[0,2],:]
+    # print(f"arrayA+B [[A,B],:]:{C.split_row(0,1)(a,a)}")
+
     print("test start")
     print("test end")
     #
-    #b = {
+    # b = {
     #    "a":[0, 10, 20, 30, 40],
     #    "b":[2, 11, 20, 30, 41],
     #    "c":[2, 12, 20, 30, 42]
-    #}
-    #print(f"b:{b}")
-    #print(f"b:{        write_array(b, 
-    #    (C(1) << (C(1) + (C(3) // 2)) // 2), 
+    # }
+    # print(f"b:{b}")
+    # print(f"b:{        write_array(b,
+    #    (C(1) << (C(1) + (C(3) // 2)) // 2),
     #    (C(2) << (C(2) + (C(4) // 2)) // 2))    }")
-    #c= C.split_row(0,2)(b)
-    #print(f"b where 02: { c }")
-    #print(f"b02.b0>0: { find_array(C.split_row(0,2)(b) 
+    # c= C.split_row(0,2)(b)
+    # print(f"b where 02: { c }")
+    # print(f"b02.b0>0: { find_array(C.split_row(0,2)(b)
     #    ,C(0)>0)}")
-    #print(f"b1 >11: {find_array(b,C(1)>11)}")
-    #print(f"b4 .isin: {find_array(b,C(4).isin(42))}")
-    #print(f"b2 >11 & b4 .isin: {find_array(b,(C(2)>11) & (C(4).isin(42)))}")
-    #selected("一")
+    # print(f"b1 >11: {find_array(b,C(1)>11)}")
+    # print(f"b4 .isin: {find_array(b,C(4).isin(42))}")
+    # print(f"b2 >11 & b4 .isin: {find_array(b,(C(2)>11) & (C(4).isin(42)))}")
+    # selected("一")
 
-    monitor_info = {"width": 1920, "height": 1080} 
+    monitor_info = {"width": 1920, "height": 1080}
     # 實例化
     ic = InputCommand(monitor_info)
-    TARGET_DEVICE_ID = r"你的設備ID填在這裡" 
+    TARGET_DEVICE_ID = r"你的設備ID填在這裡"
     monitor = EventMonitor()
     rec = Recorder()
 
@@ -3167,9 +3330,8 @@ if __name__ == "__main__":
     # 在 engine.load 之前定義一個物理心跳
     heartbeat_timer = QTimer()
     heartbeat_timer.timeout.connect(send_heartbeat)
-    heartbeat_timer.start(5000) # 每 5 秒報一次平安
+    heartbeat_timer.start(5000)  # 每 5 秒報一次平安
     send_heartbeat()
-
 
     fmt = QSurfaceFormat()
     fmt.setAlphaBufferSize(8)
@@ -3177,17 +3339,17 @@ if __name__ == "__main__":
     fmt.setProfile(QSurfaceFormat.CoreProfile)
     fmt.setVersion(4, 1)
     QSurfaceFormat.setDefaultFormat(fmt)
-    QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough) # 確保在視窗關閉時有正確停止所有背景任務。
+    QGuiApplication.setHighDpiScaleFactorRoundingPolicy(
+        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)  # 確保在視窗關閉時有正確停止所有背景任務。
     app = QApplication(sys.argv)
-    
+
     engine = QQmlApplicationEngine()
     qml_file = DATA_BASE / "ui.qml"  # 確保路徑正確
     engine.addImportPath(str(DATA_BASE))
     # 將 Python 對象暴露給 QML
     engine.rootContext().setContextProperty("IC", ic)
     backend = Backend()
-    engine.rootContext().setContextProperty("Backend", backend) # QML使用時首字大寫
-
+    engine.rootContext().setContextProperty("Backend", backend)  # QML使用時首字大寫
 
     for p in Qml.QQmlEngine().importPathList():
         print("IMPORT PATH:", p)
@@ -3201,10 +3363,8 @@ if __name__ == "__main__":
 
     win = engine.rootObjects()[0]
     win.show()
-    
 
     sys.exit(app.exec())
-
 
 
 # self 實體，本class用同class的def或變數才要用self.，共用的def則不加self.
