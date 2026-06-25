@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "自訂排版",
+            "type": "shell",
+            "command": "D:\\Python\\Non-codeAutomaticOperation\\.venv\\Scripts\\python.exe",
+            "args": [
+                "D:\\Python\\Non-codeAutomaticOperation\\.vscode\\my_formatter.py",
+                "${file}"
+            ],
+            "options": {
+                "shell": {
+                    "executable": "powershell.exe",
+                    "args": [
+                        "-Command"
+                    ]
+                }
+            },
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

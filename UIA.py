@@ -3325,6 +3325,8 @@ if __name__ == "__main__":
     monitor = EventMonitor()
     rec = Recorder()
 
+    ic.input_line("自己,一,抓字")
+
     # ✅ 在背景啟動 watchdog 執行緒 # ***app關閉時， watchdog沒有跟著關閉
 
     # 在 engine.load 之前定義一個物理心跳
