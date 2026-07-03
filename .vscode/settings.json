@@ -1,5 +1,12 @@
 {
     "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python.formatting.provider": "none", // 徹底廢除舊版 python 格式化插件
+    "editor.defaultFormatter": null, // 確保沒有任何全局工具在儲存時亂刷
     "qmlFormat.command": "D:\\Python\\Non-codeAutomaticOperation\\.venv\\Scripts\\qmlformat.exe",
     "qmlFormat.extraArguments": [],
+    "[python]": {
+        "editor.defaultFormatter": null, // 徹底停用預設格式化器
+        "editor.formatOnSave": false // 關閉儲存時自動執行外部格式化
+    },
+    "python.REPL.enableREPLSmartSend": false
 }
