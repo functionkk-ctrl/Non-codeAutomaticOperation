@@ -23,9 +23,15 @@ import numpy as np
 import numpy as np
 import numpy as np
 import numpy as np
+import numpy as np
+from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 from typing import List, Dict, Tuple, Optional
+import cv2
+import cv2
+import pyvista as pv
 import random
+import string
 
 def 調整節點整數():
     R_SQUARED = 800
@@ -46,10 +52,59 @@ def 調整節點整數():
         # 紀錄當前的 x，供下一層計算差值
         prev_x = current_x
 
-rows_size      = 60000
-id             = np.array([np.random.permutation([0, 1, 2]) for _ in range(rows_size)])
+def 職能協商解析函數(任務環境, 任務目標, 可選職業庫):
+    """
+    #任務需求拓樸和職業交叉拓樸的填滿率
+    #去野外找市場上外型獨特的無機物，可能會遇到小型有毒生物
+    #1.隨機名稱(例如市場、產品、生物、場地) 2.imwrite生成產品外觀(名稱對應的圖片融合特徵時依據父比例) 3.面試:分析職業(半成品有職業特性、個性、裝備、夥伴)的在該拓樸上的移動表現 和拓樸上的它物的碰撞表現
+    #有則有，沒有就隨機，不要則不要，範圍，數量，成長曲線，super繼承父節點變數
+    我想到了，場景總大小(矩陣)，物品占據多少場景比例(矩陣)*材質矩陣*顏色矩陣，轉視角等於矩陣*三角函數，動作等於某物品*移動路徑
+    結論為這是相似度
+    """
+    pass
+
+def generate_random_name_pure(language: str, max_length: int, style: str = "capitalize") ->str:
+    """
+    不使用任何內建清單(list)，純算法動態生成隨機字元名稱
+    capitalize 英文首字大寫，lower 英文全小寫
+    """
+    if max_length <= 0:
+        return ""
+        
+    lang = language.lower()
+    if lang in ["zh", "中文"]:
+        # 常用中文字的 Unicode 範圍：0x4E00 到 0x9FFF
+        # 隨機隨機抽選 Unicode 編碼並轉換成中文字
+        return "".join(chr(random.randint(0x4E00, 0x9FFF)) for _ in range(max_length))
+        
+    elif lang in ["en", "英文"]:
+        # string.ascii_lowercase 為純小寫字串常數 ("abcdefghijklmnopqrstuvwxyz")
+        raw_name = "".join(random.choices(string.ascii_lowercase, k=max_length))
+        if style.lower() == "capitalize":
+            return raw_name.capitalize()
+        else:
+            return raw_name  # 本身即為全小寫
+            
+    else:
+        return "Error: Unsupported language"
+    
+
+# ---- 測試執行範例 ----
+#print("中文隨機 (3字):", generate_random_name_pure("zh", 3))
+#print("英文首字大寫 (8字):", generate_random_name_pure("en", 8, style ="capitalize"))
+#print("英文全小寫 (8字):", generate_random_name_pure("en", 8, style  ="lower"))
+# path_png             = Path.home() / ".UIA" / "Speak" / f"{name}_掃掠全自動拓樸.png"
+# success, img_encoded = cv2.imencode('.png', image)
+# if success:
+#     img_encoded.tofile(str(path_png))
+#     return f"【萬能生成器成功】給點完成全部外觀！\n儲存路徑：{path_png}"
+# return "儲存失敗"
+
+# ---- 三小神基礎設定 ----
+rows_size = 60000
+id        = np.array([np.random.permutation([0, 1, 2]) for _ in range(rows_size)])
 # 對a,b連續提問兩次相同問題(事實是絕對錯誤)，值為0，Q123兩值為否定，現在提問了，但還沒開始依照規則回答，等於不用寫
-ask            = np.zeros((rows_size, 3), dtype=int) 
+ask       = np.zeros((rows_size, 3), dtype=int) 
 
 def 初版():
     st  = time.time()

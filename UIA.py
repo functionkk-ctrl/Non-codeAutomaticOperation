@@ -47,10 +47,10 @@ import win32gui
 
 #from plyer import accelerometer
 
-#os.environ["QT_QUICK_CONTROLS_STYLE"]         = "Basic"
-#os.environ["QT_PA_PLATFORM"]                  = "windows:dpiawareness=0"  # 強制讓 Qt 放棄 DPI 控制權
-#os.environ["QT_ENABLE_HIGHDPI_SCALING"]       = "0"
-#os.environ["QT_SCALE_FACTOR_ROUNDING_POLICY"] = "PassThrough"  # 避免Qt二次修改DPI(?)
+os.environ["QT_QUICK_CONTROLS_STYLE"]         = "Basic"
+os.environ["QT_PA_PLATFORM"]                  = "windows:dpiawareness=0"  # 強制讓 Qt 放棄 DPI 控制權
+os.environ["QT_SCALE_FACTOR_ROUNDING_POLICY"] = "PassThrough"  # 避免Qt二次修改DPI(?)
+os.environ["QT_ENABLE_HIGHDPI_SCALING"]       = "0"
 
 def on_location(**kwargs):
     回覆(kwargs['lat'], kwargs['lon'], kwargs.get('altitude'), kwargs.get('speed'))
@@ -100,7 +100,7 @@ TEMPLATE_DIRS = {
 
 MATCH_THRESHOLD = 0.85
 LANGS           = 'chi_tra+eng'
-custom_config   = '--psm 6'  # 假設影像是單一文字塊，可提升速度與準確度
+custom_config   = '--oem 3 --psm 3'  # 全畫面多區塊 OCR，適合擷取整個螢幕文字 # custom_config   = '--psm 6'  # 假設影像是單一文字塊，可提升速度與準確度
 DEBUG           = True
 bf              = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
 # --- 共用工具 ---
@@ -452,31 +452,43 @@ def 看字():
     # 將不合法字元編譯為正規表示式
     invalid_chars = re.compile(r'[\/\\\:\*\?\"\<\>\|]')
     資料夾最長字數       = 30
+    回覆("分析文章中...")
     while not alive_event.is_set():
         start_time = time.time()
         try:
             # 1.取得原始 OCR 數據
             data = get_screenshot(Langs=LANGS)
-            回覆("分析文章中...")
+            回覆("正在分析文章中...")
             
-            # 【中段命令精進一】：精確對齊 OCR 欄位索引 (10:text, 5:left, 6:top, 7:width, 8:height, 9:conf)
-            # data 形狀假設為 (N, 欄位數)。利用你的 C 類別進行指定欄位高速選取
-            # 選取後對應：C(0)=text, C(1)=left, C(2)=top, C(3)=width, C(4)=height, C(5)=conf
-            text_pts_data = C(10, 5, 6, 7, 8, 9)(data)
-            if text_pts_data.size == 0:
+            # data 形狀假設為 (N, 欄位數)。利用你的 C 類別進行指定欄位高速選取。 
+            text_pts_data = C(11, 6, 7, 8, 9, 10)(data) # (11:text, 6:left, 7:top, 8:width, 9:height, 10:conf)
+            
+            # 2.【核心拓樸關係優化】：由上至下 (top)、由左至右 (left) 進行矩陣高速排序
+            # 【終極防護】：把座標與信心度轉為字串並去除空白
+            raw_lefts     = np.char.strip(text_pts_data[:, 1].astype(str))
+            raw_tops      = np.char.strip(text_pts_data[:, 2].astype(str))
+            raw_confs     = np.char.strip(text_pts_data[:, 5].astype(str))
+            # 建立一個安全遮罩 (Safe Mask)：確保 left、top 必須是純數字，conf 必須是合法浮點數
+            # 這樣不論遇到 'Edit'、'File' 還是空字串，通通會變成 False 被剔除
+            safe_mask     = (
+                np.vectorize(lambda x: x.isdigit())(raw_lefts) &
+                np.vectorize(lambda x: x.isdigit())(raw_tops) &
+                np.vectorize(lambda x: x.replace('.', '', 1).isdigit())(raw_confs)
+            )
+            # 只留下百分之百可以安全轉型的乾淨資料
+            safe_data = text_pts_data[safe_mask]
+            if safe_data.size == 0:
                 回覆("找不到字")
                 time.sleep(max(0, 1.0 - (time.time() - start_time)))
                 continue
-
-            # 2.【核心拓樸關係優化】：由上至下 (top)、由左至右 (left) 進行矩陣高速排序
-            # 這是理解畫面文字「閱讀順序」最重要的中段命令！
-            lefts        = text_pts_data[:, 1].astype(int)
-            tops         = text_pts_data[:, 2].astype(int)
             
+            # 2.【核心拓樸關係優化】：由上至下 (top)、由左至右 (left) 進行矩陣高速排序
+            # 利用 np.lexsort：先依照 left 排序，再依照 top 排序，完美對齊人類閱讀拓樸
+            lefts        = safe_data[:, 1].astype(int)
+            tops         = safe_data[:, 2].astype(int)
             # 利用 np.lexsort：先依照 left 排序，再依照 top 排序，完美對齊人類閱讀拓樸
             sort_indices = np.lexsort((lefts, tops))
-            sorted_data  = text_pts_data[sort_indices]
-            
+            sorted_data  = safe_data[sort_indices]
             # 3.【多重條件一槍斃命】：過濾信心度 > 60，且文本不為空、不是不合法字元
             # 利用向量化操作，一次過濾整張表
             texts        = sorted_data[:, 0].astype(str)
@@ -485,19 +497,24 @@ def 看字():
             # 向量化文字清洗：移除不可用詞、去前後空白
             # 使用列表推導式配合 re 快速過濾（因為 re 無法直接作用於 NumPy 向量，這是最優解）
             clean_texts  = np.array([invalid_chars.sub('', t).strip() for t in texts], dtype=object)
-            valid_mask = (confs > 60) & (clean_texts !="")
+            valid_mask = (confs > 0) & (clean_texts !="")
             
-            # 4.撈出最終符合拓樸關係的文字與座標
+
+            print(f"[DEBUG] OCR 原始總共抓到 {len(texts)} 個區塊") # 記得刪除此段
+            for i in range(min(5, len(texts))): # 印出前 5 筆看欄位有沒有對齊
+                print(f"  內容: '{texts[i]}', 清洗後: '{clean_texts[i]}', 判定信心度: {confs[i]}")
+
+            # 4.撈出最終符合拓樸關係的文字與座標 #TODO:*******整個畫面有超多文字，但只抓到一小部分，異常
             final_folders = clean_texts[valid_mask]
             final_coords  = sorted_data[valid_mask, 1:3] # 撈出對應的 (left, top) 座標
             if final_folders.size > 0:
                 回覆(f"找到 {final_folders.size} 個有效文字段落")
                 
                 # 限制長度並去除重複，避免重複建立資料夾浪費 I/O 效能
-                unique_folders = np.unique(final_folders)
+                _, indices     = np.unique(final_folders, return_index=True)
+                unique_folders = final_folders[np.sort(indices)] #unique_folders = np.unique(final_folders)，np.unique() 會自動將字串依照字母/字典順序（Alphabetical Order）重新排序
                 for fnt in unique_folders:
-                    short_name = fnt[:資料夾最長字數]
-                    make_folder(TEMPLATE_DIRS["live_capture"] / short_name)
+                    make_folder(TEMPLATE_DIRS["live_capture"] / fnt[:資料夾最長字數]) 
             else:
                 回覆("找不到文字")
                 
@@ -970,7 +987,7 @@ def 全能ORB(a, color=None, b=None, path=None, ratio=0.75, similar=None, simila
         topo_img                                                                                                          = np.zeros_like(img1)
         mp_drawing.draw_landmarks(topo_img, result.pose_landmarks, mp_pose.POSE_CONNECTIONS, mp_drawing.DrawingSpec(color =(0, 255, 0), thickness=2, circle_radius=2), mp_drawing.DrawingSpec(color =(255, 0, 0), thickness=2)
         )
-        cv2.imwrite(path + "_人體拓樸.png", )
+        cv2.imwrite(f"{path}_人體拓樸.png", topo_img)
         return path
     elif isinstance(b, str):
         for _, f in path_all(TEMPLATE_DIRS["attributes"], b):
@@ -1209,13 +1226,22 @@ class C:
         if len(array) == 1:
             a0 = array[0]
             if isinstance(a0, dict):
-                raw = list(a0.values())
-                arr = np.array(raw, dtype=object)
+                raw_values = list(a0.values())
+                if raw_values and all(hasattr(v, '__len__') for v in raw_values):
+                    try:
+                        arr = np.column_stack([np.asarray(v, dtype=object) for v in raw_values])
+                    except Exception:
+                        arr = np.array(raw_values, dtype=object)
+                else:
+                    arr = np.array(raw_values, dtype=object)
                 return self.func(arr)
             if isinstance(a0, np.ndarray):
                 return self.func(a0)
             if isinstance(a0, (list, tuple)):
-                arr = np.array(list(a0), dtype=object)
+                try:
+                    arr = np.column_stack([np.asarray(v, dtype=object) for v in a0])
+                except Exception:
+                    arr = np.array(list(a0), dtype=object)
                 return self.func(arr)
             # scalar or other ->wrap to ndarray
             return self.func(np.array(a0))
@@ -1881,16 +1907,16 @@ class InputCommand(QObject):
         super().__init__()
         self.monitor        = monitor_data
         self.vars           = {}
-        self.current_window = None
+        self.current_window = ""
         self.cache          = {}
         self.extractor      = True
         self.app            = None
 
-    def 抓字(self, time=10):
+    def 抓字(self, time_s=1):
         ocr_thread = threading.Thread(target=看字, daemon=True)
         ocr_thread.start()
-        # 2.假設讓它跑 10 秒
-        time.sleep(time)
+        # 2.假設讓它跑 1 秒
+        time.sleep(time_s)
         # 3.觸發中斷：隨時在主程式任何地方呼叫此行，OCR 就會停止
         alive_event.set()
 
@@ -1979,18 +2005,20 @@ class InputCommand(QObject):
         noesis  = Noesis()
         backend = Backend()
         try:
-            line                   = str(lines).split(',', 2)
-            window, paths, actions = str(line[0]), line[1], line[2]
+            line                   = lines[0].split(',', 2)
+            window, paths, actions = line[0], line[1], line[2]
         except ValueError:
             回覆("⚠️ Invalid format.Please enter: WindowTitle, Path, Action")
         if self.current_window == window:
             self.focus_window(window)
             time.sleep(0.2)
-        elif str(window) in str(self.current_window):
+        elif window in self.current_window:
             self.focus_window(window)
             time.sleep(0.2)
+        else:
+            回覆(f"沒找到{window}視窗")
 
-        for action in actions:
+        for action in actions.split(':'):
             i  = 0
             sp = selected(paths)
             if sp is None:
