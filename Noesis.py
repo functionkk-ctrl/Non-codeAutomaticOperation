@@ -1,3 +1,5 @@
+from UIA import path_all,全能ORB,find_array,C,TEMPLATE_DIRS,row,os,subprocess,np,Path
+
 class Noesis:
     """
     Noēsis(諾埃西斯）希臘文 νόησις。Perceptive Structural Language(PSL）。自己用 World-Formation Language(WFL）
@@ -5,94 +7,90 @@ class Noesis:
 
     def input(self):
         """第零一二三步 吸收資訊為背景的子節點"""
-        from UIA import path_all,全能ORB,find_array,C,TEMPLATE_DIRS,row,os,subprocess,np,Path
         patterns = ('*.jpg', '*.jpeg', '*.png', '*.gif', '*.bmp', '*.webp') # 該層有無此類型檔案
-        轉圖_path =row(1,path_all(TEMPLATE_DIRS["background"])) # 該層無圖，dirs才有圖
+        轉圖_path  =row(1,path_all(TEMPLATE_DIRS["background"])) # 該層無圖，dirs才有圖
         if  any(any(轉圖_path.glob(p)) for p in patterns):
-            f_creat=row([0,2],path_all(轉圖_path)) # 初始創建
+            f_creat =row([0,2],path_all(轉圖_path)) # 初始創建
             for a in f_creat:
-                全能ORB(path=a[1],npy="npy") # 全面低壓通道
+                全能ORB(path =a[1],npy="npy") # 全面低壓通道
                 os.remove(a[1])
-        f_in=row(2,path_all(TEMPLATE_DIRS["live_capture"]))
+        f_in =row(2,path_all(TEMPLATE_DIRS["live_capture"]))
         if next(f_in):
-            f_out_kp=row(2,path_all(TEMPLATE_DIRS["background"],"*_kp.npy"))
+            f_out_kp  =row(2,path_all(TEMPLATE_DIRS["background"],"*_kp.npy"))
             f_out_des = row(2, path_all(TEMPLATE_DIRS["background"], "*_des.npy")) 
             for out in C(f_out_kp,f_out_des) :
                 for a in f_in :
-                    e=全能ORB(a,b=out,npy=["a","b"],path=TEMPLATE_DIRS["speak"]) # 邏輯圖特徵點(位置) 描述子(邏輯閘)，轉成NPY 
+                    e =全能ORB(a,b=out,npy=["a","b"],path=TEMPLATE_DIRS["speak"]) # 邏輯圖特徵點(位置) 描述子(邏輯閘)，轉成NPY 
                     self.重複輸出而進步(e)
                     self.動靜反比的邏輯合成(e) # TODO:***減少執行頻率
     # TODO:*** 第二三四五步  
+
     def GitHub_同步(self):
-        from UIA import path_all,全能ORB,find_array,C,TEMPLATE_DIRS,row,os,subprocess,np,Path
         # 這是真正的「向上傳遞事件因子」
         try:
-            # 1. 追蹤變動 (含 .npy 與新建的腳本資料夾)
-            subprocess.run(["git", "add", "."], check=True)
-            # 2. 提交變動 (描述子演化)
-            subprocess.run(["git", "commit", "-m", "神經元演化：穩定特徵更新"], check=True)
-            # 3. 推送到雲端突觸
-            subprocess.run(["git", "push", "origin", "main"], check=True)
+            # 1.追蹤變動 (含.npy 與新建的腳本資料夾)
+            subprocess.run(["git", "add", "."], check                     =True)
+            # 2.提交變動 (描述子演化)
+            subprocess.run(["git", "commit", "-m", "神經元演化：穩定特徵更新"], check =True)
+            # 3.推送到雲端突觸
+            subprocess.run(["git", "push", "origin", "main"], check       =True)
             print("GitHub 突觸同步完成")
         except Exception as e:
             print(f"同步失敗：{e}")
 
     def 重複輸出而進步(self,e):
-        from UIA import path_all,全能ORB,find_array,C,TEMPLATE_DIRS,row,os,subprocess,np,Path
         # 子節點為執行者
         old_v =f"{e.stem}_v2.npy"# 舊節點
         new_v = f"{e.stem}_v3.npy" # 新節點
+
         def 偵測():
             if not Path(old_v).exists(): return False 
-            相似度= 全能ORB(e, b=old_v, npy=["a", "b"],similar_ratio="similar_ratio")
-            stats = C(e.stat(), 相似度) 
+            相似度        = 全能ORB(e, b=old_v, npy=["a", "b"],similar_ratio="similar_ratio")
+            stats      = C(e.stat(), 相似度) 
             sorted_idx = row(0, stats).argsort()
-            b=find_array(sorted_idx,C(1).diff<0.1) # 時間段落最長的
+            b          =find_array(sorted_idx,C(1).diff<0.1) # 時間段落最長的
             return row(0,b[-1]-b[0])>3 # 超過3秒/次
 
         if 偵測():
             old_old_v = f"{e.stem}_v1.npy" # 舊舊節點
-            # 2. 物理刪除舊舊節點
             if Path(old_old_v).exists():
                 os.remove(old_old_v) 
-            # 3. 滾動更新命名 (保留舊，迎接新)
+            # 3.滾動更新命名 (保留舊，迎接新)
             os.rename(old_v, old_old_v)
             os.rename(new_v, old_v) 
             self.GitHub_同步()
 
     def 動靜反比的邏輯合成(self):
         # 此背景節點為執行者，找出靜態低壓、動態高相似
-        from UIA import path_all,全能ORB,find_array,C,TEMPLATE_DIRS,row,os,subprocess,np,Path
-        a=path_all(TEMPLATE_DIRS["background"]) 
-        動=row(2,path_all(a,"*.npy")) # 動態輸出
-        動了=[全能ORB(a,b,npy=["a","b"],similar_ratio="similar_ratio") for a in 動 for b in 動] # 靜態儲存邏輯圖(kp,des)
-        靜=[全能ORB(a,b,npy=["a","b"],similar_ratio="similar_ratio") for a in row(2,a) for b in row(2,a)] # 靜態儲存邏輯圖(kp,des)
-        動靜=C(動了,靜)
-        mask=find_array(動靜,((1 / ((C(1) + 1e-8)) * C(0)) >100).get_mask() ) # TODO:矩陣中反比距離差距很大的 
+        a    =path_all(TEMPLATE_DIRS["background"]) 
+        動    =row(2,path_all(a,"*.npy")) # 動態輸出
+        動了   =[全能ORB(a,b,npy=["a","b"],similar_ratio="similar_ratio") for a in 動 for b in 動] # 靜態儲存邏輯圖(kp,des)
+        靜    =[全能ORB(a,b,npy=["a","b"],similar_ratio="similar_ratio") for a in row(2,a) for b in row(2,a)] # 靜態儲存邏輯圖(kp,des)
+        動靜   =C(動了,靜)
+        mask =find_array(動靜,((1 / ((C(1) + 1e-8)) * C(0)) >100).get_mask() ) # TODO:矩陣中反比距離差距很大的 
         for a in 動[mask]:
-            old_v =f"{a.stem}_v2.npy"# 舊節點
-            new_v = f"{a.stem}_v3.npy" # 新節點
+            old_v     =f"{a.stem}_v2.npy"# 舊節點
+            new_v     = f"{a.stem}_v3.npy" # 新節點
             old_old_v = f"{a.stem}_v1.npy" # 舊舊節點
-            # 2. 物理刪除舊舊節點
             if Path(old_old_v).exists():
                 os.remove(old_old_v) 
-            # 3. 滾動更新命名 (保留舊，迎接新)
+            # 3.滾動更新命名 (保留舊，迎接新)
             os.rename(old_v, old_old_v)
             os.rename(new_v, old_v) 
         self.GitHub_同步()
     
+
     def 編織關係(self):
         """
         整個視界線更新(對接)，差之毫釐，謬以千里
         父節點將子節點輸出轉成SIFT版NPY，邏輯(高低壓 持中)處理各種子節點的輸出，代表子節點的輸出位置會固定在父節點的邏輯圖上的特徵點
         TODO:*** 同義 反義 干涉它為新義 主從義
         """
-        from UIA import path_all,全能ORB,find_array,C,TEMPLATE_DIRS,row,os,subprocess,np,Path
-        de=row(1,path_all(TEMPLATE_DIRS["background"]))
-        p=path_all(TEMPLATE_DIRS["Noesis"],exclude=de)
+        de =row(1,path_all(TEMPLATE_DIRS["background"]))
+        p  =path_all(TEMPLATE_DIRS["Noesis"],exclude=de)
         if next(p):
             os.rename(row(0,p)/row(1,p)) # 對子節點重新命名，所有節點輸出時附上自己名稱後的標記索引
-            result_idx=[]
+            result_idx =[]
             for r,ds,fs in p:
                 for idx,d in enumerate(ds):
                     old_path = r / d
@@ -103,30 +101,29 @@ class Noesis:
 
     def 輸入(self,輸入內容):
         # TODO:***輸入時
-        from UIA import path_all,全能ORB,find_array,C,TEMPLATE_DIRS,row,os,subprocess,np,Path
-        輸入_arr=np.array(輸入內容)
-        父節點=find_array(輸入_arr,["個性決策","適應"] in C(0)) 
+        輸入_arr =np.array(輸入內容)
+        父節點    =find_array(輸入_arr,["個性決策","適應"] in C(0)) 
         if next(父節點) :
             for 父 in 父節點:
-                父_path=path_all(TEMPLATE_DIRS["Noesis"],父)
+                父_path =path_all(TEMPLATE_DIRS["Noesis"],父)
                 if next(父_path):
                     for r,d,f in 父_path:
-                        kp_file = r / f"{父}_kp.npy"
+                        kp_file  = r / f"{父}_kp.npy"
                         des_file = r / f"{父}_des.npy"
                         if not (kp_file.exists() and des_file.exists()): continue
-                        kp_data = np.load(kp_file).astype(np.float32) # 二進位 轉成 浮點數
+                        kp_data  = np.load(kp_file).astype(np.float32) # 二進位 轉成 浮點數
                         des_data = np.load(des_file).astype(np.float32)  # 父節點資料夾下的 父節點邏輯 管理 子節點_NPY
-                YES=row(0,path_all(TEMPLATE_DIRS["background"]/"語言","肯定")) # 肯定總辭典
-                NO=row(0,path_all(TEMPLATE_DIRS["background"]/"語言","否定"))
-                加強目標=find_array(輸入_arr,C(0).a_neighbor_b(row(1,父_path),YES)) # 對應的用到的詞
-                減弱目標=find_array(輸入_arr,C(0).a_neighbor_b(row(1,父_path),NO)) 
+                YES              =row(0,path_all(TEMPLATE_DIRS["background"]/"語言","肯定")) # 肯定總辭典
+                NO               =row(0,path_all(TEMPLATE_DIRS["background"]/"語言","否定"))
+                加強目標             =find_array(輸入_arr,C(0).a_neighbor_b(row(1,父_path),YES)) # 對應的用到的詞
+                減弱目標             =find_array(輸入_arr,C(0).a_neighbor_b(row(1,父_path),NO)) 
                 for item in 加強目標:
-                    idx = int(str(item).split("idx")[-1]) # 子節點名稱後的標記的索引
-                    des_data[idx] *= 1.1 
-                    kp_data[idx, 4] *= 1.1 
+                    idx             = int(str(item).split("idx")[-1]) # 子節點名稱後的標記的索引
+                    des_data[idx]   *=1.1 
+                    kp_data[idx, 4] *=1.1 
                 for item in 減弱目標:
-                    idx = int(str(item).split("idx")[-1]) # 子節點名稱後的標記的索引
-                    des_data[idx] *=0.9 
+                    idx             = int(str(item).split("idx")[-1]) # 子節點名稱後的標記的索引
+                    des_data[idx]   *=0.9 
                     kp_data[idx, 4] *=0.9 
                 np.save(des_file, des_data) # np.save矩陣的維度、型態、數值直接二進位化。
                 np.save(kp_file, kp_data)
@@ -154,6 +151,7 @@ class Noesis:
         pass
 
     # TODO:*** 第六步
+
     def 自主性打包(self):
         """
         子節點:適應
@@ -162,8 +160,6 @@ class Noesis:
         """
         # TODO:***輸入疑難雜症
         pass
-
-
 
         # TODO:*** 預知:利用2=128週期變化(not_369(1248751) Fibonacci)，判斷(甚麼輸出入?)該週期為一種類， 不變(靜)(重複)是結構(劫)，變(動)(跨越到其他重複)是行(解)，行而向外升維，新"靜"；結構向內降維，新"動"。(靜)生(子)(也是萬物)，子動而無法改上而躍。初始為動+靜，變會向外擴展。
 
@@ -203,13 +199,13 @@ class GGD:
     # 輸入後，儲存(新向量/低壓吸引)、傳遞(向量不變/中性)、抵銷(向量互撞/高壓排斥)
 
     第二步:生態，邏輯，一次好中壞。def式return
-    python理解拓樸關係，自己.關係. ，好的 低壓通道吸收 拓樸；壞的 高壓外殼排斥；中性 一樣的傳遞能量。
+    python理解拓樸關係，自己.關係.，好的 低壓通道吸收 拓樸；壞的 高壓外殼排斥；中性 一樣的傳遞能量。
     Json 短時間內觀察到重複變化超過三次，儲存重複變化的過程進入此節點.靜態網。
     兩個子節點Json共生過且互補程度大於使用動態，在同一個父節點.產生此節點(同時python腳本分裂)(代表都是使用新python，定期FireBase舊的記錄在裡面)
     上傳分支且只有此新節點獨立上傳，並刪除舊舊節點，保留舊節點
 
     第三步:視界線對接，編碼，顯示。class式return
-    創建背景節點(穩定後矯正節點名，(深度最終節點傳回)輸出驗證):
+    創建背景節點(穩定後矯正節點名，(深度最終節點傳回)輸出驗證): TODO:**************
         字(意義、相似詞、反義詞、干涉它為新義、主從詞、物品(圖片))、
         數學(大小正負關係、小數、加減乘除)、
         作用力(當前-前者(算起伏、加速度)、分子分母對調得到雙方的交換率 代表雙方利益平衡、不同意義相乘得到作用結果)
@@ -250,6 +246,7 @@ class GGD:
     pass
 
 class 質數證明易經:
+
     def is_prem():
         """
         2,3,5,7,11,13,17,19。偶數均有公因數，二位數以上的個位數均為 1 or 3 or 7 or 9
@@ -259,23 +256,26 @@ class 質數證明易經:
         # 16 return 7(1+6)
         if n == 0: return 0
         return 1 + (n - 1) % 9
+
     def not_369(digital_root,a=None):
         # 1,2,4,8,7,5,1(2*5=10,1+0=1)
-        if a:n=a 
-        else: n=1 
-        if n<10:n=2*n 
-        else:n=digital_root(n) 
+        if a:n    =a 
+        else: n   =1 
+        if n<10:n =2*n 
+        else:n    =digital_root(n) 
         return n
+
     def yes_369(digital_root,a=None):
         # 3 6 9 3(12) 6(15) 9(18)
-        if a:n=a 
-        else: n=1 
-        if n<10:n=3*n 
-        else:n=digital_root(n) 
+        if a:n    =a 
+        else: n   =1 
+        if n<10:n =3*n 
+        else:n    =digital_root(n) 
         return n
+
     def Fibonacci(not_369,steps=24,介入=None):
         """
-        介入=not_369
+        介入 =not_369
         2 倍	2, 2, 4, 6, 1, 7, 8, 6, 5, 2, 7, 9, 7, 7, 5, 3, 8, 2, 1, 3, 4, 7, 2, 9
         4 倍	4, 4, 8, 3, 2, 5, 7, 3, 1, 4, 5, 9, 5, 5, 1, 6, 7, 4, 2, 6, 8, 5, 4, 9
         8 倍	8, 8, 7, 6, 4, 1, 5, 6, 2, 8, 1, 9, 1, 1, 2, 3, 5, 8, 4, 3, 7, 1, 8, 9
@@ -283,22 +283,22 @@ class 質數證明易經:
         32 倍	5, 5, 1, 6, 7, 4, 2, 6, 8, 5, 4, 9, 4, 4, 8, 3, 2, 5, 7, 3, 1, 4, 5, 9
         64 倍	1, 1, 2, 3, 5, 8, 4, 3, 7, 1, 8, 9, 8, 8, 7, 6, 4, 1, 5, 6, 2, 8, 1, 9
         128 倍	2, 2, 4, 6, 1, 7, 8, 6, 5, 2, 7, 9, 7, 7, 5, 3, 8, 2, 1, 3, 4, 7, 2, 9
-        2倍=128倍
-        16倍=2倍前後對調
+        2倍  =128倍
+        16倍 =2倍前後對調
         8倍和64倍互補，鏡像
-            2(128)(前後對調16) 2+16=縱向9
-            4(前後對調32) 4+32=縱向9
-            8(前後對調64) 8+64=縱向9 
+            2(128)(前後對調16) 2+16 =縱向9
+            4(前後對調32) 4+32      =縱向9
+            8(前後對調64) 8+64      =縱向9 
         # 6*[3]縱向 6 柱之和 (數位根)均為9，4*[5]縱向 4 柱之和 (數位根)均為9，怎麼切的縱向合均為9。
-        介入=yes_369
+        介入                      =yes_369
         3 倍    3, 3, 6, 9, 6, 6, 3, 9, 3, 3, 6, 9, 6, 6, 3, 9, 3, 3, 6, 9, 6, 6, 3, 9
-        介入=6倍 6, 6, 3, 9, 3, 3, 6, 9, 6, 6, 3, 9, 3, 3, 6, 9, 6, 6, 3, 9, 3, 3, 6, 9
-        介入=7倍 7, 7, 5, 3, 8, 2, 1, 3, 4, 7, 2, 9, 2, 2, 4, 6, 1, 7, 8, 6, 5, 2, 7, 9
+        介入 =6倍 6, 6, 3, 9, 3, 3, 6, 9, 6, 6, 3, 9, 3, 3, 6, 9, 6, 6, 3, 9, 3, 3, 6, 9
+        介入 =7倍 7, 7, 5, 3, 8, 2, 1, 3, 4, 7, 2, 9, 2, 2, 4, 6, 1, 7, 8, 6, 5, 2, 7, 9
         """
-        a, b = 1, 1  # 斐波那契起點
+        a, b    = 1, 1  # 斐波那契起點
         results = []
         for _ in range(steps):
-            # 1. 取得當前斐波那契數
+            # 1.取得當前斐波那契數
             current_fib = a
             if 介入:results.append(介入(current_fib))
             # 準備下一個斐波那契數

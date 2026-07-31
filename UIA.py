@@ -6,7 +6,6 @@ import re
 import sys
 import time
 import numpy as np
-from Noesis import Noesis
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from PIL import ImageGrab
@@ -211,8 +210,8 @@ def make_folder(folder_name, class_name=None, content_classes=None):
     """
     folder_path = Path(folder_name)
     if not folder_path.is_absolute():
-        folder_path = base_path / folder_path
-    回覆(f"確保有資料夾{folder_path}")
+        folder_path           = base_path / folder_path
+    #回覆(f"確保有資料夾{folder_path}")
     folder_path.mkdir(parents =True, exist_ok=True)  # 確保父資料夾也創建
     if class_name:
         # 建立檔名，例如 folder_name.py 或對象名.py
@@ -448,6 +447,9 @@ def 看字():
     """ 
     獨立的 OCR 執行緒，確保每秒穩定執行
     OCR 給圖中的文字，移除資料夾不可用詞，由左至右、由上往下，分析拓樸空間關係
+    TODO:***字(意義、相似詞、反義詞、干涉它為新義、主從詞、物品(圖片))
+    TODO:****數學(大小正負關係、小數、加減乘除)。計算關鍵詞 轉成 計算子，數字計算結果。
+    TODO:***異常出錯會停下來回報關鍵問題，找不到隱藏的或無法計算，則回問資訊，絕對不會像 dead_gemini在奇怪的地方停下來或故意停在剛開始的地方問要繼續嗎
     """
     # 將不合法字元編譯為正規表示式
     invalid_chars = re.compile(r'[\/\\\:\*\?\"\<\>\|]')
@@ -457,7 +459,7 @@ def 看字():
         start_time = time.time()
         try:
             # 1.取得原始 OCR 數據
-            data = get_screenshot(Langs=LANGS)
+            data,img = get_screenshot(Langs=LANGS),get_screenshot()
             回覆("正在分析文章中...")
             
             # data 形狀假設為 (N, 欄位數)。利用你的 C 類別進行指定欄位高速選取。 
@@ -497,29 +499,91 @@ def 看字():
             # 向量化文字清洗：移除不可用詞、去前後空白
             # 使用列表推導式配合 re 快速過濾（因為 re 無法直接作用於 NumPy 向量，這是最優解）
             clean_texts  = np.array([invalid_chars.sub('', t).strip() for t in texts], dtype=object)
-            valid_mask = (confs > 0) & (clean_texts !="")
-            
+            valid_mask = (confs > 18) & (clean_texts !="")
+            # TODO:***文字分析能力超弱，異常內容與資料夾出現很大的偏差
 
             print(f"[DEBUG] OCR 原始總共抓到 {len(texts)} 個區塊") # 記得刪除此段
             for i in range(min(5, len(texts))): # 印出前 5 筆看欄位有沒有對齊
                 print(f"  內容: '{texts[i]}', 清洗後: '{clean_texts[i]}', 判定信心度: {confs[i]}")
 
-            # 4.撈出最終符合拓樸關係的文字與座標 #TODO:*******整個畫面有超多文字，但只抓到一小部分，異常
+            # 4.撈出最終符合拓樸關係的文字與座標
             final_folders = clean_texts[valid_mask]
-            final_coords  = sorted_data[valid_mask, 1:3] # 撈出對應的 (left, top) 座標
             if final_folders.size > 0:
                 回覆(f"找到 {final_folders.size} 個有效文字段落")
                 
-                # 限制長度並去除重複，避免重複建立資料夾浪費 I/O 效能
                 _, indices     = np.unique(final_folders, return_index=True)
-                unique_folders = final_folders[np.sort(indices)] #unique_folders = np.unique(final_folders)，np.unique() 會自動將字串依照字母/字典順序（Alphabetical Order）重新排序
-                for fnt in unique_folders:
-                    make_folder(TEMPLATE_DIRS["live_capture"] / fnt[:資料夾最長字數]) 
+                unique_folders = final_folders[np.sort(indices)]  #np.unique() 會自動將字串依照字母/字典順序（Alphabetical Order）重新排序
+                #for fnt in unique_folders: 
+                #    cv2.imwrite(make_folder(TEMPLATE_DIRS["live_capture"] / fnt[:資料夾最長字數]),img[sorted_data[2]:sorted_data[2]+sorted_data[4],sorted_data[1]:sorted_data[1]+sorted_data[3]])
+                              
+                final_coords   = sorted_data[valid_mask]  # 這裡要先把過濾後的乾淨座標矩陣撈出來
+                for i, fnt in enumerate(unique_folders):
+                    c = final_coords[np.where(final_folders == fnt)[0][0]] # 精確對齊去重後的文字與它的原始座標
+                    path             = make_folder(TEMPLATE_DIRS["live_capture"] / fnt[:資料夾最長字數]) / f"{fnt[:資料夾最長字數]}.png" #TODO:***沒有解決異常資料夾無中文名稱
+                    success, img_enc = cv2.imencode('.png', img[int(c[2]):int(c[2])+int(c[4]), int(c[1]):int(c[1])+int(c[3])])
+                    if success: img_enc.tofile(str(path))
             else:
                 回覆("找不到文字")
                 
             # 5.後台除錯專用
             print(f"[OCR] 辨識成功 | 總資料夾數: {final_folders.size} | 耗時: {time.time() - start_time:.3f}s")
+            #TODO:+++資料夾內要圖片要文字
+            #TODO:final_folders=明面上的數字字串，另外抓實體隱藏的數字。 #TODO:都轉成數字並依照關鍵詞來計算
+            #TODO:***運算符號的中英文關鍵詞，位置關鍵詞找到 代名詞關鍵詞實體，得到實體的類別的數值，計算
+
+            """            
+            讀圖片就是計算?讀圖片後計算?
+            等比例關係，兩者相對位置，背景?相機?和圖片的相對位置
+            圓球切面
+            上下幀位置變化?
+            ***確認是否看到畫面就能延伸應用***可能必須先從圖片中的對象轉成文字 開始處理***所以是色塊拆分成已知和未知，調查或組合未知成最有可能的意義
+
+            ***育兒的過程應該是養育與培養，先幫忙存活，矯正行為使其獨立生存，課程
+                ***進食從糊狀到完整。作息，每日固定的用餐、遊戲和睡眠，建立安全感
+                ***安撫:童謠、共讀、擁抱協助放鬆，適應環境
+                ***同理感受:博立葉頻譜調整頻率，使用最相同的推理過程
+                ***引導表達:等情緒穩定後，教導用呼吸和用說話用詞轉換情緒
+                ***課程:肢體動作表達與運用、生活規範、社交規範、情緒表達互動、挫折原因、資源調度、邏輯關係、批判思考、探索變化並規劃相對不變、情感教育
+                   *** 
+
+            圖片儲存時拓樸關係dist儲存在更上層，下一幀更新前與此幀計算，理解動態位置，以此推測要存在某個(非位置)更上層的資料是這個(非位置)的動態
+
+            甚至以此構建模型，移動軌跡，旋轉，環繞，縮放
+
+            x =lefts, y=tops t=clean_texts
+            1.絕對與相對方位描述物件所在的特定方向或與基準點的對應關係：
+            垂直向：y
+                上、下、上方、下方、頂端、底部、高、低
+            水平向：x
+                前、後、左、右、東、南、西、北
+            側邊向：xy
+                旁、旁邊、側邊
+            2.空間包含與界線描述物體處於某範圍內、外或邊界上：內、內部、裡面、當中外、外部、外面邊、邊緣、邊界、端
+            
+            3.鄰近與距離描述兩個或多個物件之間的遠近關係：更+
+            近距離：
+                旁、附近、鄰近、靠近、貼近、緊鄰
+            中/遠距離：
+                遠、遠離、偏遠
+            4.介於與相對分佈描述物件處於多個參考點之間的狀態：
+            兩者之間：
+                中間、介於
+            多者之間： 
+                之中、圍繞、環繞、穿過、遍及對立面： 對面、正對
+            5.英文位置介系詞（常見對應詞）若您是在撰寫或搜尋外語資料，以下為常見的位置關係介系詞：
+            在...之上： 
+                On, Above, Over
+            在...之下：
+                Under, Below
+            在...裡面：
+                In, Inside
+            在...旁邊： 
+                Beside, Next to, By
+            在...附近：
+                Near, Close to
+            在...之間： 
+                Between (兩者), Among (多者)
+            """
             
         except Exception as e:
             print(f"[OCR_ERROR] 發生異常: {e}")
@@ -2002,7 +2066,6 @@ class InputCommand(QObject):
 
     def execute_line(self, lines):
         """接收已分行的指令，現在分段，同一行的位置做一整套動作"""
-        noesis  = Noesis()
         backend = Backend()
         try:
             line                   = lines[0].split(',', 2)
@@ -2028,11 +2091,11 @@ class InputCommand(QObject):
                 # act = action[i]
                 回覆(f"act:{action}")
                 match action:
-                    case "第0123步": noesis.input()
-                    case "抓字": self.抓字  # TODO:**** 抓錄影中的文字
+                    case "第0123步": from Noesis import Noesis; Noesis.input()
+                    case "抓字": self.抓字()  # TODO:**** 抓錄影中的文字
                     case "第0步": text_make_background()  # TODO:**** 抓錄影中的文字
-                    case "Noesis編織關係": noesis.編織關係()
-                    case "Noesis輸入": noesis.輸入(action[i+1:])
+                    case "Noesis編織關係": from Noesis import Noesis;Noesis.編織關係()
+                    case "Noesis輸入":from Noesis import Noesis; Noesis.輸入(action[i+1:])
                     # Unity
                     case "點擊": [click(ss) for ss in sp]
                     case "雙擊": [pyautogui.doubleClick(ss) for ss in sp]

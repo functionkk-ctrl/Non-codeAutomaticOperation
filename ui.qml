@@ -1,14 +1,14 @@
+import Qt5Compat.GraphicalEffects // 必須導入此模組來使用 Glow // Qt 6 請使用此模組；Qt 5 請改為 import QtGraphicalEffects 1.15
 import QtQuick
-import QtQuick3D
-import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Effects
-import Qt5Compat.GraphicalEffects // 必須導入此模組來使用 Glow // Qt 6 請使用此模組；Qt 5 請改為 import QtGraphicalEffects 1.15
 import QtQuick.Layouts
+import QtQuick.Window
+import QtQuick3D
 
 Window {
 
-    // 1. 中央 任務欄（新增與移除任務） //點擊任務欄內的空處即新增按鈕(CamButton)，按下按鈕即重新命名，左右拉即移除，上下拉即重新調整任務順位 //drag時的高度
+    // 1.中央 任務欄（新增與移除任務） //點擊任務欄內的空處即新增按鈕(CamButton)，按下按鈕即重新命名，左右拉即移除，上下拉即重新調整任務順位 //drag時的高度
     id: root
     property int window_w: 480
     property int window_h: 360
@@ -70,7 +70,7 @@ Window {
             eulerRotation: Qt.vector3d(-45, 0, 0)
             brightness: 1.8
         }
-        // == == == == GLB 模型 == == == ==
+        //== == == == GLB 模型 == == == ==
         Ilulu {
             id: iluluModel
             property real size: 0.88 // 1 幾乎占滿視窗整個高度
@@ -96,7 +96,7 @@ Window {
         }
     }
 
-    // 1. 在這裡定義你的自訂按鈕組件 (Component)
+    // 1.在這裡定義你的自訂按鈕組件 (Component)
     component CamButton: Button {
         id: control
         checkable: true
@@ -161,7 +161,7 @@ Window {
                 minimumPixelSize: 11     // 允許縮小到的最小極限（避免縮到 0 變看不見）
                 // 關鍵設定 3：必須限制文字元件的寬度，否則它不知道何時該縮小
                 width: control.availableWidth
-                // 4. 精髓：如果字多到連 9 號字都塞不下，自動在末端加上 "..."
+                // 4.精髓：如果字多到連 9 號字都塞不下，自動在末端加上 "..."
                 elide: Text.ElideRight
                 wrapMode: Text.NoWrap   // 不換行，強迫在單行內縮小
                 // 當我們在外部用 MultiEffect 渲染時，這裡保持純文字即可
@@ -190,7 +190,7 @@ Window {
         }
     }
 
-    // == = 視窗拖曳 == = // MouseArea 必須在 GridLayout 之前
+    //== = 視窗拖曳 == = // MouseArea 必須在 GridLayout 之前
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton
@@ -291,7 +291,7 @@ Window {
         columnSpacing: 10
         rowSpacing: 6
 
-        // 【ColButton】 座標 (0, 0) -> 第一列、第一欄
+        // 【ColButton】 座標 (0, 0) ->第一列、第一欄
         ColButton {
             id: btn
             Layout.row: 0
@@ -302,7 +302,7 @@ Window {
             //Layout.preferredWidth: parent.width * 0.2 // 固定側邊欄比例
         }
 
-        // 【TaskBarItem】 座標 (0, 4) 且跨 4 列 -> 右側整條側邊欄
+        // 【TaskBarItem】 座標 (0, 4) 且跨 4 列 ->右側整條側邊欄
         TaskBarItem {
             id: taskBar
             Layout.row: 0
@@ -316,14 +316,14 @@ Window {
             //Layout.alignment: Qt.AlignHCenter // Qt.AlignHCenter Qt.AlignLeft
         }
 
-        // 【RectAinmate】 座標 (1, 0) 且跨 2 列 -> 左側中間動畫區
+        // 【RectAinmate】 座標 (1, 0) 且跨 2 列 ->左側中間動畫區
         RectAinmate {
             Layout.row: 1
             Layout.column: 0
             Layout.rowSpan: 2 // 縱跨 2 列 (1,2) // 0,3 放動畫角色
         }
 
-        // 【containerItem】 座標 (1, 1) 跨 2 列 3 欄 -> 中央核心容器
+        // 【containerItem】 座標 (1, 1) 跨 2 列 3 欄 ->中央核心容器
         ContainerItem {
             id: containerItem
             Layout.row: 1
@@ -335,7 +335,7 @@ Window {
             //implicitHeight: childrenRect.height
         }
 
-        // 【InputBoxTextArea】 座標 (4, 0) 橫跨 4 欄 -> 底部輸入框
+        // 【InputBoxTextArea】 座標 (4, 0) 橫跨 4 欄 ->底部輸入框
         InputBoxTextArea {
             id: inputTextArea
             Layout.fillWidth: true
@@ -450,7 +450,7 @@ Window {
                             startY = currentButton.y;
                         }
                         onReleased: mouse => {
-                            // TODO:其實按鈕的clicked無實際功能，但還是出錯了，只能是其他地方導致。 ***插隊異常延遲 ***重新命名異常觸發 ***新增按鈕異常觸發 ***重新排序後異常初始化 ***按下異常觸發替換順序
+                            // TODO:其實按鈕的clicked無實際功能，但還是出錯了，只能是其他地方導致。 ***插隊異常延遲 ***重新命名異常觸發 ***新增按鈕異常觸發 ***重新排序後異常初始化 ***按下異常觸發替換順序 ***此按鈕按下後取消，按其他按鈕時異常重新命名
                             taskRepeater.Layout.fillWidth = true;
                             var startIndex = Math.floor((startY + currentButton.height / 2) / (button_h + 3)); // spacing 3
                             var toIndex = Math.floor((currentButton.y + currentButton.height / 2) / (button_h + 3)); // spacing 3
@@ -483,17 +483,15 @@ Window {
             inputTextArea.text = ""; // 清空輸入框
         }
 
-        // 💡 Function B: 點擊已有按鈕（按下 / 重新命名）
+        // 💡 Function B: 雙擊已有按鈕時重新命名，點擊時執行功能。gemini犯死罪偷偷把重新命名原有設定功能，混入新稱按鈕功能偷改成混亂的dead_gemini，正在鞭屍dead_gemini，dead_gemini應該連骨灰都沒有了~
         function handleButtonInteraction(targetButton, itemIndex) {
-            var txt = inputTextArea.text.trim();
-            if (txt !== "") {
+            onDoubleClicked: {
                 taskListModel.set(itemIndex, {
-                    "taskName": txt,
-                    "checked": !targetButton.checked
+                    "taskName": targetButton.buttonText.trim(),
+                    "checked": false
                 });
-                inputTextArea.text = "";
-            } else {
-                // 如果文字欄位沒字 ➡️ 執行按鈕原本的動作（例如切換選取狀態）
+            }
+            onClicked: {
                 taskListModel.set(itemIndex, {
                     "taskName": targetButton.buttonText,
                     "checked": !targetButton.checked
@@ -514,7 +512,7 @@ Window {
         id: container
         property alias flowLayout: flowLayout
         property var textModel: "引頸期盼地等待訊息..."
-        // 💡 1. 修改高度：外層 container 必須是「固定高度」或錨定到底部，滾輪才會生效
+        // 💡 1.修改高度：外層 container 必須是「固定高度」或錨定到底部，滾輪才會生效
         clip: true
         // 設定實質邊界，Flow 才知道在哪裡折行
         //height: Math.max(button_h, flowLayout.height) // 高度完全由按鈕數量決定
@@ -547,7 +545,6 @@ Window {
                 // 結尾加上換行符號並分割 ，避開重疊
                 all_text = all_text + " @#@ ";
                 container.textModel = all_text.split(" @#@ ");
-
                 // 💡 核心修改：等待 QML 將新文字排版完畢後，自動滾動到最底部
                 Qt.callLater(function () {
                     // 計算最底部的 y 座標（必須是負值或 0）
@@ -561,9 +558,9 @@ Window {
                 });
             }
         }
-        // =========================================================================
-        // 1. 底層文字（負責顯示咖啡色底色與抖動，Flow 會自動依文字寬度排列換行）
-        // =========================================================================
+        //=========================================================================
+        // 1.底層文字（負責顯示咖啡色底色與抖動，Flow 會自動依文字寬度排列換行）
+        //=========================================================================
         Flow {
             id: flowLayout
             //anchors.left: parent.left
@@ -573,7 +570,7 @@ Window {
             width: container.width
 
             spacing: 1
-            // 💡 4. 注意：在 Flickable 內部，左右邊界要錨定在 Flickable 的父層或固定寬度
+            // 💡 4.注意：在 Flickable 內部，左右邊界要錨定在 Flickable 的父層或固定寬度
             x: 0
             y: 0
 
@@ -615,7 +612,6 @@ Window {
                             var diff = neonFlow.pos - charPos;
                             if (diff < 0)
                                 diff += 1.0;
-
                             // 光線經過時會降低震動，diff 同時增加震動機率和周長，手動調整光線要經過的時間，達成剛好經過觸發不少震動
                             // 同時必須滿足我們篩選出來的隨機字元（isSelectedToMove），才會產生位移
                             return (diff < 0.3 && isSelectedToMove) ? (Math.random() * 8 - 4) : 0;
@@ -631,9 +627,9 @@ Window {
             }
         }
 
-        // =========================================================================
-        // 2. 特效層（完美的 OpacityMask 霓虹燈效果）
-        // =========================================================================
+        //=========================================================================
+        // 2.特效層（完美的 OpacityMask 霓虹燈效果）
+        //=========================================================================
         Item {
             width: flowLayout.width
             height: flowLayout.height
@@ -740,7 +736,7 @@ Window {
         //height:Math.max(50, Math.min(contentHeight, window_h * 0.4))
         text: ""
         wrapMode: Text.Wrap // 自動換行
-        placeholderText: "請輸入windowTittle, path, action... (:多重路徑、::分行、<>錄製)"
+        placeholderText: "請輸入windowTittle, path, action...(:多重路徑、::分行、<>錄製)"
         focus: true // 點擊即可輸入
         // font.family: "Microsoft JhengHei" // 設置字體
         font.pixelSize: 18 // 設置字體大小
@@ -779,7 +775,7 @@ Window {
         }
     }
 
-    //WheelHandler {onWheel: root.scaleFactor += wheel.angleDelta.y * 0.001} 滾輪縮放
+    //WheelHandler {onWheel: root.scaleFactor +=wheel.angleDelta.y * 0.001} 滾輪縮放
     component ColButton: Row {
         id: buttonContainer
         //anchors.top: parent.top
@@ -898,7 +894,7 @@ Window {
         }
     }
 
-    // == == == == UI：重新掛載子物件 == == == ==
+    //== == == == UI：重新掛載子物件 == == == ==
 
     component RectAinmate: Rectangle {
         //anchors.right: parent.right
